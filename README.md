@@ -1,106 +1,317 @@
-# MyFetus
+# MyFetus 2.0
 
-**MyFetus** é um sistema acadêmico de acompanhamento gestacional desenvolvido na Escola Politécnica da UPE. O projeto conecta gestantes e médicos em uma plataforma com aplicativo mobile, API REST, banco PostgreSQL e recursos de gestão clínica, acompanhamento fetal e processamento de documentos.
+Documentação técnica de transição do projeto MyFetus 2.0.
 
-O repositório está organizado como um monorepo: a aplicação mobile fica em `apps/mobile`, a API em `apps/api`, e há scripts/testes na raiz para validar a extração de texto de documentos PDF.
+O **MyFetus 2.0** é um sistema acadêmico de saúde digital voltado ao acompanhamento materno-fetal durante o pré-natal. A solução conecta gestantes e profissionais de saúde em uma plataforma integrada, composta por aplicativo mobile, API REST, banco de dados PostgreSQL, processamento de exames, dashboards clínicos, alertas de risco, histórico gestacional e recursos de apoio a decisão clínica com IA.
 
-## Funcionalidades
+Este README foi escrito para permitir que uma nova equipe consiga entender, configurar, executar, testar e continuar o desenvolvimento do projeto sem depender de conhecimento prévio da equipe original.
+
+## Sumário
+
+- [Estado do projeto](#estado-do-projeto)
+- [Repositórios](#repositórios)
+- [Visão geral da solução](#visão-geral-da-solução)
+- [Funcionalidades implementadas](#funcionalidades-implementadas)
+- [Arquitetura](#arquitetura)
+- [Tecnologias utilizadas](#tecnologias-utilizadas)
+- [Estrutura do monorepo](#estrutura-do-monorepo)
+- [Configuração e execução local](#configuração-e-execução-local)
+- [Variáveis de ambiente](#variáveis-de-ambiente)
+- [Banco de dados](#banco-de-dados)
+- [API](#api)
+- [Processamento de documentos](#processamento-de-documentos)
+- [RAG e chat clínico](#rag-e-chat-clínico)
+- [Segurança e privacidade](#segurança-e-privacidade)
+- [Testes](#testes)
+- [Scripts úteis](#scripts-úteis)
+- [Credenciais de teste](#credenciais-de-teste)
+- [Bugs conhecidos](#bugs-conhecidos)
+- [Limitações e backlog futuro](#limitações-e-backlog-futuro)
+- [Troubleshooting](#troubleshooting)
+- [Documentação complementar](#documentação-complementar)
+
+## Estado do projeto
+
+| Item | Situação |
+|---|---|
+| Tipo de projeto | Monorepo acadêmico |
+| Aplicação mobile | Implementada em Expo/React Native |
+| Backend | Implementado em Node.js/Express |
+| Banco de dados | PostgreSQL via Docker Compose |
+| Autenticação | JWT com controle de papéis |
+| Perfis principais | Gestante, médico e admin |
+| Processamento de documentos | Upload, extração de texto, OCR e consulta |
+| RAG/chat clínico | Busca semântica, embeddings, Pinecone e geração com Gemini |
+| Deploy de produção | Não implementado |
+| Bugs conhecidos | Nenhum bug conhecido identificado na versão entregue |
+
+## Repositórios
+
+| Tipo | Link | Branch principal | Observação |
+|---|---|---|---|
+| Versão atual | <https://github.com/JRicLP/MyFetus.git> | `main` | Repositório principal para continuidade do desenvolvimento. |
+| Versão herdada | <https://github.com/Lucasrc22/github-grupo7.git> | `main` | Projeto usado como base histórica antes da evolução para o MyFetus 2.0. |
+
+## Visão geral da solução
+
+O MyFetus 2.0 foi evoluído para apoiar dois fluxos principais:
+
+1. **Fluxo da gestante**: acompanhamento da gestação, visualização semanal do desenvolvimento fetal, checklist de cuidados, controle de hidratação, envio de exames e acesso ao chat clínico.
+2. **Fluxo médico**: dashboard de pacientes, prontuário estruturado, histórico clínico, alertas de risco, visualização de gráficos, consulta de exames e suporte a decisão clínica.
+
+A plataforma também inclui uma camada backend responsável por:
+
+- autenticar usuários;
+- controlar permissões por papel;
+- persistir dados clínicos no PostgreSQL;
+- processar documentos laboratoriais;
+- proteger dados sensíveis por criptografia e sanitização;
+- registrar auditoria;
+- oferecer endpoints para RAG, LOINC, agentes clínicos e séries históricas.
+
+## Funcionalidades implementadas
 
 ### Gestante
 
-- Acompanhamento semana a semana da gestação, com imagens e informações do desenvolvimento fetal.
+- Cadastro e login.
+- Navegação por abas no aplicativo.
+- Acompanhamento semana a semana da gestação.
 - Cálculo de idade gestacional e data provável do parto.
-- Checklist de cuidados por fase da gestação.
+- Checklist de cuidados.
 - Controle diário de hidratação.
-- Login, cadastro e navegação por área da paciente.
+- Tela de exames.
+- Chat clínico integrado ao backend.
+- Visualização de informações gerais da gestação.
 
 ### Médico
 
+- Cadastro de médico.
+- Login com perfil médico.
 - Dashboard de pacientes.
-- Prontuário da gestante com identificação, antecedentes familiares, antecedentes clínicos, histórico obstétrico, gestação atual, vacinas, exames e ultrassons.
-- Resumo clínico consolidado da paciente.
-- Registro e consulta de medidas fetais.
-- Upload e consulta de documentos da gestante.
+- Vínculo entre médico e gestante.
+- Visualização de prontuário da paciente.
+- Módulos de identificação, antecedentes familiares, antecedentes clínicos, histórico obstétrico, gestação atual, vacinas, exames e ultrassons.
+- Resumo clínico consolidado.
+- Tela de alertas de risco.
+- Gráficos de crescimento e histórico.
 
-### Backend e documentos
+### Backend
 
-- API REST em Node.js/Express com autenticação via JWT.
-- PostgreSQL com tabelas para usuários, médicos, gestantes, gestações, eventos, documentos e medidas fetais.
-- Upload de documentos com `multer`.
-- Extração assíncrona de texto de PDFs usando PDF.js e OCR com Tesseract.js.
-- Testes e relatórios de acurácia para extração de texto em fixtures sintéticas.
+- API REST com Express.
+- Autenticação JWT.
+- Controle de acesso por papéis (`gestante`, `medico`, `admin`).
+- Rate limit para login, cadastro e rotas administrativas.
+- Cadastro e manutenção de usuários.
+- Cadastro de médicos.
+- Cadastro e consulta de gestantes.
+- Cadastro e consulta de gestações.
+- Registro de eventos gestacionais.
+- Upload, consulta, download, atualização e exclusão de documentos.
+- Extração de texto de PDFs com PDF.js e OCR.
+- Worker de processamento assíncrono de documentos.
+- Registro de medidas fetais.
+- Histórico de biometria fetal e peso materno.
+- Cálculo de percentis/gráficos de crescimento.
+- Mapeamento de termos clínicos para LOINC.
+- Busca semântica e chat clínico via RAG.
+- Agentes clínicos para análise materno-fetal.
+- Auditoria administrativa.
+- Sincronização administrativa.
 
-## Tecnologias
+### Inteligência artificial e apoio clínico
 
-| Área | Tecnologias |
+- Busca semântica em base de conhecimento clínica.
+- Chunking de documentos.
+- Geração de embeddings.
+- Integração com Pinecone para armazenamento vetorial.
+- Chat clínico com recuperação de contexto.
+- Geração de resposta com Gemini.
+- Sanitização de dados pessoais antes do processamento por IA.
+- Testes de relevância e validação de recuperação.
+
+## Arquitetura
+
+```text
+                 Aplicativo mobile Expo/React Native
+                       Gestante | Médico
+                                |
+                                | HTTP/JSON
+                                v
+                        API Node.js/Express
+                                |
+          ------------------------------------------------
+          |                 |              |             |
+    PostgreSQL       Processamento     RAG/IA       Auditoria
+  dados clínicos     de documentos    Pinecone      segurança
+    e usuários       PDF/OCR/LOINC    Gemini        logs
+```
+
+### Responsabilidades por camada
+
+| Camada | Responsabilidade |
 |---|---|
-| Mobile | Expo SDK 56, React Native 0.85, React 19, TypeScript, Expo Router |
-| API | Node.js, Express 5, PostgreSQL, JWT, bcrypt, multer |
-| Documentos | PDF.js, Tesseract.js, `@napi-rs/canvas` |
-| Infra | Docker, Docker Compose |
-| Testes | Jest, scripts Node.js |
+| `apps/mobile` | Interface do aplicativo, rotas Expo, telas da gestante, telas médicas, gráficos e integração com API. |
+| `apps/api` | API REST, autenticação, regras de negócio, acesso ao banco, processamento de documentos, RAG e segurança. |
+| `apps/api/db` | Scripts SQL de criação, migração, triggers, tabelas clínicas, segurança e auditoria. |
+| `packages/shared` | Código compartilhado em TypeScript. |
+| `packages/sync-engine` | Pacote reservado para sincronização. |
+| `scripts` | Geração de datasets e relatórios de acurácia. |
+| `tests` | Testes automatizados e fixtures de PDF. |
 
-## Estrutura
+## Tecnologias utilizadas
+
+### Frontend mobile
+
+| Tecnologia | Versão | Finalidade |
+|---|---:|---|
+| Expo | 56.x | Execução e build do aplicativo mobile. |
+| React Native | 0.85.x | Construção da interface mobile. |
+| React | 19.x | Biblioteca de componentes. |
+| TypeScript | 6.x | Tipagem estática. |
+| Expo Router | 56.x | Navegação baseada em arquivos. |
+| Async Storage | 2.x | Armazenamento local de sessão/token. |
+| Victory Native | 36.x | Gráficos de crescimento e comparação. |
+
+### Backend
+
+| Tecnologia | Versão | Finalidade |
+|---|---:|---|
+| Node.js | 18+ | Runtime do backend. |
+| Express | 5.x | API REST. |
+| PostgreSQL | 15-alpine | Banco relacional. |
+| JWT | 9.x | Autenticação e sessão. |
+| bcrypt | 6.x | Hash de senhas. |
+| multer | 2.x | Upload de arquivos. |
+| express-rate-limit | 8.x | Limitação de requisições sensíveis. |
+| dotenv | 16.x | Configuração por variáveis de ambiente. |
+
+### Documentos, IA e dados clínicos
+
+| Tecnologia | Finalidade |
+|---|---|
+| PDF.js | Extração de texto de PDFs. |
+| Tesseract.js | OCR para documentos escaneados. |
+| `@napi-rs/canvas` | Suporte a renderização de páginas PDF. |
+| Pinecone | Banco vetorial para RAG. |
+| Hugging Face Transformers | Embeddings locais. |
+| Google Gemini | Geração de respostas do chat clínico. |
+| LOINC | Normalização de termos de exames laboratoriais. |
+
+### Infraestrutura e testes
+
+| Tecnologia | Finalidade |
+|---|---|
+| Docker | Containerização do banco e backend. |
+| Docker Compose | Orquestração local. |
+| Jest/Node test runner | Testes automatizados. |
+| Turbo | Suporte a monorepo. |
+
+## Estrutura do monorepo
 
 ```text
 MyFetus/
 ├── apps/
-│   ├── api/                    # Backend Node.js/Express
-│   │   ├── controllers/         # Regras dos endpoints
-│   │   ├── db/                  # SQL de schema, triggers e migrações
-│   │   ├── middlewares/         # Autenticação e middlewares
-│   │   ├── routes/              # Rotas REST
-│   │   ├── services/            # Extração de PDF e serviços auxiliares
-│   │   ├── utils/               # Logger, permissões, sanitização, helpers
-│   │   ├── workers/             # Worker de extração de documentos
-│   │   └── server.js            # Entrada da API
-│   └── mobile/                 # App Expo/React Native
-│       ├── app/                 # Rotas do Expo Router
-│       │   ├── (tabs)/          # Área principal da gestante
-│       │   └── doctor/          # Área do médico e prontuário
-│       ├── assets/              # Imagens, fontes e ícones
-│       ├── components/          # Componentes reutilizáveis
-│       ├── constants/           # Cores e constantes
-│       ├── hooks/               # Hooks React
-│       └── utils/               # Utilitários do app
+│   ├── api/
+│   │   ├── config/                 # Configurações de segurança e ambiente
+│   │   ├── controllers/            # Handlers HTTP e regras dos endpoints
+│   │   ├── db/                     # Schema, migrations, triggers e auditoria
+│   │   ├── middlewares/            # Autenticação, autorização e rate limit
+│   │   ├── routes/                 # Rotas REST
+│   │   ├── scripts/                # Scripts de segredo, chaves e migrações
+│   │   ├── services/               # Serviços de domínio, IA, documentos e cripto
+│   │   ├── tests/                  # Testes do backend
+│   │   ├── utils/                  # Logger, sanitização, validadores e helpers
+│   │   ├── workers/                # Workers de documentos e RAG
+│   │   └── server.js               # Entrada da API
+│   └── mobile/
+│       ├── app/                    # Rotas e telas Expo Router
+│       │   ├── (tabs)/             # Área principal da gestante
+│       │   └── doctor/             # Área médica
+│       ├── assets/                 # Imagens, fontes e ícones
+│       ├── components/             # Componentes reutilizáveis
+│       ├── constants/              # Constantes de tema
+│       ├── hooks/                  # Hooks React
+│       └── utils/                  # Utilitários do app
 ├── packages/
-│   ├── shared/                  # Pacote compartilhado em TypeScript
-│   └── sync-engine/             # Pacote reservado para sincronização
-├── scripts/                     # Geração de dataset e relatório de acurácia
-├── tests/                       # Testes e fixtures de PDFs
-├── reports/                     # Relatórios gerados
-├── docker-compose.yml           # PostgreSQL + backend
-└── package.json                 # Scripts raiz
+│   ├── shared/                     # Pacote compartilhado
+│   └── sync-engine/                # Pacote reservado para sincronização
+├── reports/                        # Relatórios gerados por scripts
+├── scripts/                        # Scripts de dataset/acurácia
+├── tests/                          # Testes raiz e fixtures de PDF
+├── docker-compose.yml              # PostgreSQL + backend
+├── .env.example                    # Modelo de variáveis de ambiente
+└── package.json                    # Scripts raiz
 ```
 
-## Pré-requisitos
+## Configuração e execução local
+
+### 1. Pré-requisitos
 
 - Node.js 18 ou superior.
 - npm.
 - Docker e Docker Compose.
-- Expo Go ou emulador Android/iOS para testar o app mobile.
+- Expo Go em dispositivo físico ou emulador Android/iOS.
+- Git.
 
-## Como executar
+### 2. Clonar o repositório
 
-### 1. Instale as dependências
+```bash
+git clone https://github.com/JRicLP/MyFetus.git
+cd MyFetus
+```
 
-Na raiz do repositório:
+### 3. Instalar dependências
+
+Na raiz:
 
 ```bash
 npm install
 ```
 
-Instale também as dependências dos apps:
+Na API:
 
 ```bash
 cd apps/api
 npm install
+```
 
+No mobile:
+
+```bash
 cd ../mobile
 npm install
 ```
 
-### 2. Suba banco e backend com Docker
+### 4. Configurar variáveis de ambiente
+
+Volte para a raiz do projeto e crie o `.env`:
+
+```bash
+cd ../..
+cp .env.example .env
+```
+
+Edite o `.env` e preencha, no mínimo:
+
+```env
+PG_PASSWORD=uma_senha_local_forte
+JWT_SECRET=um_segredo_jwt_forte
+AES_ENCRYPTION_KEY_V1=chave_aes_em_base64
+EMAIL_LOOKUP_HMAC_KEY=chave_hmac_forte
+CORS_ORIGIN=http://localhost:8081,http://localhost:19006,http://localhost:3000,http://127.0.0.1:8081
+```
+
+Para gerar valores seguros, use os scripts da API:
+
+```bash
+cd apps/api
+npm run jwt:secret
+npm run aes:key
+```
+
+Copie os valores gerados para o `.env`.
+
+### 5. Subir banco e backend com Docker
 
 Na raiz do projeto:
 
@@ -108,20 +319,30 @@ Na raiz do projeto:
 docker compose up -d --build
 ```
 
-Serviços iniciados:
+Serviços esperados:
 
-- API: `http://localhost:3000`
-- Health check simples: `http://localhost:3000/ping`
-- PostgreSQL: `localhost:5434`
-- Container do banco: `myfetus-db`
-- Container do backend: `myfetus-backend`
+| Serviço | URL/porta | Observação |
+|---|---|---|
+| API | `http://localhost:3000` | Backend Express. |
+| Health check | `http://localhost:3000/ping` | Verifica se a API subiu. |
+| PostgreSQL | `localhost:5434` | Porta externa mapeada para o host. |
+| Banco no Docker | `db:5432` | Host usado internamente pela API. |
 
-O banco é inicializado pelos arquivos:
+Validar API:
 
-- `apps/api/db/create_tables.sql`
-- `apps/api/db/triggers.sql`
+```bash
+curl http://localhost:3000/ping
+```
 
-### 3. Inicie o app mobile
+Resposta esperada:
+
+```json
+{
+  "message": "Backend funcionando corretamente."
+}
+```
+
+### 6. Executar o aplicativo mobile
 
 Em outro terminal:
 
@@ -130,89 +351,362 @@ cd apps/mobile
 npm start
 ```
 
-Atalhos úteis do Expo:
+Atalhos comuns do Expo:
 
-- `a`: abrir no Android.
-- `i`: abrir no iOS, em macOS.
-- `w`: abrir no navegador.
+| Tecla | Ação |
+|---|---|
+| `a` | Abrir no Android. |
+| `i` | Abrir no iOS, em macOS. |
+| `w` | Abrir no navegador. |
 
-Se usar um dispositivo físico, ajuste as chamadas para a API para usar o IP da máquina na rede local em vez de `localhost`.
+Se estiver usando celular físico, configure a URL da API para o IP da sua máquina na rede local, pois `localhost` no celular aponta para o próprio aparelho.
+
+Exemplo:
+
+```env
+EXPO_PUBLIC_API_URL=http://192.168.0.10:3000
+```
 
 ## Variáveis de ambiente
 
-Crie um `.env` na raiz a partir de `.env.example`. O Docker Compose carrega
-esse arquivo sem manter segredos no YAML versionado.
+O arquivo `.env.example` na raiz é a referência oficial para configuração local. Nunca versione segredos reais.
 
-```env
-PG_USER=myfetus_app
-PG_PASSWORD=gere_uma_senha_forte
-PG_DATABASE=myfetus
-PG_HOST=db
-PG_PORT=5432
-PORT=3000
+### Banco de dados
 
-JWT_SECRET=gere_com_npm_run_jwt_secret
-JWT_EXPIRES_IN=8h
-CORS_ORIGIN=http://localhost:8081,http://localhost:19006,http://localhost:3000
-NODE_ENV=development
-TRUST_PROXY=
-ENFORCE_HTTPS=false
-AUTH_RATE_LIMIT_WINDOW_MS=900000
-AUTH_RATE_LIMIT_MAX=10
-REGISTER_RATE_LIMIT_MAX=5
+| Variável | Obrigatória | Exemplo | Descrição |
+|---|---|---|---|
+| `PG_USER` | Sim | `myfetus_app` | Usuário do PostgreSQL. |
+| `PG_PASSWORD` | Sim | `senha_forte` | Senha do banco. |
+| `PG_DATABASE` | Sim | `myfetus` | Nome do banco. |
+| `PG_HOST` | Sim | `db` | Host interno no Docker. |
+| `PG_PORT` | Sim | `5432` | Porta interna no Docker. |
+| `DB_ROTATION_HOST` | Não | `localhost` | Host usado por scripts de rotação fora do Docker. |
+| `DB_ROTATION_PORT` | Não | `5434` | Porta externa do PostgreSQL. |
 
-OCR_LANGUAGES=por+eng
-PDF_TEXT_MIN_LENGTH_FOR_OCR=50
-DOCUMENT_EXTRACTION_BATCH_SIZE=5
-DOCUMENT_EXTRACTION_INTERVAL_MS=30000
-```
+### Backend e segurança
 
-Dentro da rede Docker, o backend usa `PG_HOST=db` e `PG_PORT=5432`.
+| Variável | Obrigatória | Exemplo | Descrição |
+|---|---|---|---|
+| `PORT` | Sim | `3000` | Porta da API. |
+| `JWT_SECRET` | Sim | `valor_seguro` | Segredo para assinar tokens JWT. |
+| `JWT_EXPIRES_IN` | Não | `8h` | Duração do token. |
+| `CORS_ORIGIN` | Recomendado | `http://localhost:8081` | Origens permitidas para chamadas do app. |
+| `NODE_ENV` | Sim | `development` | Ambiente de execução. |
+| `TRUST_PROXY` | Produção | `1` | Confiança em proxy reverso. |
+| `ENFORCE_HTTPS` | Produção | `true` | Força HTTPS em produção. |
+| `HSTS_MAX_AGE_SECONDS` | Não | `31536000` | Cabeçalho HSTS. |
+| `AUTH_RATE_LIMIT_WINDOW_MS` | Não | `900000` | Janela de rate limit. |
+| `AUTH_RATE_LIMIT_MAX` | Não | `10` | Limite para login. |
+| `REGISTER_RATE_LIMIT_MAX` | Não | `5` | Limite para cadastro. |
+| `ADMIN_READ_RATE_LIMIT_MAX` | Não | `100` | Limite para leitura administrativa. |
 
-Gere ou rotacione o segredo JWT dentro de `apps/api`:
+### Criptografia, documentos e IA
+
+| Variável | Obrigatória | Exemplo | Descrição |
+|---|---|---|---|
+| `AES_KEY_VERSION` | Sim | `1` | Versão da chave de criptografia. |
+| `AES_ENCRYPTION_KEY_V1` | Sim | `base64...` | Chave para criptografia em repouso. |
+| `EMAIL_LOOKUP_HMAC_KEY` | Sim | `valor_seguro` | HMAC para busca por e-mail sem expor dado sensível. |
+| `DOCUMENT_STORAGE_DIR` | Sim | `uploads/encrypted` | Diretório de documentos criptografados. |
+| `DOCUMENT_MAX_UPLOAD_BYTES` | Não | `26214400` | Limite de upload. |
+| `PINECONE_API_KEY` | RAG | `...` | Chave do Pinecone. |
+| `PINECONE_INDEX_NAME` | RAG | `myfetus-rag` | Índice vetorial. |
+| `PINECONE_NAMESPACE` | RAG | `guidelines` | Namespace da base clínica. |
+| `EMBEDDING_MODEL` | RAG | `Xenova/multilingual-e5-small` | Modelo de embeddings. |
+| `EMBEDDING_DIMENSION` | RAG | `384` | Dimensão dos embeddings. |
+| `GEMINI_API_KEY` | Chat | `...` | Chave para geração de respostas. |
+| `GEMINI_MODEL` | Chat | `gemini-2.5-flash` | Modelo de geração. |
+
+## Banco de dados
+
+O PostgreSQL é inicializado pelo Docker Compose com scripts SQL em `apps/api/db`.
+
+Arquivos principais:
+
+| Arquivo | Finalidade |
+|---|---|
+| `create_tables.sql` | Criação das tabelas principais. |
+| `triggers.sql` | Triggers de atualização e consistência. |
+| `migration.sql` | Migrações gerais. |
+| `migration_sprint6_history.sql` | Histórico clínico e séries temporais. |
+| `doctor_patient_links.sql` | Vínculo entre médico e gestante. |
+| `migration_security_baseline.sql` | Base de segurança. |
+| `migration_aes_encryption.sql` | Estrutura para criptografia AES. |
+| `migration_document_security.sql` | Segurança de documentos. |
+| `migration_audit_trail.sql` | Auditoria. |
+| `loinc_table.sql` | Dados/estrutura de mapeamento LOINC. |
+
+Principais tabelas:
+
+| Tabela | Descrição |
+|---|---|
+| `users` | Usuários e papéis do sistema. |
+| `doctors` | Dados profissionais dos médicos. |
+| `pregnants` | Dados cadastrais e clínicos das gestantes. |
+| `pregnancies` | Informações de cada gestação. |
+| `pregnancy_events` | Eventos gestacionais. |
+| `doctor_patient_links` | Vínculos médico-paciente. |
+| `pregnant_documents` | Metadados de documentos enviados. |
+| `medidas_fetais` | Medidas fetais. |
+| `fetal_biometry_history` | Histórico de biometria fetal. |
+| `maternal_weight_history` | Histórico de peso materno. |
+| `audit_logs` | Registro de auditoria administrativa. |
+
+Acesso rápido ao banco:
 
 ```bash
-npm run jwt:secret
-npm run jwt:rotate
-npm run db:rotate-password
+docker exec -it myfetus-db psql -U "$PG_USER" -d "$PG_DATABASE"
 ```
 
-`jwt:rotate` atualiza o `.env` local sem imprimir o segredo e invalida os tokens
-emitidos anteriormente.
+Se o shell não carregar as variáveis, use os valores do `.env` diretamente:
 
-`db:rotate-password` altera a senha da role PostgreSQL e, somente após sucesso,
-atualiza `PG_PASSWORD` no `.env`. Para executar fora da rede Docker, use
-`DB_ROTATION_HOST=localhost` e `DB_ROTATION_PORT=5434`.
+```bash
+docker exec -it myfetus-db psql -U myfetus_app -d myfetus
+```
 
-Em produção, termine TLS em um reverse proxy e configure
-`NODE_ENV=production`, `TRUST_PROXY=1` e `ENFORCE_HTTPS=true`. A API recusa HTTP
-com status `426` e envia HSTS em conexões HTTPS.
+## API
 
-## Scripts úteis
+URL base local:
 
-Na raiz:
+```text
+http://localhost:3000/api
+```
+
+### Rotas principais
+
+| Método | Rota | Autenticação | Descrição |
+|---|---|---|---|
+| `POST` | `/api/users` | Não | Cria usuário. |
+| `POST` | `/api/users/login` | Não | Realiza login e retorna JWT. |
+| `GET` | `/api/users` | Admin | Lista usuários. |
+| `GET` | `/api/users/:id` | JWT | Consulta usuário por ID. |
+| `PUT` | `/api/users/:id` | JWT | Atualiza usuário. |
+| `DELETE` | `/api/users/:id` | Admin | Remove usuário. |
+| `POST` | `/api/doctors` | Não | Cria conta médica. |
+| `GET` | `/api/pregnants` | Médico/Admin | Lista gestantes. |
+| `POST` | `/api/pregnants` | Gestante/Admin | Cria registro de gestante. |
+| `GET` | `/api/pregnants/:id` | JWT | Consulta gestante. |
+| `PUT` | `/api/pregnants/:id` | Médico/Admin | Atualiza gestante. |
+| `GET` | `/api/pregnants/:id/alerts` | Médico/Admin | Consulta alertas de risco. |
+| `POST` | `/api/pregnancies` | Gestante/Médico/Admin | Cria gestação. |
+| `GET` | `/api/pregnancies` | Gestante/Médico/Admin | Lista gestações. |
+| `PUT` | `/api/pregnancies/:id` | Médico/Admin | Atualiza gestação. |
+| `POST` | `/api/pregnancyEvents` | Médico/Admin | Cria evento gestacional. |
+| `GET` | `/api/pregnancyEvents` | Gestante/Médico/Admin | Lista eventos. |
+| `PUT` | `/api/pregnancyEvents/:id` | Médico/Admin | Atualiza evento. |
+| `POST` | `/api/documents` | Médico/Admin | Faz upload de documento. |
+| `GET` | `/api/documents` | Médico/Admin | Lista documentos por `pregnant_id`. |
+| `GET` | `/api/documents/:id` | Médico/Admin | Consulta documento. |
+| `GET` | `/api/documents/:id/download` | Médico/Admin | Baixa documento. |
+| `GET` | `/api/documents/:id/text` | Médico/Admin | Consulta texto extraído. |
+| `POST` | `/api/documents/:id/extract` | Médico/Admin | Reprocessa extração. |
+| `PUT` | `/api/documents/:id` | Médico/Admin | Atualiza metadados. |
+| `DELETE` | `/api/documents/:id` | Médico/Admin | Remove documento. |
+| `POST` | `/api/medicoes` | Médico/Admin | Registra medida fetal. |
+| `GET` | `/api/history/pregnancies/:pregnancyId` | Gestante/Médico/Admin | Consulta histórico clínico. |
+| `POST` | `/api/history/pregnancies/:pregnancyId/fetal-biometries` | Médico/Admin | Registra biometria fetal. |
+| `POST` | `/api/history/pregnancies/:pregnancyId/maternal-weights` | Médico/Admin | Registra peso materno. |
+| `GET` | `/api/growth/chart` | Não definido | Consulta dados de gráfico de crescimento. |
+| `POST` | `/api/growth/percentile` | Não definido | Calcula percentil. |
+| `POST` | `/api/internal/loinc/term` | Admin | Mapeia termo único para LOINC. |
+| `POST` | `/api/internal/loinc/text` | Admin | Mapeia bloco de texto para LOINC. |
+| `POST` | `/api/internal/rag/search` | JWT | Busca semântica na base clínica. |
+| `POST` | `/api/internal/rag/chat` | JWT | Chat clínico com RAG. |
+| `POST` | `/api/internal/rag/chat/agents` | JWT | Chat multiagente. |
+| `GET` | `/api/internal/rag/stats` | Admin | Estatísticas da base RAG. |
+| `POST` | `/api/agent/maternal-analysis` | JWT | Análise materna por agente. |
+| `GET` | `/api/admin/audit` | Admin | Lista auditoria. |
+| `POST` | `/api/sync` | Admin | Sincronização administrativa. |
+
+Para exemplos de payloads e comandos `curl`, consulte:
+
+- `apps/api/API_USAGE.md`
+- `apps/api/CURL_RAG_EXAMPLES.md`
+
+## Processamento de documentos
+
+O módulo de documentos permite:
+
+- upload de arquivos vinculados a gestantes;
+- armazenamento controlado no backend;
+- criptografia de arquivos sensíveis;
+- extração de texto com PDF.js;
+- fallback para OCR com Tesseract.js;
+- consulta do texto extraído via API;
+- reprocessamento manual da extração;
+- geração de relatórios de acurácia em fixtures sintéticas.
+
+Fluxo resumido:
+
+```text
+Upload do exame
+      |
+      v
+Registro em pregnant_documents
+      |
+      v
+Worker de extração
+      |
+      v
+PDF.js ou OCR
+      |
+      v
+Texto extraído + metadados
+      |
+      v
+Consulta pela API e uso em análises clínicas
+```
+
+## RAG e chat clínico
+
+O módulo RAG utiliza uma base de conhecimento clínica para apoiar consultas de profissionais de saúde.
+
+Componentes principais:
+
+| Componente | Responsabilidade |
+|---|---|
+| `ragController.js` | Expor endpoints HTTP de busca e chat. |
+| `rag.js` | Registrar rotas `/api/internal/rag/*`. |
+| Serviços de chunking | Dividir documentos clínicos em trechos recuperáveis. |
+| Serviços de embedding | Transformar texto em vetores. |
+| Pinecone | Armazenar e recuperar vetores por similaridade. |
+| Gemini | Gerar resposta em linguagem natural com base no contexto recuperado. |
+| Sanitização de PII | Reduzir exposição de dados sensíveis antes de IA. |
+
+Endpoints:
+
+```text
+POST /api/internal/rag/search
+POST /api/internal/rag/chat
+POST /api/internal/rag/chat/agents
+GET  /api/internal/rag/stats
+```
+
+Exemplo de busca:
+
+```bash
+curl -X POST http://localhost:3000/api/internal/rag/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -d '{"query":"Quais sinais indicam risco de pré-eclâmpsia?","topK":3}'
+```
+
+## Segurança e privacidade
+
+Recursos implementados:
+
+- JWT para autenticação.
+- Controle de acesso por papel.
+- Rate limit em login, cadastro e rotas administrativas.
+- Hash de senhas com bcrypt.
+- Criptografia AES para dados sensíveis.
+- Criptografia de documentos.
+- HMAC para busca segura por e-mail.
+- Sanitização de PII em logs e fluxos de IA.
+- Auditoria administrativa.
+- Suporte a HTTPS/HSTS em ambiente de produção.
+- Restrição de CORS por origem configurável.
+
+Recomendações para continuidade:
+
+- Nunca versionar `.env` com segredos reais.
+- Rotacionar `JWT_SECRET`, `AES_ENCRYPTION_KEY_V1` e `PG_PASSWORD` ao mudar de ambiente.
+- Usar HTTPS em qualquer ambiente exposto publicamente.
+- Validar permissões antes de liberar dados clínicos reais.
+- Manter auditoria ativa para operações administrativas.
+
+## Testes
+
+### Testes na raiz
+
+| Comando | O que valida |
+|---|---|
+| `npm test` | Executa a suite Jest configurada na raiz. |
+| `npm run generate:dataset` | Gera fixtures sintéticas de PDFs para testes. |
+| `npm run generate:dataset:ocr` | Gera fixtures escaneadas para validar OCR. |
+| `npm run test:pdf-extractor` | Testa extração de texto em documentos PDF. |
+| `npm run accuracy:pdf` | Gera relatorio de acurácia da extração. |
+
+### Testes da API
+
+Execute dentro de `apps/api`.
+
+| Comando | O que valida |
+|---|---|
+| `npm run test:pii` | Verifica mascaramento/remoção de dados sensíveis. |
+| `npm run test:logger` | Verifica comportamento do logger e sanitização de logs. |
+| `npm run test:security-baseline` | Valida a base de segurança da API. |
+| `npm run test:transport-security` | Verifica configurações de HTTPS/HSTS. |
+| `npm run test:crypto` | Testa criptografia e descriptografia de dados. |
+| `npm run test:file-crypto` | Testa proteção criptográfica de arquivos. |
+| `npm run test:clinical-crypto` | Valida criptografia aplicada a dados clínicos. |
+| `npm run test:db` | Testa integração com PostgreSQL via Docker. |
+| `npm run test:loinc` | Testa mapeamento de termos clínicos para LOINC. |
+| `npm run test:rag` | Valida chunking, embeddings, vector store e busca RAG. |
+| `npm run test:stress` | Testa componentes do simulador de estresse. |
+| `npm run test:generation-service` | Testa serviço de geração de respostas. |
+| `npm run test:agent-controller` | Testa controlador de agentes clínicos. |
+| `npm run test:hadlockCalculator` | Valida cálculos associados a crescimento fetal. |
+| `npm run test:clinical-history` | Valida histórico clínico e séries temporais. |
+
+### Testes do mobile
+
+Execute dentro de `apps/mobile`.
+
+| Comando | O que valida |
+|---|---|
+| `npm run lint` | Verifica padrões de codigo do app Expo. |
+| `npm start` | Sobe o app para validação manual em Expo. |
+| `npm run android` | Abre no Android. |
+| `npm run ios` | Abre no iOS, quando disponível. |
+| `npm run web` | Abre no navegador. |
+
+### Fluxo recomendado antes de abrir PR
 
 ```bash
 npm test
 npm run test:pdf-extractor
+npm run accuracy:pdf
+
+cd apps/api
+npm run test:pii
+npm run test:logger
+npm run test:crypto
+npm run test:rag
+
+cd ../mobile
+npm run lint
+```
+
+## Scripts úteis
+
+### Raiz
+
+```bash
+npm test
 npm run generate:dataset
 npm run generate:dataset:ocr
+npm run test:pdf-extractor
 npm run accuracy:pdf
 ```
 
-Na API:
+### API
 
 ```bash
 cd apps/api
 npm run dev
 npm run start
+npm run jwt:secret
+npm run jwt:test-token
+npm run jwt:rotate
+npm run db:rotate-password
+npm run aes:key
+npm run aes:init
 npm run extract:documents
-npm run test:pii
-npm run test:logger
-npm run test:db
+npm run rag:ingest
 ```
 
-No mobile:
+### Mobile
 
 ```bash
 cd apps/mobile
@@ -223,85 +717,150 @@ npm run web
 npm run lint
 ```
 
-## API
+## Credenciais de teste
 
-A URL base padrão é:
+Não há credenciais fixas versionadas no repositório. Para testar localmente, crie usuários por API ou pela interface do app.
 
-```text
-http://localhost:3000/api
-```
-
-Rotas principais:
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `POST` | `/api/users` | Cria usuário |
-| `POST` | `/api/users/login` | Autentica usuário |
-| `GET` | `/api/users` | Lista usuários |
-| `GET` | `/api/pregnants` | Lista gestantes |
-| `POST` | `/api/pregnants` | Cria registro de gestante |
-| `GET` | `/api/pregnancies` | Lista gestações |
-| `POST` | `/api/pregnancies` | Cria gestação |
-| `GET` | `/api/pregnancyEvents` | Lista eventos gestacionais |
-| `POST` | `/api/pregnancyEvents` | Cria evento gestacional |
-| `POST` | `/api/documents` | Faz upload de documento |
-| `GET` | `/api/documents/:id/text` | Consulta texto extraído |
-| `POST` | `/api/documents/:id/extract` | Reprocessa extração |
-| `POST` | `/api/medicoes` | Registra medida fetal |
-| `GET` | `/api/history/pregnancies/:id` | Consulta histórico fetal e materno |
-| `POST` | `/api/history/pregnancies/:id/fetal-biometries` | Registra biometria fetal |
-| `POST` | `/api/history/pregnancies/:id/maternal-weights` | Registra peso materno |
-| `POST` | `/api/sync` | Sincronização administrativa |
-
-Algumas rotas exigem `Authorization: Bearer <token>`. Consulte `apps/api/API_USAGE.md` para exemplos de payloads e comandos `curl`.
-
-## Banco de dados
-
-Principais tabelas:
-
-- `users`: usuários do sistema com papéis `gestante`, `medico` e `admin`.
-- `doctors`: dados profissionais de médicos.
-- `pregnants`: dados cadastrais, clínicos, obstétricos e vacinais das gestantes.
-- `pregnancies`: informações de cada gestação.
-- `pregnancy_events`: eventos e intercorrências da gestação.
-- `pregnant_documents`: documentos enviados e metadados da extração de texto.
-- `medidas_fetais`: medidas fetais por idade gestacional.
-- `fetal_biometry_history`: série temporal de biometria e percentis fetais por gestação.
-- `maternal_weight_history`: série temporal de peso materno por gestação.
-
-Acesso rápido ao banco:
+### Criar usuário gestante
 
 ```bash
-docker exec -it myfetus-db psql -U myuser -d mydatabase
+curl -X POST http://localhost:3000/api/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Gestante Teste",
+    "email": "gestante.teste@example.com",
+    "password": "SenhaTeste123!",
+    "role": "gestante"
+  }'
 ```
 
-## Testes de extração de PDF
-
-O projeto inclui fixtures nativas e escaneadas em `tests/fixtures/pdfs`.
-
-Fluxo recomendado:
+### Criar médico
 
 ```bash
-npm run generate:dataset
-npm run test:pdf-extractor
-npm run accuracy:pdf
+curl -X POST http://localhost:3000/api/doctors \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Médico Teste",
+    "email": "medico.teste@example.com",
+    "password": "SenhaTeste123!",
+    "crm": "123456",
+    "specialty": "Obstetricia",
+    "phone": "81999999999"
+  }'
 ```
 
-Para gerar fixtures escaneadas com OCR:
+### Login
 
 ```bash
-npm run generate:dataset:ocr
+curl -X POST http://localhost:3000/api/users/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "gestante.teste@example.com",
+    "password": "SenhaTeste123!"
+  }'
 ```
 
-Os relatórios de acurácia são gravados em `reports/`.
+Use o token retornado em:
+
+```http
+Authorization: Bearer <token>
+```
+
+Também é possível gerar token local para testes:
+
+```bash
+cd apps/api
+npm run jwt:test-token
+```
+
+## Bugs conhecidos
+
+Até o momento, a equipe não identificou bugs conhecidos na versão entregue do projeto.
+
+Durante a continuidade do desenvolvimento, recomenda-se registrar qualquer problema encontrado em issues do GitHub com:
+
+- descrição do problema;
+- passos para reproduzir;
+- comportamento esperado;
+- comportamento atual;
+- prints/logs quando houver;
+- ambiente usado para teste.
+
+## Limitações e backlog futuro
+
+Itens ainda recomendados para continuidade:
+
+| Item | Descrição |
+|---|---|
+| Deploy | Configurar ambiente de homologação/produção com HTTPS, secrets e observabilidade. |
+| Pipeline CI/CD | Automatizar lint, testes, build e análise de segurança em pull requests. |
+| Documentação OpenAPI | Publicar contrato formal da API com Swagger/OpenAPI. |
+| Seeds de desenvolvimento | Criar massa de dados padronizada para demos e testes locais. |
+| Cobertura mobile | Ampliar testes automatizados no aplicativo. |
+| Observabilidade | Incluir métricas, tracing e dashboards de saúde da API. |
+| Revisão clínica externa | Validar regras e respostas de IA com profissional habilitado antes de uso real. |
+| Deploy RAG | Formalizar ingestão de base clínica real e política de atualização de documentos. |
+| Proteção LGPD | Revisar fluxo completo de consentimento, retenção e descarte de dados. |
+
+## Troubleshooting
+
+### `docker compose up` falha por variável ausente
+
+Verifique se `.env` existe na raiz e se `PG_USER`, `PG_PASSWORD` e `PG_DATABASE` estão preenchidos.
+
+### API sobe, mas o app não conecta
+
+- Em emulador Android, tente `http://10.0.2.2:3000`.
+- Em celular físico, use o IP da máquina na rede local.
+- Confirme se a origem está em `CORS_ORIGIN`.
+- Teste `curl http://localhost:3000/ping` no computador.
+
+### Banco não reflete novas migrations
+
+O Docker só executa scripts de `/docker-entrypoint-initdb.d` quando o volume é criado pela primeira vez. Para recriar o banco local:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+Use esse comando com cuidado, pois ele apaga o volume local do banco.
+
+### Erro de token inválido
+
+- Confirme que a API e o script de teste usam o mesmo `JWT_SECRET`.
+- Gere novo token após rodar `npm run jwt:rotate`.
+- Verifique se o usuário possui o papel exigido pela rota.
+
+### Erros no RAG
+
+- Preencha `PINECONE_API_KEY`, `PINECONE_INDEX_NAME` e `PINECONE_NAMESPACE`.
+- Confirme a dimensão de embedding em `EMBEDDING_DIMENSION`.
+- Preencha `GEMINI_API_KEY` para rotas que geram resposta textual.
+- Execute testes de RAG dentro de `apps/api`.
+
+### Upload ou extração de PDF falha
+
+- Verifique `DOCUMENT_MAX_UPLOAD_BYTES`.
+- Confirme permissão de escrita em `DOCUMENT_STORAGE_DIR`.
+- Rode `npm run test:pdf-extractor` na raiz.
+- Rode `npm run extract:documents` dentro de `apps/api`.
 
 ## Documentação complementar
 
-- `apps/api/API_USAGE.md`: exemplos de uso da API.
-- `apps/api/db/README-modelagem.md`: descrição da modelagem do banco.
-- `apps/api/PostgresQL.md`: notas de PostgreSQL.
-- `apps/mobile/documentations/`: documentos acadêmicos, mapas, jornada do usuário e materiais de requisitos.
+Arquivos importantes no repositório:
 
-## Licença
+| Arquivo | Conteúdo |
+|---|---|
+| `apps/api/API_USAGE.md` | Exemplos de uso da API. |
+| `apps/api/CURL_RAG_EXAMPLES.md` | Exemplos de chamadas RAG. |
+| `apps/api/README_RAG_SPRINT4.md` | Documentação histórica do módulo RAG. |
+| `apps/api/PostgresQL.md` | Notas de PostgreSQL. |
+| `apps/api/db/README-modelagem.md` | Modelagem do banco. |
+| `apps/api/db/AUDITORIA_SEGURANCA.md` | Auditoria e segurança. |
+| `apps/mobile/README.md` | Informações especificas do app mobile. |
+| `scripts/stress_test/README.md` | Testes de estresse. |
 
-Projeto acadêmico. Consulte a equipe responsável antes de usar, distribuir ou adaptar fora do contexto original.
+## Licença e uso
+
+Projeto acadêmico desenvolvido no contexto da disciplina de Engenharia de Software. Antes de usar, distribuir ou adaptar fora do contexto original, consulte a equipe responsável e valide requisitos de privacidade, segurança e conformidade aplicáveis a dados de saúde.
