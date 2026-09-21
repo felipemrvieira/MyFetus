@@ -45,22 +45,23 @@ O diferencial pretendido pelo MyFetus é reunir, em uma única solução, a expe
 
 ## 3. Cliente
 
-O documento e o repositório caracterizam o MyFetus como um projeto acadêmico de saúde digital vinculado ao contexto da UPE, mas não identificam claramente uma clínica, um hospital ou outra organização externa como cliente formal.
+O MyFetus é um projeto de autoria do **Dr. Rui Nóbrega**, que atua como demandante e principal referência do cliente para a definição e a validação da proposta. O desenvolvimento ocorre no contexto acadêmico da UPE e atende ao domínio de saúde materno-fetal e acompanhamento pré-natal.
 
-A caracterização factual disponível é:
+A caracterização disponível é:
 
-- **Nome:** Projeto acadêmico MyFetus, no contexto da UPE;
+- **Autor e demandante:** Dr. Rui Nóbrega;
+- **Projeto:** MyFetus;
 - **Setor:** saúde digital;
 - **Área de atuação:** saúde materno-fetal e acompanhamento pré-natal;
 - **Públicos atendidos:** gestantes, médicos obstetras e administradores;
-- **Departamento do cliente:** não informado explicitamente;
-- **Cliente externo ou instituição parceira:** não identificado no material analisado.
+- **Contexto de desenvolvimento:** acadêmico, vinculado à UPE;
+- **Departamento ou instituição assistencial parceira:** não informado.
 
 Para fins de apresentação acadêmica, o cliente pode ser descrito da seguinte forma:
 
-> O cliente do projeto é representado pelo ecossistema de acompanhamento pré-natal, envolvendo gestantes e profissionais de saúde. A UPE atua como instituição acadêmica responsável pelo desenvolvimento e pela continuidade do projeto. Ainda não há, no documento analisado, uma unidade hospitalar, clínica ou departamento assistencial formalmente definido como cliente externo.
+> O MyFetus é um projeto de autoria do Dr. Rui Nóbrega, seu demandante e principal representante do cliente. A solução é desenvolvida no contexto acadêmico da UPE para apoiar o acompanhamento pré-natal de gestantes e profissionais de saúde. Não foi informada uma unidade hospitalar, clínica ou instituição assistencial parceira específica.
 
-O apoio de um cliente ou parceiro da área de saúde é essencial para:
+A participação do autor e de profissionais da área de saúde é essencial para:
 
 - validar requisitos com gestantes e profissionais;
 - revisar cálculos e regras de risco;
@@ -69,7 +70,7 @@ O apoio de um cliente ou parceiro da área de saúde é essencial para:
 - definir consentimento, retenção e acesso aos dados;
 - conduzir testes de usabilidade e um piloto supervisionado.
 
-Antes da entrega formal, devem ser confirmados o nome da instituição cliente, o departamento e o profissional responsável pela validação clínica.
+Antes da implantação em contexto assistencial, ainda devem ser confirmados a instituição parceira, o departamento e os profissionais responsáveis pela validação clínica.
 
 ## 4. Tecnologias e arquitetura
 
