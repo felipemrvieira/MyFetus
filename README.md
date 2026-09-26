@@ -506,15 +506,15 @@ http://localhost:3000/api
 | `GET` | `/api/history/pregnancies/:pregnancyId` | Gestante/Médico/Admin | Consulta histórico clínico. |
 | `POST` | `/api/history/pregnancies/:pregnancyId/fetal-biometries` | Médico/Admin | Registra biometria fetal. |
 | `POST` | `/api/history/pregnancies/:pregnancyId/maternal-weights` | Médico/Admin | Registra peso materno. |
-| `GET` | `/api/growth/chart` | Não definido | Consulta dados de gráfico de crescimento. |
-| `POST` | `/api/growth/percentile` | Não definido | Calcula percentil. |
+| `GET` | `/api/growth/chart` | JWT | Consulta dados de gráfico de crescimento. |
+| `POST` | `/api/growth/percentile` | JWT | Calcula percentil. |
 | `POST` | `/api/internal/loinc/term` | Admin | Mapeia termo único para LOINC. |
 | `POST` | `/api/internal/loinc/text` | Admin | Mapeia bloco de texto para LOINC. |
 | `POST` | `/api/internal/rag/search` | JWT | Busca semântica na base clínica. |
 | `POST` | `/api/internal/rag/chat` | JWT | Chat clínico com RAG. |
 | `POST` | `/api/internal/rag/chat/agents` | JWT | Chat multiagente. |
 | `GET` | `/api/internal/rag/stats` | Admin | Estatísticas da base RAG. |
-| `POST` | `/api/agent/maternal-analysis` | JWT | Análise materna por agente. |
+| `POST` | `/api/agent/maternal-analysis` | JWT + `medico` (vinculado) / `admin` | Análise materna por agente. |
 | `GET` | `/api/admin/audit` | Admin | Lista auditoria. |
 | `POST` | `/api/sync` | Admin | Sincronização administrativa. |
 
