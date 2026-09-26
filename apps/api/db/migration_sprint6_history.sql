@@ -52,11 +52,11 @@ DROP TRIGGER IF EXISTS update_fetal_biometry_history_updated_at
 CREATE TRIGGER update_fetal_biometry_history_updated_at
   BEFORE UPDATE ON fetal_biometry_history
   FOR EACH ROW
-  EXECUTE PROCEDURE update_updated_at_and_version();
+  EXECUTE PROCEDURE update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_maternal_weight_history_updated_at
   ON maternal_weight_history;
 CREATE TRIGGER update_maternal_weight_history_updated_at
   BEFORE UPDATE ON maternal_weight_history
   FOR EACH ROW
-  EXECUTE PROCEDURE update_updated_at_and_version();
+  EXECUTE PROCEDURE update_updated_at_column();

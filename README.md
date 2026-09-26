@@ -245,6 +245,46 @@ MyFetus/
 
 ## Configuração e execução local
 
+### Guia Rápido de Onboarding (≤ 10 minutos)
+
+O projeto dispõe do script automatizado `npm run setup` para preparar todo o ambiente de desenvolvimento local (API, banco de dados e sementes de teste):
+
+1. **Pré-requisitos**:
+   - **Node.js**: versão 18 ou superior.
+   - **Docker Desktop**: instalado e em execução.
+
+2. **Configuração automática em comando único**:
+   Na raiz do repositório, execute:
+   ```bash
+   npm run setup
+   ```
+   *O que este comando faz automaticamente:*
+   - Valida os pré-requisitos do ambiente (Node.js e Docker daemon).
+   - Cria o arquivo `.env` a partir do `.env.example` (se ainda não existir).
+   - Gera segredos criptográficos locais seguros (`JWT_SECRET`, `AES_ENCRYPTION_KEY_V1`, `EMAIL_LOOKUP_HMAC_KEY`, `PG_PASSWORD`).
+   - Instala as dependências necessárias do monorepo.
+   - Inicia o contêiner do PostgreSQL 15 (`docker compose up -d db`).
+   - Aguarda a prontidão do banco e executa os seeds iniciais (`scripts/seed.js`).
+
+3. **Executar as aplicações**:
+   ```bash
+   # Iniciar API Backend (porta 3000)
+   npm run dev:api
+
+   # Iniciar Aplicativo Mobile (Expo)
+   npm run dev:mobile
+   ```
+
+4. **Resetar o ambiente (opcional)**:
+   Para limpar contêineres e recriar o volume do banco de dados do zero:
+   ```bash
+   npm run setup -- --reset
+   ```
+
+---
+
+### Procedimento Manual Passo a Passo
+
 ### 1. Pré-requisitos
 
 - Node.js 18 ou superior.
