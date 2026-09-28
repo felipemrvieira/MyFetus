@@ -233,6 +233,25 @@ test.describe('POST /api/agent/maternal-analysis - autorizacao', () => {
       }
     });
 
+    test('medico recebe a mesma resposta para ID sem vinculo e ID inexistente (sem enumeracao)', async () => {
+      const doctor = tokenFor({ id: 10, role: 'medico' });
+
+      const withoutLink = await post({ patientId: 2, query: 'pressao alta' }, doctor);
+      const withoutLinkBody = await withoutLink.json();
+
+      resetRecorders();
+      const missing = await post({ patientId: 999, query: 'pressao alta' }, doctor);
+      const missingBody = await missing.json();
+
+      assert.strictEqual(withoutLink.status, 403);
+      assert.strictEqual(missing.status, 403);
+      assert.deepStrictEqual(missingBody, withoutLinkBody);
+
+      // A existencia da gestante nao e consultada antes do vinculo.
+      assert.ok(!queryLog.some((q) => /FROM pregnants/.test(q.sql)));
+      assertNoClinicalDataAccessed();
+    });
+
     test('retorna 403 para medico com vinculo inativo', async () => {
       const res = await post(
         { patientId: 2, query: 'pressao alta' },

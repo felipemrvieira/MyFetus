@@ -619,7 +619,7 @@ Aplicação nas rotas corrigidas na E1-05 (issue #43):
 
 | Rota | Regra |
 |---|---|
-| `POST /api/agent/maternal-analysis` | JWT + papel `medico`/`admin` + vínculo com o `patientId` enviado. Gestante recebe `403`. |
+| `POST /api/agent/maternal-analysis` | JWT + papel `medico`/`admin` + vínculo com o `patientId` enviado. Gestante recebe `403`. Para médico, o vínculo é verificado antes da existência: ID sem vínculo e ID inexistente recebem o mesmo `403`, evitando enumeração de IDs. |
 | `GET /api/growth/chart`, `POST /api/growth/percentile` | JWT obrigatório (qualquer papel), aplicado no router de `/api/growth`. |
 
 Antes da correção, qualquer usuário autenticado podia trocar o `patientId` no corpo de `/api/agent/maternal-analysis` e receber a análise do prontuário descriptografado de outra paciente (IDOR). Agora o `patientId` é validado como inteiro e o vínculo é verificado antes das consultas clínicas; os testes `tests/agentController.test.js` comprovam que, ao trocar o ID, nenhuma consulta ao prontuário é executada e nenhum dado chega ao agente.
