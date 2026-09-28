@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
+const { runMigrations } = require('./migrate');
 
 function runCommand(command, options = {}) {
   return execSync(command, {
@@ -199,12 +200,12 @@ function waitForDatabaseReady(maxWaitSeconds = 60) {
       // 1. Verifica se o container esta marcado como healthy pelo Docker
       const healthStatus = runCommand('docker inspect --format="{{.State.Health.Status}}" myfetus-db', { silent: true }).trim();
       
-      // 2. Testa query direta para confirmar que as migrations terminaram e a tabela users existe
+      // 2. Testa query simples de conexao ativa no PostgreSQL
       const databaseUser = process.env.PG_USER || 'myfetus_app';
       const databaseName = process.env.PG_DATABASE || 'myfetus';
-      const queryCheck = runCommand(`docker compose exec -T db psql -U "${databaseUser}" -d "${databaseName}" -c "SELECT to_regclass('public.users');"`, { silent: true });
+      const queryCheck = runCommand(`docker compose exec -T db psql -U "${databaseUser}" -d "${databaseName}" -c "SELECT 1;"`, { silent: true });
 
-      if (healthStatus === 'healthy' && queryCheck.includes('users')) {
+      if (healthStatus === 'healthy' && queryCheck.includes('1')) {
         isReady = true;
         break;
       }
@@ -247,6 +248,7 @@ function main() {
   installDependencies();
   startDatabase(isReset);
   waitForDatabaseReady();
+  runMigrations();
   runSeeds();
 
   console.log('----------------------------------------------------------------');
@@ -255,6 +257,7 @@ function main() {
   console.log('       - PostgreSQL: localhost:5434 (db: myfetus, user: myfetus_app)');
   console.log('       - Executar API Backend: npm run dev:api');
   console.log('       - Executar App Mobile:  npm run dev:mobile');
+  console.log('       - Migracoes do Banco:   npm run db:migrate');
   console.log('       - Reiniciar do zero:    npm run setup -- --reset');
   console.log('[AVISO] Para habilitar recursos de IA/RAG, preencha GEMINI_API_KEY e PINECONE_API_KEY no arquivo .env.');
   console.log('================================================================');

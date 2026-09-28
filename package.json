@@ -6,6 +6,7 @@
   "scripts": {
     "setup": "node scripts/setup.js",
     "seed": "node scripts/seed.js",
+    "db:migrate": "node scripts/migrate.js",
     "docker:up": "docker compose up -d db",
     "docker:down": "docker compose down",
     "docker:reset": "docker compose down -v && docker compose up -d db",

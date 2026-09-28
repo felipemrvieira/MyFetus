@@ -11,6 +11,8 @@ services:
       POSTGRES_DB: ${PG_DATABASE:?PG_DATABASE nao configurada}
     volumes:
       - db_data:/var/lib/postgresql/data
+      # Nota: Os scripts em /docker-entrypoint-initdb.d/ rodam apenas na criacao inicial de volumes virgens.
+      # Para atualizar volumes existentes preservando dados, utilize: npm run db:migrate (ou npm run setup).
       - ./apps/api/db/create_tables.sql:/docker-entrypoint-initdb.d/01_create_tables.sql:ro
       - ./apps/api/db/triggers.sql:/docker-entrypoint-initdb.d/02_triggers.sql:ro
       - ./apps/api/db/migration.sql:/docker-entrypoint-initdb.d/03_migration.sql:ro
