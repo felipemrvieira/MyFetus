@@ -64,7 +64,7 @@ export default function ExamesTabScreen() {
       return;
     }
 
-    const res = await fetchWithAuth(apiUrl(`/api/documents/documents?pregnant_id=${pregnantId}`));
+    const res = await fetchWithAuth(apiUrl(`/api/documents/?pregnant_id=${pregnantId}`));
     const data = await res.json();
 
     if (!res.ok) {
@@ -164,7 +164,7 @@ export default function ExamesTabScreen() {
         );
       }
 
-      const res = await fetchWithAuth(apiUrl('/api/documents/documents'), {
+      const res = await fetchWithAuth(apiUrl('/api/documents/'), {
         method: 'POST',
         body: form,
       });
@@ -197,7 +197,7 @@ export default function ExamesTabScreen() {
   }, [pregnantId, uploading, fetchDocs]);
 
   const openDownload = useCallback(async (docId: number) => {
-    const url = apiUrl(`/api/documents/documents/${docId}/download`);
+    const url = apiUrl(`/api/documents/${docId}/download`);
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch {

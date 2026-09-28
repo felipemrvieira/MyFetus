@@ -62,7 +62,7 @@ export default function ExamesScreen() {
 
   const fetchDocs = useCallback(async () => {
     if (!patientId) return;
-    const res = await fetchWithAuth(apiUrl(`/api/documents/documents?pregnant_id=${patientId}`));
+    const res = await fetchWithAuth(apiUrl(`/api/documents/?pregnant_id=${patientId}`));
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data?.error || 'Não foi possível buscar os exames enviados');
@@ -105,7 +105,7 @@ export default function ExamesScreen() {
 
     setIsSaving(true);
     try {
-      const res = await fetchWithAuth(apiUrl(`/api/documents/documents/${selectedDocId}/report`), {
+      const res = await fetchWithAuth(apiUrl(`/api/documents/${selectedDocId}/report`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -134,7 +134,7 @@ export default function ExamesScreen() {
   }, [isSaving, selectedDocId, reportText, doctorUserId, fetchDocs]);
 
   const openDownload = useCallback(async (docId: number) => {
-    const url = apiUrl(`/api/documents/documents/${docId}/download`);
+    const url = apiUrl(`/api/documents/${docId}/download`);
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch {
