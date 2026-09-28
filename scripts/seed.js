@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const net = require('net');
 
 // 1. Carrega variaveis do .env na raiz do projeto
 const rootEnvPath = path.resolve(__dirname, '../.env');
@@ -32,6 +33,17 @@ if (process.env.PG_HOST === 'db' || !process.env.PG_HOST) {
 }
 if (!process.env.PG_PORT || process.env.PG_PORT === '5432') {
   process.env.PG_PORT = process.env.DB_ROTATION_PORT || '5434';
+}
+
+const allowedEnvironments = ['development', 'test'];
+const normalizedHost = String(process.env.PG_HOST || '').toLowerCase().replace(/^\[|\]$/g, '');
+const isLoopbackHost = normalizedHost === 'localhost'
+  || normalizedHost === '::1'
+  || (net.isIP(normalizedHost) === 4 && normalizedHost.startsWith('127.'));
+
+if (!allowedEnvironments.includes(process.env.NODE_ENV) || !isLoopbackHost) {
+  console.error('[ERRO] Seed bloqueado: permitido somente em NODE_ENV=development/test e com PostgreSQL local (loopback).');
+  process.exit(1);
 }
 
 const apiNodeModules = path.resolve(__dirname, '../apps/api/node_modules');

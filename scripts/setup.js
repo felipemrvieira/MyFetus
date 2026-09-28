@@ -127,6 +127,17 @@ function handleEnvFile() {
     console.log('[INFO] Segredos locais ja configurados no .env.');
   }
 
+  // Disponibiliza as configuracoes do .env para os comandos deste processo.
+  for (const line of envContent.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const separator = trimmed.indexOf('=');
+    if (separator < 1) continue;
+    const key = trimmed.slice(0, separator).trim();
+    const value = trimmed.slice(separator + 1).trim();
+    if (!process.env[key]) process.env[key] = value;
+  }
+
   return envPath;
 }
 
@@ -134,6 +145,7 @@ function installDependencies() {
   const rootDir = path.resolve(__dirname, '..');
   const rootNodeModules = path.join(rootDir, 'node_modules');
   const apiNodeModules = path.join(rootDir, 'apps', 'api', 'node_modules');
+  const mobileNodeModules = path.join(rootDir, 'apps', 'mobile', 'node_modules');
 
   if (!fs.existsSync(rootNodeModules)) {
     console.log('[INFO] Instalando dependencias da raiz do monorepo...');
@@ -149,6 +161,14 @@ function installDependencies() {
     console.log('[OK] Dependencias do backend instaladas.');
   } else {
     console.log('[INFO] Dependencias do backend ja instaladas.');
+  }
+
+  if (!fs.existsSync(mobileNodeModules)) {
+    console.log('[INFO] Instalando dependencias do app mobile (apps/mobile)...');
+    runCommand('npm --prefix apps/mobile install');
+    console.log('[OK] Dependencias do app mobile instaladas.');
+  } else {
+    console.log('[INFO] Dependencias do app mobile ja instaladas.');
   }
 }
 
@@ -180,7 +200,9 @@ function waitForDatabaseReady(maxWaitSeconds = 60) {
       const healthStatus = runCommand('docker inspect --format="{{.State.Health.Status}}" myfetus-db', { silent: true }).trim();
       
       // 2. Testa query direta para confirmar que as migrations terminaram e a tabela users existe
-      const queryCheck = runCommand('docker compose exec -T db psql -U myfetus_app -d myfetus -c "SELECT to_regclass(\'public.users\');"', { silent: true });
+      const databaseUser = process.env.PG_USER || 'myfetus_app';
+      const databaseName = process.env.PG_DATABASE || 'myfetus';
+      const queryCheck = runCommand(`docker compose exec -T db psql -U "${databaseUser}" -d "${databaseName}" -c "SELECT to_regclass('public.users');"`, { silent: true });
 
       if (healthStatus === 'healthy' && queryCheck.includes('users')) {
         isReady = true;
