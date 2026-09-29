@@ -245,6 +245,54 @@ MyFetus/
 
 ## Configuração e execução local
 
+### Guia Rápido de Onboarding (≤ 10 minutos)
+
+O projeto dispõe do script automatizado `npm run setup` para preparar todo o ambiente de desenvolvimento local (API, banco de dados e sementes de teste):
+
+1. **Pré-requisitos**:
+   - **Node.js**: versão 18 ou superior.
+   - **Docker Desktop**: instalado e em execução.
+
+2. **Configuração automática em comando único**:
+   Na raiz do repositório, execute:
+   ```bash
+   npm run setup
+   ```
+   *O que este comando faz automaticamente:*
+   - Valida os pré-requisitos do ambiente (Node.js e Docker daemon).
+   - Cria o arquivo `.env` a partir do `.env.example` (se ainda não existir).
+   - Gera segredos criptográficos locais seguros (`JWT_SECRET`, `AES_ENCRYPTION_KEY_V1`, `EMAIL_LOOKUP_HMAC_KEY`, `PG_PASSWORD`).
+   - Instala as dependências necessárias do monorepo.
+   - Inicia o contêiner do PostgreSQL 15 (`docker compose up -d db`).
+   - Aguarda a prontidão do banco e aplica automaticamente as migrações pendentes (`scripts/migrate.js`).
+   - Executa os seeds iniciais (`scripts/seed.js`).
+
+3. **Executar as aplicações**:
+   ```bash
+   # Iniciar API Backend (porta 3000)
+   npm run dev:api
+
+   # Iniciar Aplicativo Mobile (Expo)
+   npm run dev:mobile
+   ```
+
+4. **Atualizar migrações preservando dados existentes**:
+   Se você já possui o volume `db_data` criado e deseja aplicar novas tabelas/colunas sem perder seus dados cadastrados:
+   ```bash
+   npm run db:migrate
+   # ou apenas execute npm run setup (que aplica as migrações pendentes automaticamente)
+   ```
+
+5. **Resetar o ambiente (opcional)**:
+   Para limpar contêineres e recriar o volume do banco de dados do zero:
+   ```bash
+   npm run setup -- --reset
+   ```
+
+---
+
+### Procedimento Manual Passo a Passo
+
 ### 1. Pré-requisitos
 
 - Node.js 18 ou superior.
@@ -463,6 +511,20 @@ Se o shell não carregar as variáveis, use os valores do `.env` diretamente:
 ```bash
 docker exec -it myfetus-db psql -U myfetus_app -d myfetus
 ```
+
+### Ciclo de vida e Migrações
+
+- **Inicialização limpa (novo volume):** O PostgreSQL executa os arquivos de `/docker-entrypoint-initdb.d/` (`01_create_tables.sql` a `12_record_initial_migrations.sql`) na ordem léxica durante o primeiro boot de um volume vazio (`db_data`). O último script registra as migrations já executadas em `schema_migrations`.
+- **Atualização com preservação de dados (volume existente):** O Docker pula `/docker-entrypoint-initdb.d/` se o volume `db_data` já existir. Para aplicar novas alterações sem perda de dados, o MyFetus utiliza o script `scripts/migrate.js` (com a tabela de controle `schema_migrations`), executado automaticamente em `npm run setup` ou sob demanda via:
+  ```bash
+  npm run db:migrate
+  ```
+- **Reset completo do banco:** Caso deseje apagar todos os dados e recriar o volume do zero:
+  ```bash
+  npm run setup -- --reset
+  # ou
+  npm run docker:reset
+  ```
 
 ## API
 
