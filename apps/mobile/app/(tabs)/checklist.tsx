@@ -64,31 +64,7 @@ export default function ChecklistScreen() {
     }
   };
 
-  useEffect(() => {
-    const loadGestationData = async () => {
-      const lastPeriod = await getLastPeriod();
-      if (lastPeriod) {
-        console.log('Checklist - Data última menstruação:', lastPeriod);
-        const result = calculateGestationWeek(lastPeriod);
-        console.log('Checklist - Semana calculada:', result.weeks);
-        setCurrentWeek(result.weeks);
-        
-        // Determina o trimestre atual baseado na semana
-        const trimester = result.weeks <= 13 ? 1 : result.weeks <= 26 ? 2 : 3;
-        setCurrentTrimester(trimester);
-        
-        // Carrega o estado salvo primeiro
-        await loadSavedState();
-        
-        // Carrega os itens do trimestre atual
-        await loadTrimesterItems(trimester);
-      }
-    };
-
-    loadGestationData();
-  }, []);
-
-  const loadTrimesterItems = async (trimester: number) => {
+  const loadTrimesterItems = async (trimester: number, completionState = savedState) => {
     const range = TRIMESTER_RANGES[trimester as keyof typeof TRIMESTER_RANGES];
     const items: ChecklistItem[] = [];
     
@@ -102,12 +78,32 @@ export default function ChecklistScreen() {
     trimesterChecklists.forEach(checklist => {
       items.push(...checklist.items.map(item => ({
         ...item,
-        completed: savedState[item.id] || false
+        completed: completionState[item.id] || false
       })));
     });
     
     setChecklistItems(items);
   };
+
+  useEffect(() => {
+    const loadGestationData = async () => {
+      const lastPeriod = await getLastPeriod();
+      if (lastPeriod) {
+        console.log('Checklist - Data última menstruação:', lastPeriod);
+        const result = calculateGestationWeek(lastPeriod);
+        console.log('Checklist - Semana calculada:', result.weeks);
+        setCurrentWeek(result.weeks);
+
+        const trimester = result.weeks <= 13 ? 1 : result.weeks <= 26 ? 2 : 3;
+        setCurrentTrimester(trimester);
+
+        const completionState = await loadSavedState();
+        await loadTrimesterItems(trimester, completionState);
+      }
+    };
+
+    loadGestationData();
+  }, []);
 
   const changeTrimester = async (trimester: number) => {
     setCurrentTrimester(trimester);

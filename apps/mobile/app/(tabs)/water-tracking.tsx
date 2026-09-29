@@ -36,19 +36,14 @@ export default function WaterTrackingScreen() {
   const dailyGoal = 2000; // 2 litros por dia
 
   useEffect(() => {
-    loadWaterHistory();
+    let active = true;
+    AsyncStorage.getItem(WATER_HISTORY_KEY)
+      .then(history => {
+        if (active && history) setWaterHistory(JSON.parse(history));
+      })
+      .catch(error => console.error('Erro ao carregar histórico de água:', error));
+    return () => { active = false; };
   }, []);
-
-  const loadWaterHistory = async () => {
-    try {
-      const history = await AsyncStorage.getItem(WATER_HISTORY_KEY);
-      if (history) {
-        setWaterHistory(JSON.parse(history));
-      }
-    } catch (error) {
-      console.error('Erro ao carregar histórico de água:', error);
-    }
-  };
 
   const saveWaterHistory = async (newHistory: WaterEntry[]) => {
     try {

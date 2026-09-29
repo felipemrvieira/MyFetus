@@ -53,12 +53,6 @@ export default function InfoPacienteScreen() {
   const [alturaUterina, setAlturaUterina] = useState('');
   const [bcf, setBcf] = useState(''); 
 
-  // --- Estados das Classificações ---
-  const [classPA, setClassPA] = useState('');
-  const [classGlicemia, setClassGlicemia] = useState('');
-  const [classAltura, setClassAltura] = useState('');
-  const [classBcf, setClassBcf] = useState('');
-  
   // --- Estados de Controle ---
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -111,20 +105,10 @@ export default function InfoPacienteScreen() {
   }, [patientId]);
 
 
-  // --- useEffect para RECALCULAR ---
-  useEffect(() => {
-    const numSistole = parseInputInt(sistole);
-    const numDiastole = parseInputInt(diastole);
-    const numGlicemia = parseInputFloat(glicemia);
-    const numAltura = parseInputFloat(alturaUterina);
-    const numBcf = parseInputInt(bcf);
-
-    setClassPA(classificarPA(numSistole, numDiastole));
-    setClassGlicemia(classificarGlicemia(numGlicemia));
-    setClassAltura(classificarAlturaUterina(numAltura));
-    setClassBcf(classificarBCF(numBcf));
-
-  }, [sistole, diastole, glicemia, alturaUterina, bcf]);
+  const classPA = classificarPA(parseInputInt(sistole), parseInputInt(diastole));
+  const classGlicemia = classificarGlicemia(parseInputFloat(glicemia));
+  const classAltura = classificarAlturaUterina(parseInputFloat(alturaUterina));
+  const classBcf = classificarBCF(parseInputInt(bcf));
 
   
   // --- handleNext faz DOIS SALVAMENTOS ---
