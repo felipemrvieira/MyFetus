@@ -267,6 +267,14 @@ O projeto dispõe do script automatizado `npm run setup` para preparar todo o am
    - Aguarda a prontidão do banco e aplica automaticamente as migrações pendentes (`scripts/migrate.js`).
    - Executa os seeds iniciais (`scripts/seed.js`).
 
+   Depois do setup, `npm run seed` pode ser executado novamente para completar
+   os dados sinteticos sem duplicar registros. A carga cria 1 administrador,
+   2 medicos e 10 gestantes, com gestacao, consultas, historico de peso e
+   vinculos medico-paciente. Contas ja existentes mantem suas senhas e dados.
+   O comando aceita apenas `NODE_ENV=development` ou `test` e PostgreSQL local.
+   A senha inicial das novas contas e `SenhaTeste123!`; defina `SEED_PASSWORD`
+   para usar outra senha na criacao de novas contas.
+
 3. **Executar as aplicações**:
    ```bash
    # Iniciar API Backend (porta 3000)
