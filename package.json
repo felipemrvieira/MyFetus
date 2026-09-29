@@ -20,19 +20,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JRicLP/MyFetus.git"
+    "url": "git+https://github.com/felipemrvieira/MyFetus.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/JRicLP/MyFetus/issues"
+    "url": "https://github.com/felipemrvieira/MyFetus/issues"
   },
-  "homepage": "https://github.com/JRicLP/MyFetus#readme",
+  "homepage": "https://github.com/felipemrvieira/MyFetus#readme",
   "devDependencies": {
     "jest": "^30.4.2",
-    "pdf-lib": "^1.17.1",
-    "turbo": "^2.9.12"
+    "pdf-lib": "^1.17.1"
   }
 }

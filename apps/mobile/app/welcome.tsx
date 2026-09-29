@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
-  Alert,
   Modal
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -311,4 +310,4 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     marginBottom: 20,
     fontWeight: '500',
   },
-}); 
+});

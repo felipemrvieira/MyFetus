@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { apiUrl, fetchWithAuth } from '../../../utils/api';
+import { parseInputInt } from '../../../utils/clinicalInput';
 
 // --- COMPONENTE REUTILIZÁVEL 'ToggleButton' ---
 type ToggleButtonProps = {
@@ -86,11 +87,6 @@ export default function GestacaoAnteriorScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   // Helper
-  const parseInputInt = (input: string) => {
-    if (input === '') return 0;
-    return parseInt(input, 10);
-  }
-  const boolToString = (val: boolean) => val ? "1" : "0";
   const intToString = (val: number) => val ? String(val) : "0";
 
   // --- useEffect para LER os dados ---
