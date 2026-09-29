@@ -55,14 +55,6 @@ export default function InfoIniciaisScreen() {
   const [freqCardiaca, setFreqCardiaca] = useState(''); // (AGORA É REAL)
   const [temperatura, setTemperatura] = useState(''); // (AGORA É REAL)
 
-  // --- Estados dos Cálculos ---
-  const [imc, setImc] = useState(0);
-  const [classImc, setClassImc] = useState('');
-  const [ganhoPeso, setGanhoPeso] = useState(0);
-  const [classGanhoPeso, setClassGanhoPeso] = useState('');
-  const [classFc, setClassFc] = useState('');
-  const [classTemp, setClassTemp] = useState('');
-
   // --- Estados de Controle ---
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -116,33 +108,16 @@ export default function InfoIniciaisScreen() {
   }, [patientId]);
 
 
-  // --- useEffect para RECALCULAR ---
-  useEffect(() => {
-    const numAltura = parseInputFloat(altura);
-    const numPesoPre = parseInputFloat(pesoPre);
-    const numPesoAtual = parseInputFloat(pesoAtual);
-    const numFc = parseInputInt(freqCardiaca); 
-    const numTemp = parseInputFloat(temperatura); 
-
-    // ... (cálculos de IMC e Ganho de Peso)
-    const novoImc = calcularIMC(numPesoPre, numAltura);
-    setImc(novoImc);
-    setClassImc(classificarIMC(novoImc));
-
-    if (numPesoPre > 0 && numPesoAtual > 0) {
-      const novoGanho = numPesoAtual - numPesoPre;
-      setGanhoPeso(novoGanho);
-      setClassGanhoPeso(classificarGanhoPeso(novoGanho));
-    } else {
-      setGanhoPeso(0);
-      setClassGanhoPeso('');
-    }
-
-    
-    setClassFc(classificarFC(numFc));
-    setClassTemp(classificarTemp(numTemp));
-    
-  }, [altura, pesoPre, pesoAtual, freqCardiaca, temperatura]);
+  const numPesoPre = parseInputFloat(pesoPre);
+  const numPesoAtual = parseInputFloat(pesoAtual);
+  const imc = calcularIMC(numPesoPre, parseInputFloat(altura));
+  const classImc = classificarIMC(imc);
+  const ganhoPeso = numPesoPre > 0 && numPesoAtual > 0 ? numPesoAtual - numPesoPre : 0;
+  const classGanhoPeso = numPesoPre > 0 && numPesoAtual > 0
+    ? classificarGanhoPeso(ganhoPeso)
+    : '';
+  const classFc = classificarFC(parseInputInt(freqCardiaca));
+  const classTemp = classificarTemp(parseInputFloat(temperatura));
 
   
   // ---  handleNext faz DOIS SALVAMENTOS ---
