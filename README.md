@@ -49,7 +49,7 @@ Este README foi escrito para permitir que uma nova equipe consiga entender, conf
 
 | Tipo | Link | Branch principal | Observação |
 |---|---|---|---|
-| Versão atual | <https://github.com/JRicLP/MyFetus.git> | `main` | Repositório principal para continuidade do desenvolvimento. |
+| Versão atual | <https://github.com/felipemrvieira/MyFetus.git> | `main` | Repositório principal para continuidade do desenvolvimento. |
 | Versão herdada | <https://github.com/Lucasrc22/github-grupo7.git> | `main` | Projeto usado como base histórica antes da evolução para o MyFetus 2.0. |
 
 ## Visão geral da solução
@@ -153,8 +153,6 @@ A plataforma também inclui uma camada backend responsável por:
 | `apps/mobile` | Interface do aplicativo, rotas Expo, telas da gestante, telas médicas, gráficos e integração com API. |
 | `apps/api` | API REST, autenticação, regras de negócio, acesso ao banco, processamento de documentos, RAG e segurança. |
 | `apps/api/db` | Scripts SQL de criação, migração, triggers, tabelas clínicas, segurança e auditoria. |
-| `packages/shared` | Código compartilhado em TypeScript. |
-| `packages/sync-engine` | Pacote reservado para sincronização. |
 | `scripts` | Geração de datasets e relatórios de acurácia. |
 | `tests` | Testes automatizados e fixtures de PDF. |
 
@@ -227,14 +225,10 @@ MyFetus/
 │       ├── app/                    # Rotas e telas Expo Router
 │       │   ├── (tabs)/             # Área principal da gestante
 │       │   └── doctor/             # Área médica
-│       ├── assets/                 # Imagens, fontes e ícones
+│       ├── assets/                 # Imagens e ícones
 │       ├── components/             # Componentes reutilizáveis
-│       ├── constants/              # Constantes de tema
 │       ├── hooks/                  # Hooks React
 │       └── utils/                  # Utilitários do app
-├── packages/
-│   ├── shared/                     # Pacote compartilhado
-│   └── sync-engine/                # Pacote reservado para sincronização
 ├── reports/                        # Relatórios gerados por scripts
 ├── scripts/                        # Scripts de dataset/acurácia
 ├── tests/                          # Testes raiz e fixtures de PDF
@@ -312,7 +306,7 @@ O projeto dispõe do script automatizado `npm run setup` para preparar todo o am
 ### 2. Clonar o repositório
 
 ```bash
-git clone https://github.com/JRicLP/MyFetus.git
+git clone https://github.com/felipemrvieira/MyFetus.git
 cd MyFetus
 ```
 

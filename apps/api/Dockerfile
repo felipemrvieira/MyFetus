@@ -7,10 +7,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y python3 make g++ bash git && rm -rf /var/lib/apt/lists/*
 
 # Copiar apenas os arquivos de dependência
-COPY package.json yarn.lock* ./
+COPY package.json package-lock.json ./
 
 # Instalar dependências
-RUN yarn install --network-timeout 100000 || yarn install --no-lockfile
+RUN npm ci
 
 # Copiar o resto do código da aplicação
 COPY . .
@@ -21,4 +21,4 @@ RUN chmod -R 777 /app
 EXPOSE 3000
 
 # Comando padrão de inicialização
-CMD ["yarn", "dev"]
+CMD ["npm", "run", "dev"]

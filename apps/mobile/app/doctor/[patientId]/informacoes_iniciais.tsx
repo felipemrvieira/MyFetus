@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { apiUrl, fetchWithAuth } from '../../../utils/api';
+import { parseInputFloat, parseInputInt } from '../../../utils/clinicalInput';
 
 // --- Funções de Cálculo  ---
 const calcularIMC = (peso: number, altura: number) => {
@@ -59,16 +60,6 @@ export default function InfoIniciaisScreen() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [pregnancyId, setPregnancyId] = useState<string | null>(null); // (NOVO)
-
-  // Helper
-  const parseInputFloat = (input: string) => {
-    if (input === '') return 0;
-    return parseFloat(input.replace(',', '.'));
-  }
-  const parseInputInt = (input: string) => {
-    if (input === '') return 0;
-    return parseInt(input, 10);
-  }
 
   // --- useEffect para LER os dados ---
   useEffect(() => {
