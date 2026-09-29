@@ -6,15 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
-
-function runCommand(command, options = {}) {
-  return execSync(command, {
-    stdio: options.silent ? 'pipe' : 'inherit',
-    encoding: 'utf8',
-    ...options,
-  });
-}
+const { execFileSync } = require('child_process');
 
 function loadEnv() {
   const envPath = path.resolve(__dirname, '../.env');
@@ -37,25 +29,35 @@ function runMigrations() {
   const dbUser = process.env.PG_USER || 'myfetus_app';
   const dbName = process.env.PG_DATABASE || 'myfetus';
 
+  function runSql(sql, options = {}) {
+    const args = [
+      'compose', 'exec', '-T', 'db', 'psql', '-X', '-v', 'ON_ERROR_STOP=1',
+      '-U', dbUser, '-d', dbName,
+    ];
+    if (options.tuplesOnly) args.push('-A', '-t');
+    return execFileSync('docker', args, {
+      input: sql,
+      encoding: 'utf8',
+      stdio: ['pipe', options.silent ? 'pipe' : 'inherit', 'inherit'],
+    });
+  }
+
   console.log('[INFO] Verificando e aplicando migracoes pendentes no banco de dados...');
 
   // 1. Garante que a tabela de controle de migrations existe
-  runCommand(
-    `docker compose exec -T db psql -U "${dbUser}" -d "${dbName}" -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP);"`,
+  runSql(
+    'CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP);',
     { silent: true }
   );
 
-  // 2. Se a tabela 'users' ja existir mas schema_migrations estiver vazia, marca a criacao inicial como ja executada
-  const usersExist = runCommand(
-    `docker compose exec -T db psql -U "${dbUser}" -d "${dbName}" -t -A -c "SELECT to_regclass('public.users');"`,
-    { silent: true }
-  ).trim();
+  // 2. Em volumes antigos, o dump inicial ja criou users antes do controle de versao.
+  const usersExist = runSql("SELECT to_regclass('public.users');", {
+    silent: true,
+    tuplesOnly: true,
+  }).trim();
 
   if (usersExist === 'users') {
-    runCommand(
-      `docker compose exec -T db psql -U "${dbUser}" -d "${dbName}" -c "INSERT INTO schema_migrations (version) VALUES ('01_create_tables.sql') ON CONFLICT DO NOTHING;"`,
-      { silent: true }
-    );
+    runSql("INSERT INTO schema_migrations (version) VALUES ('01_create_tables.sql') ON CONFLICT DO NOTHING;", { silent: true });
   }
 
   // 3. Catalogo de migracoes ordenadas
@@ -70,13 +72,14 @@ function runMigrations() {
     { id: '08_aes_encryption.sql', path: 'apps/api/db/migration_aes_encryption.sql' },
     { id: '09_document_security.sql', path: 'apps/api/db/migration_document_security.sql' },
     { id: '10_audit_trail.sql', path: 'apps/api/db/migration_audit_trail.sql' },
+    { id: '11_normalize_update_triggers.sql', path: 'apps/api/db/migration_normalize_update_triggers.sql' },
   ];
 
   // 4. Consulta quais migracoes ja constam como aplicadas
-  const appliedMigrations = runCommand(
-    `docker compose exec -T db psql -U "${dbUser}" -d "${dbName}" -t -A -c "SELECT version FROM schema_migrations;"`,
-    { silent: true }
-  )
+  const appliedMigrations = runSql('SELECT version FROM schema_migrations;', {
+    silent: true,
+    tuplesOnly: true,
+  })
     .split(/\r?\n/)
     .map((v) => v.trim())
     .filter(Boolean);
@@ -90,23 +93,14 @@ function runMigrations() {
 
     const fullPath = path.resolve(__dirname, '..', mig.path);
     if (!fs.existsSync(fullPath)) {
-      console.warn(`[AVISO] Arquivo de migracao nao encontrado: ${mig.path}`);
-      continue;
+      throw new Error(`Arquivo de migracao nao encontrado: ${mig.path}`);
     }
 
     console.log(`[INFO] Aplicando migracao: ${mig.id}...`);
     const sqlContent = fs.readFileSync(fullPath, 'utf8');
 
-    execSync(`docker compose exec -T db psql -U "${dbUser}" -d "${dbName}"`, {
-      input: sqlContent,
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'inherit'],
-    });
-
-    runCommand(
-      `docker compose exec -T db psql -U "${dbUser}" -d "${dbName}" -c "INSERT INTO schema_migrations (version) VALUES ('${mig.id}');"`,
-      { silent: true }
-    );
+    // O SQL e seu registro sao atomicos: uma falha aborta a transacao inteira.
+    runSql(`BEGIN;\n${sqlContent}\nINSERT INTO schema_migrations (version) VALUES ('${mig.id}');\nCOMMIT;`, { silent: true });
 
     console.log(`[OK] Migracao concluida: ${mig.id}`);
     appliedCount++;

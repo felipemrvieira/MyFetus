@@ -514,7 +514,7 @@ docker exec -it myfetus-db psql -U myfetus_app -d myfetus
 
 ### Ciclo de vida e Migrações
 
-- **Inicialização limpa (novo volume):** O PostgreSQL executa os arquivos de `/docker-entrypoint-initdb.d/` (`01_create_tables.sql` a `10_audit_trail.sql`) na ordem léxica durante o primeiro boot de um volume vazio (`db_data`).
+- **Inicialização limpa (novo volume):** O PostgreSQL executa os arquivos de `/docker-entrypoint-initdb.d/` (`01_create_tables.sql` a `12_record_initial_migrations.sql`) na ordem léxica durante o primeiro boot de um volume vazio (`db_data`). O último script registra as migrations já executadas em `schema_migrations`.
 - **Atualização com preservação de dados (volume existente):** O Docker pula `/docker-entrypoint-initdb.d/` se o volume `db_data` já existir. Para aplicar novas alterações sem perda de dados, o MyFetus utiliza o script `scripts/migrate.js` (com a tabela de controle `schema_migrations`), executado automaticamente em `npm run setup` ou sob demanda via:
   ```bash
   npm run db:migrate
