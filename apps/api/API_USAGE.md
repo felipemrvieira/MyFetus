@@ -211,6 +211,12 @@ O médico precisa ter vínculo ativo com a gestante:
 
 Os estados previstos são `pending`, `submitted`, `reviewed` e `cancelled`. O upload da E2-02 poderá referenciar a solicitação e avançar seu estado sem transformar o arquivo em uma solicitação.
 
+Na E2-02, a gestante envia PDF ou imagem em `POST /api/documents` usando multipart
+com `exam_request_id`, `document_name`, `document_type` e o campo `document` (ou
+`file`). O backend confirma que o pedido pertence à gestante autenticada, criptografa
+o arquivo em repouso e muda o pedido de `pending` para `submitted` na mesma transação.
+Pedidos cancelados ou já enviados não aceitam outro arquivo.
+
 ---
 
 ### Medições fetais (medicoes)

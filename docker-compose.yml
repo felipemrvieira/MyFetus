@@ -25,7 +25,8 @@ services:
       - ./apps/api/db/migration_audit_trail.sql:/docker-entrypoint-initdb.d/10_audit_trail.sql:ro
       - ./apps/api/db/migration_normalize_update_triggers.sql:/docker-entrypoint-initdb.d/11_normalize_update_triggers.sql:ro
       - ./apps/api/db/migration_exam_requests.sql:/docker-entrypoint-initdb.d/12_exam_requests.sql:ro
-      - ./apps/api/db/record_initial_migrations.sql:/docker-entrypoint-initdb.d/13_record_initial_migrations.sql:ro
+      - ./apps/api/db/migration_exam_request_documents.sql:/docker-entrypoint-initdb.d/13_exam_request_documents.sql:ro
+      - ./apps/api/db/record_initial_migrations.sql:/docker-entrypoint-initdb.d/14_record_initial_migrations.sql:ro
     ports:
       - "5434:5432"
     healthcheck:

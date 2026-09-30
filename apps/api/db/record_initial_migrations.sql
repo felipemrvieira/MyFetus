@@ -16,5 +16,6 @@ INSERT INTO schema_migrations (version) VALUES
   ('09_document_security.sql'),
   ('10_audit_trail.sql'),
   ('11_normalize_update_triggers.sql'),
-  ('12_exam_requests.sql')
+  ('12_exam_requests.sql'),
+  ('13_exam_request_documents.sql')
 ON CONFLICT DO NOTHING;
