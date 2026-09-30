@@ -22,6 +22,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const { rateLimit } = require('express-rate-limit');
 
 const {
   uploadDocument,
@@ -35,29 +36,51 @@ const {
 } = require('../controllers/documentsController');
 const { authenticateToken, requireRole } = require('../middlewares/auth');
 
+function positiveInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 const upload = multer({
   dest: 'uploads/',
   limits: {
     fileSize: Number(process.env.DOCUMENT_MAX_UPLOAD_BYTES || 25 * 1024 * 1024),
   },
 });
-const requireDocumentAccess = [authenticateToken, requireRole('medico', 'admin')];
-
+const documentUploadLimiter = rateLimit({
+  windowMs: positiveInteger(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  ),
+  limit: positiveInteger(process.env.DOCUMENT_UPLOAD_RATE_LIMIT_MAX, 20),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
+const documentReadLimiter = rateLimit({
+  windowMs: positiveInteger(
+    process.env.DOCUMENT_READ_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  ),
+  limit: positiveInteger(process.env.DOCUMENT_READ_RATE_LIMIT_MAX, 120),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
 router.post(
   '/',
-  requireDocumentAccess,
+  documentUploadLimiter,
+  authenticateToken,
   upload.fields([
     { name: 'file', maxCount: 1 },
     { name: 'document', maxCount: 1 },
   ]),
   uploadDocument
 );
-router.get('/', requireDocumentAccess, getDocuments); // lista por pregnant_id (query param)
-router.get('/:id/download', requireDocumentAccess, downloadDocument);
-router.get('/:id/text', requireDocumentAccess, getDocumentExtractedText);
-router.post('/:id/extract', requireDocumentAccess, retryDocumentTextExtraction);
-router.get('/:id', requireDocumentAccess, getDocumentById); // busca o doc por id
-router.delete('/:id', requireDocumentAccess, deleteDocument);
-router.put('/:id', requireDocumentAccess, updateDocument);
+router.get('/', documentReadLimiter, authenticateToken, requireRole('gestante', 'medico', 'admin'), getDocuments); // lista por pregnant_id (query param)
+router.get('/:id/download', documentReadLimiter, authenticateToken, requireRole('gestante', 'medico', 'admin'), downloadDocument);
+router.get('/:id/text', documentReadLimiter, authenticateToken, requireRole('gestante', 'medico', 'admin'), getDocumentExtractedText);
+router.post('/:id/extract', documentReadLimiter, authenticateToken, requireRole('medico', 'admin'), retryDocumentTextExtraction);
+router.get('/:id', documentReadLimiter, authenticateToken, requireRole('gestante', 'medico', 'admin'), getDocumentById); // busca o doc por id
+router.delete('/:id', documentReadLimiter, authenticateToken, requireRole('medico', 'admin'), deleteDocument);
+router.put('/:id', documentReadLimiter, authenticateToken, requireRole('medico', 'admin'), updateDocument);
 
 module.exports = router;
