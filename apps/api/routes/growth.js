@@ -5,6 +5,9 @@ const {
   calculatePercentile,
   getGrowthChart
 } = require('../controllers/growthPercentileController');
+const { authenticateToken } = require('../middlewares/auth');
+
+router.use(authenticateToken);
 
 router.post('/percentile', calculatePercentile);
 
