@@ -417,6 +417,20 @@ Exemplo:
 EXPO_PUBLIC_API_URL=http://192.168.0.10:3000
 ```
 
+### Build Android para testes externos
+
+O app possui perfis EAS para gerar um APK instalável sem Expo Go e um AAB de
+produção. O procedimento completo, incluindo o vínculo inicial da conta EAS e
+a configuração da URL pública da API, está em
+[`docs/eas-android-build.md`](docs/eas-android-build.md).
+
+Resumo do build de validação:
+
+```bash
+cd apps/mobile
+npm run build:android:preview
+```
+
 ## Variáveis de ambiente
 
 O arquivo `.env.example` na raiz é a referência oficial para configuração local. Nunca versione segredos reais.
