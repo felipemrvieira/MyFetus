@@ -81,7 +81,6 @@ const requireDocumentManagement = [
   authenticateToken,
   requireRole('medico', 'admin'),
 ];
-
 router.post(
   '/',
   documentUploadLimiter,
