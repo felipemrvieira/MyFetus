@@ -65,9 +65,6 @@ const documentReadLimiter = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
 });
-const requireDocumentReadAccess = [documentReadLimiter, authenticateToken, requireRole('gestante', 'medico', 'admin')];
-const requireDocumentManagement = [documentReadLimiter, authenticateToken, requireRole('medico', 'admin')];
-
 router.post(
   '/',
   documentUploadLimiter,
@@ -78,12 +75,12 @@ router.post(
   ]),
   uploadDocument
 );
-router.get('/', requireDocumentReadAccess, getDocuments); // lista por pregnant_id (query param)
-router.get('/:id/download', requireDocumentReadAccess, downloadDocument);
-router.get('/:id/text', requireDocumentReadAccess, getDocumentExtractedText);
-router.post('/:id/extract', requireDocumentManagement, retryDocumentTextExtraction);
-router.get('/:id', requireDocumentReadAccess, getDocumentById); // busca o doc por id
-router.delete('/:id', requireDocumentManagement, deleteDocument);
-router.put('/:id', requireDocumentManagement, updateDocument);
+router.get('/', documentReadLimiter, authenticateToken, requireRole('gestante', 'medico', 'admin'), getDocuments); // lista por pregnant_id (query param)
+router.get('/:id/download', documentReadLimiter, authenticateToken, requireRole('gestante', 'medico', 'admin'), downloadDocument);
+router.get('/:id/text', documentReadLimiter, authenticateToken, requireRole('gestante', 'medico', 'admin'), getDocumentExtractedText);
+router.post('/:id/extract', documentReadLimiter, authenticateToken, requireRole('medico', 'admin'), retryDocumentTextExtraction);
+router.get('/:id', documentReadLimiter, authenticateToken, requireRole('gestante', 'medico', 'admin'), getDocumentById); // busca o doc por id
+router.delete('/:id', documentReadLimiter, authenticateToken, requireRole('medico', 'admin'), deleteDocument);
+router.put('/:id', documentReadLimiter, authenticateToken, requireRole('medico', 'admin'), updateDocument);
 
 module.exports = router;
