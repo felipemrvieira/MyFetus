@@ -74,7 +74,7 @@ const createExamRequest = async (req, res) => {
 };
 
 const getExamRequests = async (req, res) => {
-  const pregnantId = req.query.pregnant_id;
+  const pregnantId = req.params.pregnantId;
   if (!pregnantId) {
     return res.status(400).json({ error: 'pregnant_id e obrigatorio' });
   }

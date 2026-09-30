@@ -88,7 +88,7 @@ export default function ExamesTabScreen() {
       setExamRequests([]);
       return;
     }
-    const res = await fetchWithAuth(apiUrl(`/api/exam-requests?pregnant_id=${pregnantId}`));
+    const res = await fetchWithAuth(apiUrl(`/api/exam-requests/pregnant/${pregnantId}`));
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || 'Não foi possível carregar as solicitações');
     setExamRequests(Array.isArray(data) ? data : []);

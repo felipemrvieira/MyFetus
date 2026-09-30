@@ -86,7 +86,7 @@ export default function ExamesScreen() {
 
   const fetchExamRequests = useCallback(async () => {
     if (!patientId) return;
-    const res = await fetchWithAuth(apiUrl(`/api/exam-requests?pregnant_id=${patientId}`));
+    const res = await fetchWithAuth(apiUrl(`/api/exam-requests/pregnant/${patientId}`));
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data?.error || 'Não foi possível buscar as solicitações');

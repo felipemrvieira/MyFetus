@@ -206,7 +206,7 @@ As solicitações feitas pelo médico ficam separadas dos arquivos enviados e do
 O médico precisa ter vínculo ativo com a gestante:
 
 - `POST /api/exam-requests` — cria uma solicitação (`pregnant_id`, `exam_name` e `instructions` opcional).
-- `GET /api/exam-requests?pregnant_id=:id` — lista as solicitações do paciente; a autorização é validada pelo papel e pelo vínculo.
+- `GET /api/exam-requests/pregnant/:id` — lista as solicitações do paciente; a autorização é validada pelo papel e pelo vínculo.
 - `DELETE /api/exam-requests/:id` — cancela uma solicitação ainda `pending`, preservando o histórico.
 
 Os estados previstos são `pending`, `submitted`, `reviewed` e `cancelled`. O upload da E2-02 poderá referenciar a solicitação e avançar seu estado sem transformar o arquivo em uma solicitação.
