@@ -48,25 +48,58 @@ const upload = multer({
   },
 });
 
-const requireDocumentAccess = [authenticateToken, requireRole('medico', 'admin')];
-const requireDocumentPatientAccess = [authenticateToken, requireRole('gestante', 'medico', 'admin')];
+function positiveInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const documentUploadLimiter = rateLimit({
+  windowMs: positiveInteger(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  ),
+  limit: positiveInteger(process.env.DOCUMENT_UPLOAD_RATE_LIMIT_MAX, 20),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
+const documentReadLimiter = rateLimit({
+  windowMs: positiveInteger(
+    process.env.DOCUMENT_READ_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  ),
+  limit: positiveInteger(process.env.DOCUMENT_READ_RATE_LIMIT_MAX, 120),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
+const requireDocumentReadAccess = [
+  documentReadLimiter,
+  authenticateToken,
+  requireRole('gestante', 'medico', 'admin'),
+];
+const requireDocumentManagement = [
+  documentReadLimiter,
+  authenticateToken,
+  requireRole('medico', 'admin'),
+];
 
 router.post(
   '/',
-  requireDocumentPatientAccess,
+  documentUploadLimiter,
+  authenticateToken,
+  requireRole('gestante', 'medico', 'admin'),
   upload.fields([
     { name: 'file', maxCount: 1 },
     { name: 'document', maxCount: 1 },
   ]),
   uploadDocument
 );
-router.get('/', requireDocumentPatientAccess, getDocuments);
-router.get('/:id/download', requireDocumentPatientAccess, downloadDocument);
-router.get('/:id/text', requireDocumentAccess, getDocumentExtractedText);
-router.post('/:id/extract', requireDocumentAccess, retryDocumentTextExtraction);
-router.get('/:id', requireDocumentAccess, getDocumentById);
-router.put('/:id/report', requireDocumentAccess, updateDocumentReport);
-router.delete('/:id', requireDocumentAccess, deleteDocument);
-router.put('/:id', requireDocumentAccess, updateDocument);
+router.get('/', requireDocumentReadAccess, getDocuments);
+router.get('/:id/download', requireDocumentReadAccess, downloadDocument);
+router.get('/:id/text', requireDocumentReadAccess, getDocumentExtractedText);
+router.post('/:id/extract', requireDocumentManagement, retryDocumentTextExtraction);
+router.get('/:id', requireDocumentReadAccess, getDocumentById);
+router.put('/:id/report', requireDocumentManagement, updateDocumentReport);
+router.delete('/:id', requireDocumentManagement, deleteDocument);
+router.put('/:id', requireDocumentManagement, updateDocument);
 
 module.exports = router;

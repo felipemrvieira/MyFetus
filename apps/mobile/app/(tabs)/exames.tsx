@@ -43,6 +43,7 @@ export default function ExamesTabScreen() {
   const [uploading, setUploading] = useState(false);
   const [docs, setDocs] = useState<PregnantDocument[]>([]);
   const [examRequests, setExamRequests] = useState<ExamRequest[]>([]);
+  const [selectedExamRequestId, setSelectedExamRequestId] = useState<number | null>(null);
 
   const pregnantId = user?.pregnant_id ?? null;
 
@@ -95,12 +96,16 @@ export default function ExamesTabScreen() {
     }
 
     if (uploading) return;
+    if (!selectedExamRequestId) {
+      Alert.alert('Selecione uma solicitação', 'Escolha o pedido do médico antes de enviar o arquivo.');
+      return;
+    }
 
     try {
       setUploading(true);
 
       const picked = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
+        type: ['application/pdf', 'image/*'],
         copyToCacheDirectory: true,
         multiple: false,
       });
@@ -117,6 +122,7 @@ export default function ExamesTabScreen() {
 
       const form = new FormData();
       form.append('pregnant_id', String(pregnantId));
+      form.append('exam_request_id', String(selectedExamRequestId));
       form.append('document_name', name);
       form.append('document_type', type);
 
@@ -149,16 +155,18 @@ export default function ExamesTabScreen() {
         );
       }
 
-     const response = await api.post('/documents/', form, {
-  headers: { 'Content-Type': 'multipart/form-data' }
-  });
-const data = response.data;
+      const response = await api.post('/documents/', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const data = response.data;
       const created: PregnantDocument | undefined = data?.document;
       if (created) {
         setDocs((prev) => [created, ...prev]);
       } else {
         await fetchDocs();
       }
+      await fetchExamRequests();
+      setSelectedExamRequestId(null);
 
       Alert.alert('Sucesso', 'Exame enviado. Aguarde o relatório do médico.');
     } catch (err) {
@@ -166,7 +174,7 @@ const data = response.data;
     } finally {
       setUploading(false);
     }
-  }, [pregnantId, uploading, fetchDocs]);
+  }, [pregnantId, uploading, selectedExamRequestId, fetchDocs, fetchExamRequests]);
 
   const openDownload = useCallback(async (doc: PregnantDocument) => {
     try {
@@ -210,7 +218,12 @@ const data = response.data;
               {examRequests.length === 0 ? (
                 <Text style={styles.emptyRequestText}>Nenhuma solicitação pendente.</Text>
               ) : examRequests.map((request) => (
-                <View key={request.id} style={styles.requestCard}>
+                <TouchableOpacity
+                  key={request.id}
+                  style={[styles.requestCard, selectedExamRequestId === request.id && styles.requestCardSelected]}
+                  onPress={() => request.status === 'pending' && setSelectedExamRequestId(request.id)}
+                  disabled={request.status !== 'pending'}
+                >
                   <View style={styles.rowBetween}>
                     <Text style={styles.requestName}>{request.exam_name}</Text>
                     <Text style={styles.requestStatus}>
@@ -219,8 +232,9 @@ const data = response.data;
                   </View>
                   {!!request.instructions && <Text style={styles.requestInstructions}>{request.instructions}</Text>}
                   {request.status === 'pending' && <Text style={styles.requestHint}>Envie o resultado usando o botão abaixo.</Text>}
-                </View>
+                </TouchableOpacity>
               ))}
+              {!!selectedExamRequestId && <Text style={styles.selectedRequestText}>Solicitação selecionada para envio.</Text>}
             </View>
 
             <TouchableOpacity
@@ -228,7 +242,7 @@ const data = response.data;
               onPress={handlePickAndUpload}
               disabled={uploading}
             >
-              <Text style={styles.primaryButtonText}>{uploading ? 'Enviando...' : 'Enviar exame'}</Text>
+              <Text style={styles.primaryButtonText}>{uploading ? 'Enviando...' : 'Enviar exame solicitado'}</Text>
             </TouchableOpacity>
           </View>
         }
@@ -309,6 +323,10 @@ const styles = StyleSheet.create({
     padding: 10,
     marginTop: 8,
   },
+  requestCardSelected: {
+    borderWidth: 2,
+    borderColor: '#20B2AA',
+  },
   requestName: {
     color: '#202020',
     flex: 1,
@@ -329,6 +347,12 @@ const styles = StyleSheet.create({
     color: '#667085',
     fontSize: 12,
     marginTop: 6,
+  },
+  selectedRequestText: {
+    color: '#176B66',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 8,
   },
   primaryButton: {
     marginTop: 14,
