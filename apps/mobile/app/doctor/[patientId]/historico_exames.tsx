@@ -32,6 +32,16 @@ type PregnantDocument = {
   download_url?: string | null;
 };
 
+type ExamRequest = {
+  id: number;
+  pregnant_id: number;
+  doctor_id: number;
+  exam_name: string;
+  instructions: string | null;
+  status: 'pending' | 'submitted' | 'reviewed' | 'cancelled' | string;
+  requested_at: string;
+};
+
 export default function ExamesScreen() {
   const router = useRouter();
   const { patientId } = useLocalSearchParams();
@@ -41,6 +51,10 @@ export default function ExamesScreen() {
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [reportText, setReportText] = useState('');
   const [doctorUserId, setDoctorUserId] = useState<number | null>(null);
+  const [examRequests, setExamRequests] = useState<ExamRequest[]>([]);
+  const [examName, setExamName] = useState('');
+  const [examInstructions, setExamInstructions] = useState('');
+  const [isRequesting, setIsRequesting] = useState(false);
 
   const selectedDoc = useMemo(
     () => (selectedDocId ? docs.find((d) => d.id === selectedDocId) : undefined),
@@ -70,19 +84,31 @@ export default function ExamesScreen() {
     setDocs(Array.isArray(data) ? data : []);
   }, [patientId]);
 
+  const fetchExamRequests = useCallback(async () => {
+    if (!patientId) return;
+    const res = await fetchWithAuth(apiUrl(`/api/exam-requests/pregnant/${patientId}`));
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.error || 'Não foi possível buscar as solicitações');
+    }
+    setExamRequests(Array.isArray(data) ? data : []);
+  }, [patientId]);
+
   useEffect(() => {
     if (!patientId) return;
     (async () => {
       setLoading(true);
       try {
-        await fetchDocs();
+        const results = await Promise.allSettled([fetchDocs(), fetchExamRequests()]);
+        const failure = results.find((result) => result.status === 'rejected');
+        if (failure?.status === 'rejected') throw failure.reason;
       } catch (err) {
         Alert.alert('Erro', err instanceof Error ? err.message : 'Erro de rede');
       } finally {
         setLoading(false);
       }
     })();
-  }, [patientId, fetchDocs]);
+  }, [patientId, fetchDocs, fetchExamRequests]);
 
   const formatDate = useCallback((iso: string) => {
     if (!iso) return '';
@@ -133,6 +159,49 @@ export default function ExamesScreen() {
     }
   }, [isSaving, selectedDocId, reportText, doctorUserId, fetchDocs]);
 
+  const handleCreateRequest = useCallback(async () => {
+    if (isRequesting || !patientId || !examName.trim()) {
+      if (!examName.trim()) Alert.alert('Atenção', 'Informe o exame solicitado.');
+      return;
+    }
+
+    setIsRequesting(true);
+    try {
+      const res = await fetchWithAuth(apiUrl('/api/exam-requests'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pregnant_id: Number(patientId),
+          exam_name: examName.trim(),
+          instructions: examInstructions.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Falha ao criar solicitação');
+      setExamRequests((prev) => [data, ...prev]);
+      setExamName('');
+      setExamInstructions('');
+      Alert.alert('Sucesso', 'Solicitação enviada para a gestante.');
+    } catch (err) {
+      Alert.alert('Erro', err instanceof Error ? err.message : 'Erro de rede');
+    } finally {
+      setIsRequesting(false);
+    }
+  }, [isRequesting, patientId, examName, examInstructions]);
+
+  const handleCancelRequest = useCallback(async (requestId: number) => {
+    try {
+      const res = await fetchWithAuth(apiUrl(`/api/exam-requests/${requestId}`), {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Falha ao cancelar solicitação');
+      setExamRequests((prev) => prev.map((item) => item.id === requestId ? data : item));
+    } catch (err) {
+      Alert.alert('Erro', err instanceof Error ? err.message : 'Erro de rede');
+    }
+  }, []);
+
   const openDownload = useCallback(async (docId: number) => {
     const url = apiUrl(`/api/documents/documents/${docId}/download`);
     try {
@@ -158,6 +227,47 @@ export default function ExamesScreen() {
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={(
           <View style={styles.addCard}>
+            <Text style={styles.addTitle}>Solicitar exame</Text>
+            <Text style={styles.helperText}>A solicitação ficará pendente para a gestante enviar o arquivo.</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome do exame"
+              value={examName}
+              onChangeText={setExamName}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Orientações (opcional)"
+              value={examInstructions}
+              onChangeText={setExamInstructions}
+              multiline
+            />
+            <TouchableOpacity
+              style={[styles.addButton, isRequesting && styles.addButtonDisabled]}
+              onPress={handleCreateRequest}
+              disabled={isRequesting}
+            >
+              <Text style={styles.addButtonText}>{isRequesting ? 'Enviando...' : 'Solicitar exame'}</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.addTitle}>Solicitações registradas</Text>
+            {examRequests.length === 0 ? (
+              <Text style={styles.noSelection}>Nenhuma solicitação registrada.</Text>
+            ) : examRequests.map((request) => (
+              <View key={request.id} style={styles.requestCard}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.selectedTitle}>{request.exam_name}</Text>
+                  <Text style={styles.cardStatus}>{request.status === 'pending' ? 'Pendente' : request.status === 'cancelled' ? 'Cancelada' : request.status === 'reviewed' ? 'Revisada' : 'Enviada'}</Text>
+                </View>
+                {!!request.instructions && <Text style={styles.meta}>{request.instructions}</Text>}
+                {request.status === 'pending' && (
+                  <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancelRequest(request.id)}>
+                    <Text style={styles.cancelButtonText}>Cancelar solicitação</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+
             <Text style={styles.addTitle}>Exames Enviados pela Paciente</Text>
             <Text style={styles.helperText}>Selecione um exame para escrever o relatório.</Text>
 
@@ -257,6 +367,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0EFFF',
     borderRadius: 16,
     padding: 14,
+  },
+  requestCard: {
+    backgroundColor: '#F8F7FF',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  cancelButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#FCE8E8',
+  },
+  cancelButtonText: {
+    color: '#B42318',
+    fontSize: 12,
+    fontWeight: '600',
   },
   selectedTitle: {
     fontSize: 16,
