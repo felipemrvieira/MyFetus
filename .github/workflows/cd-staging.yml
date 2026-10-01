@@ -110,9 +110,18 @@ jobs:
           curl --fail --silent --show-error --location \
             --retry 10 --retry-delay 3 --retry-all-errors \
             "${API_URL}/ping"
-          curl --fail --silent --show-error --location \
-            --retry 10 --retry-delay 3 --retry-all-errors \
-            "${API_URL}/api/growth/chart" >/dev/null
+          growth_response="${RUNNER_TEMP}/growth-response.json"
+          growth_status="$(curl --silent --show-error --location \
+            --output "${growth_response}" --write-out '%{http_code}' \
+            "${API_URL}/api/growth/chart")"
+          # The endpoint is public in the current staging revision. It may
+          # become JWT-protected when E1-05 is promoted, so both outcomes are
+          # valid here; transport/server errors are not.
+          if [[ "${growth_status}" != "200" && "${growth_status}" != "401" ]]; then
+            echo "Expected /api/growth/chart to return 200 or 401, got ${growth_status}" >&2
+            cat "${growth_response}" >&2
+            exit 1
+          fi
 
           response_file="${RUNNER_TEMP}/protected-route-response.json"
           status_code="$(curl --silent --show-error --location \

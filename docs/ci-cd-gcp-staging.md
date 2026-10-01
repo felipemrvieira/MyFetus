@@ -239,7 +239,8 @@ curl -sS -i "${API_URL}/api/users"
 Resultados esperados no staging atual:
 
 - `GET /ping` retorna `200`;
-- `GET /api/growth/chart` retorna `200`;
+- `GET /api/growth/chart` retorna `200` enquanto público; se a proteção JWT
+  da E1-05 estiver promovida, retorna `401` sem token;
 - `GET /api/users` sem `Authorization` retorna `401`;
 - HTTP é redirecionado para HTTPS;
 - os logs do Cloud Run registram conexão bem-sucedida com PostgreSQL.
@@ -309,7 +310,9 @@ O job executa em sequência, no mesmo runner:
 3. constrói e publica `api:${GITHUB_SHA}`;
 4. atualiza o Cloud Run Job com a imagem e aguarda as migrations;
 5. atualiza o serviço Cloud Run para a mesma imagem;
-6. testa `/ping`, `/api/growth/chart` e a proteção JWT de `/api/users`.
+6. testa `/ping`, a disponibilidade de `/api/growth/chart` e a proteção JWT de
+   `/api/users`. O crescimento pode retornar `200` (público) ou `401` (quando a
+   proteção da E1-05 estiver promovida); respostas `5xx` falham o deploy.
 
 A concorrência é serializada por `cd-staging`, portanto um deploy não cancela
 outro deploy que já tenha iniciado. Migrations sempre terminam antes do deploy
