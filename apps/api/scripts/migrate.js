@@ -37,9 +37,14 @@ function required(name) {
 function stripPsqlMetaCommands(sql) {
   // create_tables.sql veio de pg_dump e possui \restrict/\unrestrict,
   // comandos do cliente psql que nao fazem parte do SQL enviado pelo pg.
+  // O dump tambem define search_path vazio; isso impediria as migrations
+  // seguintes de resolverem tabelas sem o prefixo public.
   return sql
     .split(/\r?\n/)
-    .filter((line) => !line.trim().startsWith('\\'))
+    .filter((line) => (
+      !line.trim().startsWith('\\')
+      && !line.includes("pg_catalog.set_config('search_path', '', false)")
+    ))
     .join('\n');
 }
 
@@ -57,7 +62,7 @@ async function runMigrations() {
   try {
     await client.query('SELECT pg_advisory_lock($1)', [7411103]);
     await client.query(`
-      CREATE TABLE IF NOT EXISTS schema_migrations (
+      CREATE TABLE IF NOT EXISTS public.schema_migrations (
         version VARCHAR(255) PRIMARY KEY,
         applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
@@ -67,14 +72,14 @@ async function runMigrations() {
     const existingBase = await client.query("SELECT to_regclass('public.users') AS table_name");
     if (existingBase.rows[0]?.table_name === 'users') {
       await client.query(
-        "INSERT INTO schema_migrations (version) VALUES ('01_create_tables.sql') ON CONFLICT DO NOTHING",
+        "INSERT INTO public.schema_migrations (version) VALUES ('01_create_tables.sql') ON CONFLICT DO NOTHING",
       );
     }
 
     let appliedCount = 0;
     for (const [version, fileName] of migrations) {
       const alreadyApplied = await client.query(
-        'SELECT 1 FROM schema_migrations WHERE version = $1',
+        'SELECT 1 FROM public.schema_migrations WHERE version = $1',
         [version],
       );
       if (alreadyApplied.rowCount > 0) continue;
@@ -90,7 +95,7 @@ async function runMigrations() {
       try {
         await client.query(sql);
         await client.query(
-          'INSERT INTO schema_migrations (version) VALUES ($1)',
+          'INSERT INTO public.schema_migrations (version) VALUES ($1)',
           [version],
         );
         await client.query('COMMIT');
