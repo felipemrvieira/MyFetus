@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
+    "db:migrate:cloud": "node ./scripts/migrate.js",
     "jwt:secret": "node ./scripts/generate-jwt-secret.js",
     "jwt:test-token": "node ./scripts/generate-jwt-test-token.js",
     "jwt:rotate": "node ./scripts/rotate-jwt-secret-and-generate-token.js",
