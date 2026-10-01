@@ -23,6 +23,7 @@ Este README foi escrito para permitir que uma nova equipe consiga entender, conf
 - [RAG e chat clínico](#rag-e-chat-clínico)
 - [Segurança e privacidade](#segurança-e-privacidade)
 - [Testes](#testes)
+- [CI/CD e deploy](#cicd-e-deploy)
 - [Scripts úteis](#scripts-úteis)
 - [Credenciais de teste](#credenciais-de-teste)
 - [Bugs conhecidos](#bugs-conhecidos)
@@ -42,7 +43,9 @@ Este README foi escrito para permitir que uma nova equipe consiga entender, conf
 | Perfis principais | Gestante, médico e admin |
 | Processamento de documentos | Upload, extração de texto, OCR e consulta |
 | RAG/chat clínico | Busca semântica, embeddings, Pinecone e geração com Gemini |
+| Deploy de homologação | Cloud Run GCP com HTTPS e CD automatizado |
 | Deploy de produção | Não implementado |
+| CI/CD | CI em PRs e CD aprovado em `main` |
 | Bugs conhecidos | Nenhum bug conhecido identificado na versão entregue |
 
 ## Repositórios
@@ -756,6 +759,30 @@ cd ../mobile
 npm run lint
 ```
 
+## CI/CD e deploy
+
+O processo completo de CI/CD, incluindo o contrato independente de provedor,
+a configuração atual no GCP, OIDC, permissões, secrets, migrations, smoke
+tests, rollback, custos e o procedimento para trocar de cloud está em
+[`docs/ci-cd.md`](docs/ci-cd.md).
+
+A implementação atual do ambiente GCP está detalhada em
+[`docs/ci-cd-gcp-staging.md`](docs/ci-cd-gcp-staging.md). O workflow
+[`.github/workflows/cd-staging.yml`](.github/workflows/cd-staging.yml):
+
+1. executa após merge em `main` ou manualmente;
+2. aguarda aprovação do environment `staging`;
+3. autentica por OIDC, sem chave JSON;
+4. publica a imagem usando o SHA do commit;
+5. executa migrations antes de atualizar a API;
+6. roda smoke tests HTTPS e valida a proteção JWT.
+
+Para trocar o provedor, preserve a ordem e as garantias do pipeline e substitua
+apenas o adaptador de autenticação, registry, executor de migrations e runtime.
+O backend atual é um container Express de longa duração com worker de documentos;
+plataformas serverless de funções exigem uma adaptação arquitetural documentada
+antes de serem usadas.
+
 ## Scripts úteis
 
 ### Raiz
@@ -870,8 +897,8 @@ Itens ainda recomendados para continuidade:
 
 | Item | Descrição |
 |---|---|
-| Deploy | Configurar ambiente de homologação/produção com HTTPS, secrets e observabilidade. |
-| Pipeline CI/CD | Automatizar lint, testes, build e análise de segurança em pull requests. |
+| Deploy de produção | Criar ambiente separado, domínio, observabilidade e aprovação de produção. |
+| Integrações adicionais | Adicionar testes DAST, carga e integração com banco efêmero. |
 | Documentação OpenAPI | Publicar contrato formal da API com Swagger/OpenAPI. |
 | Seeds de desenvolvimento | Criar massa de dados padronizada para demos e testes locais. |
 | Cobertura mobile | Ampliar testes automatizados no aplicativo. |
@@ -930,6 +957,8 @@ Arquivos importantes no repositório:
 
 | Arquivo | Conteúdo |
 |---|---|
+| `docs/ci-cd.md` | Contrato de CI/CD, deploy, rollback e troca de provedor. |
+| `docs/ci-cd-gcp-staging.md` | Implementação atual do CI/CD no Google Cloud. |
 | `apps/api/API_USAGE.md` | Exemplos de uso da API. |
 | `apps/api/CURL_RAG_EXAMPLES.md` | Exemplos de chamadas RAG. |
 | `apps/api/README_RAG_SPRINT4.md` | Documentação histórica do módulo RAG. |

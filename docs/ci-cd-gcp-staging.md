@@ -1,15 +1,17 @@
-# CI/CD e infraestrutura GCP do MyFetus
+# Implementação CI/CD no Google Cloud
 
-Este documento registra como o código é validado, como a imagem da API é publicada e como o ambiente de homologação está configurado no Google Cloud. Ele descreve o estado implementado na branch `feat/e1-11-gcp-staging` e serve como runbook para repetir o processo sem depender de configurações locais não documentadas.
+Este documento detalha o adaptador GCP do processo descrito em [`docs/ci-cd.md`](ci-cd.md). Use o documento canônico para entender o contrato do pipeline e trocar de provedor; use este arquivo para operar ou reproduzir a homologação atual no GCP.
 
 ## 1. Visão geral
 
-O fluxo atual é dividido em duas partes:
+O fluxo atual possui CI automático e CD contínuo para homologação:
 
-1. **CI automático no GitHub Actions**: cada pull request executa lint, testes, análise de segurança e build da imagem Docker.
-2. **CD manual e controlado para homologação**: uma imagem identificada pelo SHA do commit é construída e enviada ao Artifact Registry; depois as migrations são executadas em um Cloud Run Job e uma nova revisão do Cloud Run recebe o tráfego.
+1. **CI no GitHub Actions**: cada pull request executa lint, testes, análise de segurança e build da imagem Docker.
+2. **CD após merge em `main`**: o workflow aguarda aprovação no environment `staging`, publica a imagem pelo SHA, executa migrations, atualiza o Cloud Run e roda smoke tests HTTPS.
+3. **Execução manual**: `workflow_dispatch` permite repetir o mesmo processo quando necessário.
 
-Ainda não existe um workflow que faça deploy automaticamente após cada merge. Essa decisão evita que um push em `main` altere a infraestrutura sem uma revisão operacional explícita. O processo manual abaixo é reproduzível e pode ser automatizado em uma etapa posterior usando uma identidade federada do GitHub Actions, sem armazenar uma chave JSON no repositório.
+A implementação usa OIDC e Workload Identity Federation, sem chave JSON. O
+processo e o roteiro para trocar de provedor estão em [`docs/ci-cd.md`](ci-cd.md).
 
 ```mermaid
 flowchart LR
@@ -71,17 +73,18 @@ A análise cobre JavaScript e TypeScript com `build-mode: none`. O workflow poss
 
 ### 2.3 Critério para avançar
 
-O PR só deve avançar quando todos os jobs estiverem concluídos com sucesso. No PR 86, os checks de mobile lint, testes da API, testes raiz, build Docker e CodeQL estão verdes. O estado `CLEAN` indica que não há conflito de merge no momento da revisão.
+O PR só deve avançar quando todos os jobs estiverem concluídos com sucesso. No PR 88, os checks de mobile lint, testes da API, testes raiz, build Docker e CodeQL estão verdes. O estado `CLEAN` indica que não há conflito de merge no momento da revisão.
 
-Limitações conhecidas do CI atual:
+Limitações conhecidas do CI/CD atual:
 
-- não faz push de imagem para o Artifact Registry;
-- não executa migrations contra o Cloud SQL;
-- não executa smoke tests contra a URL de staging;
 - não há verificação DAST ou teste de carga no pipeline;
-- não há deploy automático após merge.
+- não há rollback automático quando um smoke test falha;
+- não há deploy de produção;
+- não há testes de integração contra um banco efêmero no runner.
 
-Essas etapas são deliberadas para manter as credenciais de nuvem fora do runner público e para impedir que um teste destrutivo atinja o banco de homologação.
+O CD usa uma aprovação explícita e identidade federada para manter as credenciais
+fora do runner público. O banco de homologação só é alterado pelo job de
+migrations, nunca pelos testes do pull request.
 
 ## 3. Construção da imagem da API
 
@@ -287,7 +290,7 @@ Em caso de falha:
 
 ## 10. Próximas evoluções
 
-- automatizar o CD com Workload Identity Federation do GitHub Actions;
+- criar adaptadores para provedores alternativos mantendo o contrato de `docs/ci-cd.md`;
 - adicionar smoke tests autenticados em um ambiente isolado;
 - adicionar rate limit às rotas públicas de crescimento;
 - configurar alertas de erro e latência do Cloud Run;
@@ -299,9 +302,9 @@ Em caso de falha:
 
 O workflow `.github/workflows/cd-staging.yml` automatiza o caminho de
 homologação. Ele é executado em `push` para `main` e também pode ser iniciado
-por `workflow_dispatch`. O job usa o environment `staging`; configure uma
-regra de aprovação nesse environment antes de habilitar o primeiro deploy
-automático.
+por `workflow_dispatch`. O job usa o environment `staging`, que já possui
+aprovação obrigatória e restrição a branches protegidas. Para reproduzir em
+outro repositório, siga o bootstrap provider-neutral de `docs/ci-cd.md`.
 
 O job executa em sequência, no mesmo runner:
 
@@ -359,14 +362,17 @@ para o repositório. Não criar ou armazenar uma chave JSON para esse workflow.
 
 ### Primeiro uso e rollback
 
-Antes do primeiro `push` em `main`:
+Para um novo projeto ou provedor:
 
-1. criar o provider OIDC e a permissão da service account;
+1. criar o provider OIDC e a permissão da identidade de deploy;
 2. criar o environment `staging` e sua regra de aprovação;
-3. preencher todas as variables acima;
-4. executar o workflow manualmente em uma branch/ref controlada;
+3. preencher todas as variables acima, ou as variables equivalentes do novo adaptador;
+4. executar o workflow manualmente em uma referência controlada;
 5. confirmar que o job de migrations e os smoke tests passam;
 6. habilitar o uso normal após a revisão.
+
+A configuração GCP deste repositório já foi validada; os valores aplicados estão
+registrados na seção seguinte.
 
 O workflow não faz rollback automático. Em falha do smoke test, o tráfego deve
 ser mantido na revisão anterior ou redirecionado manualmente para ela. O
@@ -405,6 +411,7 @@ Não foram criados secrets no GitHub para credenciais de banco ou criptografia.
 A autenticação usa somente o token OIDC de curta duração e o Secret Manager
 continua sendo a fonte dos secrets da aplicação.
 
-A configuração está pronta para o primeiro disparo em `main`. A execução
-end-to-end ainda depende do merge do PR que contém o workflow; antes disso, o
-provider rejeitaria corretamente uma execução originada de outra branch.
+A configuração foi validada end-to-end no workflow
+[CD staging 36872758644](https://github.com/felipemrvieira/MyFetus/actions/runs/36872758644),
+com build, migrations, deploy e smoke tests concluídos. Novos merges em `main`
+seguem o mesmo fluxo e aguardam aprovação no environment `staging`.
