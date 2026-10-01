@@ -293,3 +293,79 @@ Em caso de falha:
 - adaptar upload e extração para Cloud Storage privado;
 - revisar Cloud SQL para alta disponibilidade antes de produção;
 - separar projeto, secrets e banco de produção do ambiente de homologação.
+
+## 11. CD automatizado por GitHub Actions
+
+O workflow `.github/workflows/cd-staging.yml` automatiza o caminho de
+homologação. Ele é executado em `push` para `main` e também pode ser iniciado
+por `workflow_dispatch`. O job usa o environment `staging`; configure uma
+regra de aprovação nesse environment antes de habilitar o primeiro deploy
+automático.
+
+O job executa em sequência, no mesmo runner:
+
+1. valida as variáveis de configuração;
+2. autentica no GCP por OIDC/Workload Identity Federation;
+3. constrói e publica `api:${GITHUB_SHA}`;
+4. atualiza o Cloud Run Job com a imagem e aguarda as migrations;
+5. atualiza o serviço Cloud Run para a mesma imagem;
+6. testa `/ping`, `/api/growth/chart` e a proteção JWT de `/api/users`.
+
+A concorrência é serializada por `cd-staging`, portanto um deploy não cancela
+outro deploy que já tenha iniciado. Migrations sempre terminam antes do deploy
+da revisão da API.
+
+### Variáveis do environment `staging`
+
+Configure estas GitHub Actions Variables no environment `staging`:
+
+| Variable | Valor esperado |
+| --- | --- |
+| `GCP_PROJECT_ID` | `agile-extension-510310-p8` |
+| `GCP_REGION` | `southamerica-east1` |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | recurso completo do provider OIDC do GitHub |
+| `GCP_DEPLOY_SERVICE_ACCOUNT` | service account usada pelo runner para deploy |
+| `GCP_CLOUD_RUN_SERVICE` | `myfetus-api-staging` |
+| `GCP_MIGRATION_JOB` | `myfetus-db-migrate` |
+| `GCP_ARTIFACT_REPOSITORY` | `myfetus` |
+| `STAGING_API_URL` | URL HTTPS do Cloud Run |
+
+Não coloque valores de `PG_PASSWORD`, `JWT_SECRET` ou outras credenciais nessas
+variables. O workflow preserva os secrets já associados ao serviço e ao job;
+esses valores continuam no Secret Manager.
+
+### Workload Identity Federation
+
+O provider deve aceitar somente o repositório e a branch de deploy. O
+mapeamento deve incluir `google.subject=assertion.sub`,
+`attribute.repository=assertion.repository` e `attribute.ref=assertion.ref`,
+com condição equivalente a:
+
+```text
+assertion.repository == 'felipemrvieira/MyFetus' &&
+assertion.ref == 'refs/heads/main'
+```
+
+A service account usada pelo runner precisa ter apenas os papéis necessários
+para publicar no Artifact Registry, administrar/atualizar os recursos Cloud
+Run e atuar como a service account de runtime. A service account de runtime
+continua separada e mantém acesso aos secrets e ao Cloud SQL.
+
+A identidade federada deve ser autorizada no GCP com `roles/iam.workloadIdentityUser`
+para o repositório. Não criar ou armazenar uma chave JSON para esse workflow.
+
+### Primeiro uso e rollback
+
+Antes do primeiro `push` em `main`:
+
+1. criar o provider OIDC e a permissão da service account;
+2. criar o environment `staging` e sua regra de aprovação;
+3. preencher todas as variables acima;
+4. executar o workflow manualmente em uma branch/ref controlada;
+5. confirmar que o job de migrations e os smoke tests passam;
+6. habilitar o uso normal após a revisão.
+
+O workflow não faz rollback automático. Em falha do smoke test, o tráfego deve
+ser mantido na revisão anterior ou redirecionado manualmente para ela. O
+rollback da aplicação não desfaz migrations, que devem permanecer compatíveis
+com a revisão anterior.
