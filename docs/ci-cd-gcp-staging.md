@@ -372,3 +372,39 @@ O workflow não faz rollback automático. Em falha do smoke test, o tráfego dev
 ser mantido na revisão anterior ou redirecionado manualmente para ela. O
 rollback da aplicação não desfaz migrations, que devem permanecer compatíveis
 com a revisão anterior.
+
+## 12. Configuração aplicada para habilitar o CD
+
+A configuração operacional foi aplicada em 01/10/2026.
+
+### GCP
+
+- Workload Identity Pool: `github-actions`
+- Provider OIDC: `github`
+- Provider completo: `projects/66244954593/locations/global/workloadIdentityPools/github-actions/providers/github`
+- Estado do provider: `ACTIVE`
+- Condição: somente `felipemrvieira/MyFetus` na branch `refs/heads/main`
+- Service account de deploy: `myfetus-cd-deployer@agile-extension-510310-p8.iam.gserviceaccount.com`
+- Papéis da service account de deploy: `roles/run.admin`, `roles/serviceusage.serviceUsageConsumer` e `roles/artifactregistry.writer` no repositório `myfetus`
+- Delegação para a service account de runtime: `roles/iam.serviceAccountUser` sobre `myfetus-api-runtime`
+
+A service account de runtime não foi substituída. Ela continua sendo a identidade
+usada pelo Cloud Run e mantém somente acesso aos secrets e ao Cloud SQL.
+
+### GitHub
+
+O environment `staging` foi criado no repositório com:
+
+- aprovação obrigatória do usuário `felipemrvieira`;
+- execução limitada a branches protegidas;
+- variables configuradas para projeto, região, provider, service accounts,
+  serviço Cloud Run, job de migrations, repositório Artifact Registry e URL de
+  staging.
+
+Não foram criados secrets no GitHub para credenciais de banco ou criptografia.
+A autenticação usa somente o token OIDC de curta duração e o Secret Manager
+continua sendo a fonte dos secrets da aplicação.
+
+A configuração está pronta para o primeiro disparo em `main`. A execução
+end-to-end ainda depende do merge do PR que contém o workflow; antes disso, o
+provider rejeitaria corretamente uma execução originada de outra branch.
