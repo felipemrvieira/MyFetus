@@ -23,6 +23,7 @@ Este README foi escrito para permitir que uma nova equipe consiga entender, conf
 - [RAG e chat clínico](#rag-e-chat-clínico)
 - [Segurança e privacidade](#segurança-e-privacidade)
 - [Testes](#testes)
+- [CI/CD e deploy](#cicd-e-deploy)
 - [Scripts úteis](#scripts-úteis)
 - [Credenciais de teste](#credenciais-de-teste)
 - [Bugs conhecidos](#bugs-conhecidos)
@@ -42,14 +43,16 @@ Este README foi escrito para permitir que uma nova equipe consiga entender, conf
 | Perfis principais | Gestante, médico e admin |
 | Processamento de documentos | Upload, extração de texto, OCR e consulta |
 | RAG/chat clínico | Busca semântica, embeddings, Pinecone e geração com Gemini |
+| Deploy de homologação | Cloud Run GCP com HTTPS e CD automatizado |
 | Deploy de produção | Não implementado |
+| CI/CD | CI em PRs e CD aprovado em `main` |
 | Bugs conhecidos | Nenhum bug conhecido identificado na versão entregue |
 
 ## Repositórios
 
 | Tipo | Link | Branch principal | Observação |
 |---|---|---|---|
-| Versão atual | <https://github.com/JRicLP/MyFetus.git> | `main` | Repositório principal para continuidade do desenvolvimento. |
+| Versão atual | <https://github.com/felipemrvieira/MyFetus.git> | `main` | Repositório principal para continuidade do desenvolvimento. |
 | Versão herdada | <https://github.com/Lucasrc22/github-grupo7.git> | `main` | Projeto usado como base histórica antes da evolução para o MyFetus 2.0. |
 
 ## Visão geral da solução
@@ -153,8 +156,6 @@ A plataforma também inclui uma camada backend responsável por:
 | `apps/mobile` | Interface do aplicativo, rotas Expo, telas da gestante, telas médicas, gráficos e integração com API. |
 | `apps/api` | API REST, autenticação, regras de negócio, acesso ao banco, processamento de documentos, RAG e segurança. |
 | `apps/api/db` | Scripts SQL de criação, migração, triggers, tabelas clínicas, segurança e auditoria. |
-| `packages/shared` | Código compartilhado em TypeScript. |
-| `packages/sync-engine` | Pacote reservado para sincronização. |
 | `scripts` | Geração de datasets e relatórios de acurácia. |
 | `tests` | Testes automatizados e fixtures de PDF. |
 
@@ -227,14 +228,10 @@ MyFetus/
 │       ├── app/                    # Rotas e telas Expo Router
 │       │   ├── (tabs)/             # Área principal da gestante
 │       │   └── doctor/             # Área médica
-│       ├── assets/                 # Imagens, fontes e ícones
+│       ├── assets/                 # Imagens e ícones
 │       ├── components/             # Componentes reutilizáveis
-│       ├── constants/              # Constantes de tema
 │       ├── hooks/                  # Hooks React
 │       └── utils/                  # Utilitários do app
-├── packages/
-│   ├── shared/                     # Pacote compartilhado
-│   └── sync-engine/                # Pacote reservado para sincronização
 ├── reports/                        # Relatórios gerados por scripts
 ├── scripts/                        # Scripts de dataset/acurácia
 ├── tests/                          # Testes raiz e fixtures de PDF
@@ -244,6 +241,62 @@ MyFetus/
 ```
 
 ## Configuração e execução local
+
+### Guia Rápido de Onboarding (≤ 10 minutos)
+
+O projeto dispõe do script automatizado `npm run setup` para preparar todo o ambiente de desenvolvimento local (API, banco de dados e sementes de teste):
+
+1. **Pré-requisitos**:
+   - **Node.js**: versão 18 ou superior.
+   - **Docker Desktop**: instalado e em execução.
+
+2. **Configuração automática em comando único**:
+   Na raiz do repositório, execute:
+   ```bash
+   npm run setup
+   ```
+   *O que este comando faz automaticamente:*
+   - Valida os pré-requisitos do ambiente (Node.js e Docker daemon).
+   - Cria o arquivo `.env` a partir do `.env.example` (se ainda não existir).
+   - Gera segredos criptográficos locais seguros (`JWT_SECRET`, `AES_ENCRYPTION_KEY_V1`, `EMAIL_LOOKUP_HMAC_KEY`, `PG_PASSWORD`).
+   - Instala as dependências necessárias do monorepo.
+   - Inicia o contêiner do PostgreSQL 15 (`docker compose up -d db`).
+   - Aguarda a prontidão do banco e aplica automaticamente as migrações pendentes (`scripts/migrate.js`).
+   - Executa os seeds iniciais (`scripts/seed.js`).
+
+   Depois do setup, `npm run seed` pode ser executado novamente para completar
+   os dados sinteticos sem duplicar registros. A carga cria 1 administrador,
+   2 medicos e 10 gestantes, com gestacao, consultas, historico de peso e
+   vinculos medico-paciente. Contas ja existentes mantem suas senhas e dados.
+   O comando aceita apenas `NODE_ENV=development` ou `test` e PostgreSQL local.
+   A senha inicial das novas contas e `SenhaTeste123!`; defina `SEED_PASSWORD`
+   para usar outra senha na criacao de novas contas.
+
+3. **Executar as aplicações**:
+   ```bash
+   # Iniciar API Backend (porta 3000)
+   npm run dev:api
+
+   # Iniciar Aplicativo Mobile (Expo)
+   npm run dev:mobile
+   ```
+
+4. **Atualizar migrações preservando dados existentes**:
+   Se você já possui o volume `db_data` criado e deseja aplicar novas tabelas/colunas sem perder seus dados cadastrados:
+   ```bash
+   npm run db:migrate
+   # ou apenas execute npm run setup (que aplica as migrações pendentes automaticamente)
+   ```
+
+5. **Resetar o ambiente (opcional)**:
+   Para limpar contêineres e recriar o volume do banco de dados do zero:
+   ```bash
+   npm run setup -- --reset
+   ```
+
+---
+
+### Procedimento Manual Passo a Passo
 
 ### 1. Pré-requisitos
 
@@ -256,7 +309,7 @@ MyFetus/
 ### 2. Clonar o repositório
 
 ```bash
-git clone https://github.com/JRicLP/MyFetus.git
+git clone https://github.com/felipemrvieira/MyFetus.git
 cd MyFetus
 ```
 
@@ -367,6 +420,20 @@ Exemplo:
 EXPO_PUBLIC_API_URL=http://192.168.0.10:3000
 ```
 
+### Build Android para testes externos
+
+O app possui perfis EAS para gerar um APK instalável sem Expo Go e um AAB de
+produção. O procedimento completo, incluindo o vínculo inicial da conta EAS e
+a configuração da URL pública da API, está em
+[`docs/eas-android-build.md`](docs/eas-android-build.md).
+
+Resumo do build de validação:
+
+```bash
+cd apps/mobile
+npm run build:android:preview
+```
+
 ## Variáveis de ambiente
 
 O arquivo `.env.example` na raiz é a referência oficial para configuração local. Nunca versione segredos reais.
@@ -463,6 +530,20 @@ Se o shell não carregar as variáveis, use os valores do `.env` diretamente:
 ```bash
 docker exec -it myfetus-db psql -U myfetus_app -d myfetus
 ```
+
+### Ciclo de vida e Migrações
+
+- **Inicialização limpa (novo volume):** O PostgreSQL executa os arquivos de `/docker-entrypoint-initdb.d/` (`01_create_tables.sql` a `12_record_initial_migrations.sql`) na ordem léxica durante o primeiro boot de um volume vazio (`db_data`). O último script registra as migrations já executadas em `schema_migrations`.
+- **Atualização com preservação de dados (volume existente):** O Docker pula `/docker-entrypoint-initdb.d/` se o volume `db_data` já existir. Para aplicar novas alterações sem perda de dados, o MyFetus utiliza o script `scripts/migrate.js` (com a tabela de controle `schema_migrations`), executado automaticamente em `npm run setup` ou sob demanda via:
+  ```bash
+  npm run db:migrate
+  ```
+- **Reset completo do banco:** Caso deseje apagar todos os dados e recriar o volume do zero:
+  ```bash
+  npm run setup -- --reset
+  # ou
+  npm run docker:reset
+  ```
 
 ## API
 
@@ -678,6 +759,30 @@ cd ../mobile
 npm run lint
 ```
 
+## CI/CD e deploy
+
+O processo completo de CI/CD, incluindo o contrato independente de provedor,
+a configuração atual no GCP, OIDC, permissões, secrets, migrations, smoke
+tests, rollback, custos e o procedimento para trocar de cloud está em
+[`docs/ci-cd.md`](docs/ci-cd.md).
+
+A implementação atual do ambiente GCP está detalhada em
+[`docs/ci-cd-gcp-staging.md`](docs/ci-cd-gcp-staging.md). O workflow
+[`.github/workflows/cd-staging.yml`](.github/workflows/cd-staging.yml):
+
+1. executa após merge em `main` ou manualmente;
+2. aguarda aprovação do environment `staging`;
+3. autentica por OIDC, sem chave JSON;
+4. publica a imagem usando o SHA do commit;
+5. executa migrations antes de atualizar a API;
+6. roda smoke tests HTTPS e valida a proteção JWT.
+
+Para trocar o provedor, preserve a ordem e as garantias do pipeline e substitua
+apenas o adaptador de autenticação, registry, executor de migrations e runtime.
+O backend atual é um container Express de longa duração com worker de documentos;
+plataformas serverless de funções exigem uma adaptação arquitetural documentada
+antes de serem usadas.
+
 ## Scripts úteis
 
 ### Raiz
@@ -792,8 +897,8 @@ Itens ainda recomendados para continuidade:
 
 | Item | Descrição |
 |---|---|
-| Deploy | Configurar ambiente de homologação/produção com HTTPS, secrets e observabilidade. |
-| Pipeline CI/CD | Automatizar lint, testes, build e análise de segurança em pull requests. |
+| Deploy de produção | Criar ambiente separado, domínio, observabilidade e aprovação de produção. |
+| Integrações adicionais | Adicionar testes DAST, carga e integração com banco efêmero. |
 | Documentação OpenAPI | Publicar contrato formal da API com Swagger/OpenAPI. |
 | Seeds de desenvolvimento | Criar massa de dados padronizada para demos e testes locais. |
 | Cobertura mobile | Ampliar testes automatizados no aplicativo. |
@@ -852,6 +957,8 @@ Arquivos importantes no repositório:
 
 | Arquivo | Conteúdo |
 |---|---|
+| `docs/ci-cd.md` | Contrato de CI/CD, deploy, rollback e troca de provedor. |
+| `docs/ci-cd-gcp-staging.md` | Implementação atual do CI/CD no Google Cloud. |
 | `apps/api/API_USAGE.md` | Exemplos de uso da API. |
 | `apps/api/CURL_RAG_EXAMPLES.md` | Exemplos de chamadas RAG. |
 | `apps/api/README_RAG_SPRINT4.md` | Documentação histórica do módulo RAG. |
