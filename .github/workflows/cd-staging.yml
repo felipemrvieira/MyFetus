@@ -3,6 +3,11 @@ name: CD staging
 on:
   push:
     branches: [main]
+    # Documentation, mobile-only and unrelated repository changes do not
+    # produce a new API image and must not start a cloud deployment.
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/cd-staging.yml'
   workflow_dispatch:
 
 permissions:

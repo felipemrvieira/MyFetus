@@ -301,8 +301,9 @@ Em caso de falha:
 ## 11. CD automatizado por GitHub Actions
 
 O workflow `.github/workflows/cd-staging.yml` automatiza o caminho de
-homologação. Ele é executado em `push` para `main` e também pode ser iniciado
-por `workflow_dispatch`. O job usa o environment `staging`, que já possui
+homologação. Ele é executado em `push` para `main` quando há alteração em
+`apps/api/**` ou no próprio workflow, e também pode ser iniciado por
+`workflow_dispatch`. O job usa o environment `staging`, que já possui
 aprovação obrigatória e restrição a branches protegidas. Para reproduzir em
 outro repositório, siga o bootstrap provider-neutral de `docs/ci-cd.md`.
 
