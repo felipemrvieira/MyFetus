@@ -25,8 +25,10 @@ provedor.
 | Produção | Nenhum ambiente produtivo | Ainda não habilitada |
 
 O CD atual é contínuo para `main`, mas possui aprovação manual no environment
-`staging`. Um merge em `main` inicia o workflow, que aguarda aprovação antes de
-usar a identidade de deploy.
+`staging`. Um merge em `main` inicia o workflow somente quando altera
+`apps/api/**` ou o próprio workflow de CD; mudanças apenas em documentação,
+mobile ou arquivos sem efeito na imagem não consomem um deploy. A execução
+aguarda aprovação antes de usar a identidade de deploy.
 
 ## 2. Contrato do pipeline
 
@@ -138,8 +140,9 @@ trust policy ao repositório, evento e branch de deploy.
 ## 6. Workflow atual do CD
 
 O arquivo `.github/workflows/cd-staging.yml` é executado em `push` para `main`
-e por `workflow_dispatch`. O job usa o environment `staging`, cuja proteção
-exige aprovação.
+quando há alteração em `apps/api/**` ou no próprio workflow, e também pode ser
+iniciado por `workflow_dispatch`. O job usa o environment `staging`, cuja
+proteção exige aprovação.
 
 A execução é serializada pelo grupo `cd-staging` para impedir dois deploys
 simultâneos. As etapas são:
