@@ -1,0 +1,295 @@
+# CI/CD e infraestrutura GCP do MyFetus
+
+Este documento registra como o código é validado, como a imagem da API é publicada e como o ambiente de homologação está configurado no Google Cloud. Ele descreve o estado implementado na branch `feat/e1-11-gcp-staging` e serve como runbook para repetir o processo sem depender de configurações locais não documentadas.
+
+## 1. Visão geral
+
+O fluxo atual é dividido em duas partes:
+
+1. **CI automático no GitHub Actions**: cada pull request executa lint, testes, análise de segurança e build da imagem Docker.
+2. **CD manual e controlado para homologação**: uma imagem identificada pelo SHA do commit é construída e enviada ao Artifact Registry; depois as migrations são executadas em um Cloud Run Job e uma nova revisão do Cloud Run recebe o tráfego.
+
+Ainda não existe um workflow que faça deploy automaticamente após cada merge. Essa decisão evita que um push em `main` altere a infraestrutura sem uma revisão operacional explícita. O processo manual abaixo é reproduzível e pode ser automatizado em uma etapa posterior usando uma identidade federada do GitHub Actions, sem armazenar uma chave JSON no repositório.
+
+```mermaid
+flowchart LR
+  A[Pull request ou push em main] --> B[GitHub Actions]
+  B --> C[Mobile lint]
+  B --> D[Testes da API]
+  B --> E[Testes raiz]
+  B --> F[Build Docker]
+  B --> G[CodeQL]
+  F --> H{Revisão e aprovação}
+  H --> I[Build com SHA]
+  I --> J[Artifact Registry]
+  J --> K[Cloud Run Job de migrations]
+  K --> L[Cloud Run API staging]
+  L --> M[Smoke tests HTTPS]
+```
+
+## 2. CI no GitHub Actions
+
+Os workflows ficam em `.github/workflows/`.
+
+### 2.1 Workflow `CI`
+
+Arquivo: `.github/workflows/ci.yml`.
+
+Gatilhos:
+
+- todo `pull_request`, independentemente da branch de destino;
+- `push` em `main`;
+- execução manual por `workflow_dispatch`.
+
+O workflow concede somente `contents: read`. Cada job roda em uma máquina limpa `ubuntu-latest`, usa Node.js 22 e instala dependências com `npm ci`, respeitando o lockfile. O cache do npm é configurado pelo `cache-dependency-path` de cada aplicação.
+
+#### Jobs
+
+| Job | Diretório | Verificação |
+| --- | --- | --- |
+| `mobile-lint` | `apps/mobile` | `npm run lint` |
+| `api-unit` | `apps/api` | `npm run test:ci` |
+| `root-unit` | raiz e `apps/api` | `npm run test:pdf-extractor` |
+| `docker-build` | raiz | `docker build -f apps/api/Dockerfile apps/api` |
+
+O build Docker usa `apps/api` como contexto. Isso é importante porque o `.dockerignore` exclui `node_modules`, uploads, testes e artefatos locais, evitando enviar dados ou um contexto de vários gigabytes ao daemon Docker.
+
+O job de testes da API executa a suíte determinística definida em `apps/api/package.json`, incluindo criptografia, sanitização de PII, logger, serviços clínicos e baseline de segurança. A CI não usa o banco de homologação nem credenciais reais; testes que dependem de infraestrutura devem ser executados separadamente no ambiente apropriado.
+
+### 2.2 Workflow `CodeQL`
+
+Arquivo: `.github/workflows/codeql.yml`.
+
+Gatilhos:
+
+- pull request;
+- push em `main`;
+- execução manual;
+- agenda semanal (`23 5 * * 1`).
+
+A análise cobre JavaScript e TypeScript com `build-mode: none`. O workflow possui `contents: read` e `security-events: write`, que é o mínimo necessário para publicar os resultados no painel de segurança do GitHub.
+
+### 2.3 Critério para avançar
+
+O PR só deve avançar quando todos os jobs estiverem concluídos com sucesso. No PR 86, os checks de mobile lint, testes da API, testes raiz, build Docker e CodeQL estão verdes. O estado `CLEAN` indica que não há conflito de merge no momento da revisão.
+
+Limitações conhecidas do CI atual:
+
+- não faz push de imagem para o Artifact Registry;
+- não executa migrations contra o Cloud SQL;
+- não executa smoke tests contra a URL de staging;
+- não há verificação DAST ou teste de carga no pipeline;
+- não há deploy automático após merge.
+
+Essas etapas são deliberadas para manter as credenciais de nuvem fora do runner público e para impedir que um teste destrutivo atinja o banco de homologação.
+
+## 3. Construção da imagem da API
+
+O arquivo `apps/api/Dockerfile` define a imagem de runtime:
+
+- base `node:20-slim`, compatível com o ONNX Runtime usado pelo backend;
+- `NODE_ENV=production`;
+- instalação somente das dependências de runtime (`npm ci --omit=dev`);
+- pacotes de compilação instalados durante o build para módulos nativos;
+- processo executado como usuário não-root `app` (UID/GID 10001);
+- porta `3000` exposta; o Cloud Run injeta a variável `PORT`;
+- comando de inicialização `npm start`.
+
+A tag da imagem deve ser imutável e derivada do commit:
+
+```bash
+export PROJECT_ID=agile-extension-510310-p8
+export REGION=southamerica-east1
+export REPOSITORY=myfetus
+export GIT_SHA="$(git rev-parse HEAD)"
+export IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api:${GIT_SHA}"
+
+gcloud auth configure-docker "${REGION}-docker.pkg.dev"
+docker build -f apps/api/Dockerfile -t "${IMAGE}" apps/api
+docker push "${IMAGE}"
+```
+
+Não usar `latest` como única identificação: a tag pelo SHA permite auditar qual código está rodando e voltar para uma imagem anterior.
+
+## 4. Recursos GCP provisionados
+
+### 4.1 Projeto e região
+
+- Projeto: `agile-extension-510310-p8`
+- Região principal: `southamerica-east1`
+- Conta de runtime: `myfetus-api-runtime`
+
+A conta de runtime é diferente da identidade pessoal usada para provisionar os recursos. Os valores de segredo não são versionados e não devem aparecer em logs, comandos compartilhados ou arquivos `.env` commitados.
+
+### 4.2 Artifact Registry
+
+- Repositório Docker: `myfetus`
+- Localização: `southamerica-east1`
+- Imagens esperadas: `api:<git-sha>`
+
+O Artifact Registry é a fonte da imagem usada pelo Cloud Run. Uma imagem deve ser publicada antes de executar o deploy da revisão.
+
+### 4.3 Cloud SQL
+
+- Instância: `myfetus-staging-db`
+- Motor: PostgreSQL 15
+- Tier: `db-f1-micro`
+- Disco: SSD de 10 GB
+- Alta disponibilidade: zona única
+- Backups: habilitados
+- Conexões: modo criptografado obrigatório na instância
+- Banco: `myfetus`
+- Usuário da aplicação: `myfetus_app`
+
+Essa configuração foi escolhida para o crédito de homologação e não atende sozinha a requisitos de alta disponibilidade de produção. O banco não deve receber dados reais de pacientes nesta fase.
+
+### 4.4 Secret Manager
+
+Os seguintes secrets são consumidos pelo serviço e pelo job de migrations:
+
+- `PG_PASSWORD`
+- `JWT_SECRET`
+- `AES_ENCRYPTION_KEY_V1`
+- `EMAIL_LOOKUP_HMAC_KEY`
+
+O Cloud Run referencia esses nomes por `--set-secrets`, em vez de receber os valores diretamente. A service account deve ter somente o papel de leitura dos secrets necessários. Ao rotacionar um valor, crie uma nova versão, valide uma revisão nova e só então desative a versão antiga.
+
+### 4.5 Cloud Run API
+
+- Serviço: `myfetus-api-staging`
+- Revisão validada: `myfetus-api-staging-tls`
+- Tráfego: 100% na revisão validada
+- URL: `https://myfetus-api-staging-3ajuqsazpa-rj.a.run.app`
+- Escala: mínimo 0, máximo 2 instâncias
+- CPU: 1 vCPU
+- Memória: 1 GiB
+- Concorrência: 40 requisições por instância
+- Timeout: 300 segundos
+- Identidade: `myfetus-api-runtime`
+- Ingresso HTTP: não autenticado no IAM para permitir o acesso do cliente; a autorização de negócio continua no JWT da aplicação
+- Variáveis de segurança: `ENFORCE_HTTPS=true` e `TRUST_PROXY=1`
+
+O fato de o serviço aceitar requisições não autenticadas no IAM não torna as rotas de dados públicas. As rotas clínicas, administrativas, de documentos, RAG, sincronização e histórico continuam protegidas por middleware JWT e roles.
+
+### 4.6 Cloud Run Job de migrations
+
+- Job: `myfetus-db-migrate`
+- Execução validada: `myfetus-db-migrate-fdf7r`
+- Resultado: sucesso
+- Migrations aplicadas: 11
+
+O job usa a mesma imagem da API e as mesmas variáveis de conexão e secrets. O comando executado é:
+
+```bash
+npm run db:migrate:cloud
+```
+
+O script `apps/api/scripts/migrate.js`:
+
+1. exige `PG_USER`, `PG_PASSWORD`, `PG_DATABASE` e `PG_HOST`;
+2. cria `public.schema_migrations` se necessário;
+3. adquire um advisory lock para impedir execuções concorrentes;
+4. identifica bancos antigos que já possuem o schema base;
+5. aplica cada arquivo em uma transação própria;
+6. registra a versão somente após o commit;
+7. faz rollback da migration que falhar;
+8. normaliza comandos específicos de `pg_dump`, incluindo `search_path`.
+
+## 5. Ordem operacional do deploy
+
+O deploy deve seguir esta ordem:
+
+1. abrir ou atualizar o pull request;
+2. aguardar todos os checks da CI;
+3. revisar e aprovar o código;
+4. construir e publicar a imagem com o SHA do commit;
+5. executar `myfetus-db-migrate` e aguardar sucesso;
+6. criar a nova revisão do Cloud Run apontando para a imagem;
+7. direcionar tráfego para a revisão;
+8. executar smoke tests HTTPS;
+9. observar logs e erros antes de considerar a homologação concluída.
+
+O job de migrations deve terminar antes de promover a revisão. A API não deve ser usada como mecanismo implícito para alterar o schema durante o boot.
+
+Exemplo de execução do job já criado:
+
+```bash
+gcloud run jobs execute myfetus-db-migrate \
+  --region="${REGION}" \
+  --wait
+```
+
+O comando de deploy deve preservar as configurações existentes do serviço, referenciar a imagem pelo SHA, manter a service account de runtime e apontar para os secrets. O `PG_HOST` deve usar o modo de conectividade configurado no ambiente (endpoint ou socket do Cloud SQL); nunca substitua esse valor por um endereço local do Docker Compose.
+
+## 6. Smoke tests pós-deploy
+
+```bash
+export API_URL=https://myfetus-api-staging-3ajuqsazpa-rj.a.run.app
+
+# Health check público
+curl -fsS -i "${API_URL}/ping"
+
+# Endpoint público de dados estáticos
+curl -fsS -i "${API_URL}/api/growth/chart"
+
+# Rota protegida deve recusar ausência de token
+curl -sS -i "${API_URL}/api/users"
+```
+
+Resultados esperados no staging atual:
+
+- `GET /ping` retorna `200`;
+- `GET /api/growth/chart` retorna `200`;
+- `GET /api/users` sem `Authorization` retorna `401`;
+- HTTP é redirecionado para HTTPS;
+- os logs do Cloud Run registram conexão bem-sucedida com PostgreSQL.
+
+Os fluxos de cadastro e login devem ser testados com dados sintéticos e descartáveis. Não usar e-mail, senha ou dados clínicos reais.
+
+## 7. Rotas públicas e segurança
+
+As rotas públicas intencionais são:
+
+- `GET /ping`;
+- `POST /api/users`;
+- `POST /api/users/login`;
+- `POST /api/doctors`;
+- `GET /api/growth/chart`;
+- `POST /api/growth/percentile`.
+
+Cadastro e login possuem rate limit. As rotas de crescimento não acessam dados de pacientes, mas ainda podem receber rate limit em uma melhoria posterior para reduzir abuso computacional. Nenhuma rota clínica deve ser liberada removendo `authenticateToken` ou `requireRole`.
+
+## 8. Custo e limites de homologação
+
+O ambiente foi desenhado para usar o crédito da conta UPE GCP com baixo custo:
+
+- Cloud Run escala a zero quando não há tráfego;
+- máximo de duas instâncias evita crescimento acidental;
+- Cloud SQL usa `db-f1-micro`, disco pequeno e zona única;
+- o worker de documentos e o Cloud Storage foram adiados;
+- não há réplicas nem alta disponibilidade nesta etapa;
+- há orçamento de R$ 1.779 com alertas em 25%, 50%, 75% e 90%.
+
+O lifecycle de objetos do Cloud Storage ainda não gera custo porque o bucket e o fluxo de documentos não fazem parte deste primeiro deploy. Quando forem ativados, armazenamento, operações e rede deverão ser acompanhados no orçamento.
+
+## 9. Rollback e incidentes
+
+Para voltar a uma versão estável, primeiro identificar a imagem anterior pelo SHA no Artifact Registry e então criar uma nova revisão do Cloud Run apontando para ela. O rollback da aplicação não desfaz migrations; alterações de schema devem ser compatíveis com a revisão anterior ou possuir migration reversível planejada.
+
+Em caso de falha:
+
+1. impedir a promoção de tráfego;
+2. consultar logs do Cloud Run e o status do Cloud Run Job;
+3. verificar secrets, conectividade com Cloud SQL e a imagem publicada;
+4. corrigir em uma branch e repetir CI, migration e smoke tests;
+5. registrar a causa e a ação no issue da entrega.
+
+## 10. Próximas evoluções
+
+- automatizar o CD com Workload Identity Federation do GitHub Actions;
+- adicionar smoke tests autenticados em um ambiente isolado;
+- adicionar rate limit às rotas públicas de crescimento;
+- configurar alertas de erro e latência do Cloud Run;
+- adaptar upload e extração para Cloud Storage privado;
+- revisar Cloud SQL para alta disponibilidade antes de produção;
+- separar projeto, secrets e banco de produção do ambiente de homologação.

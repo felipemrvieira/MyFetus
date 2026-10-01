@@ -1,5 +1,7 @@
 # E1-11: homologacao no Google Cloud
 
+O runbook completo de CI/CD, deploy, migrations, smoke tests, segurança, custo e rollback está em [`docs/ci-cd-gcp-staging.md`](ci-cd-gcp-staging.md).
+
 ## Escopo inicial de baixo custo
 
 O ambiente de homologacao usa Cloud Run para a API, Cloud SQL PostgreSQL,
