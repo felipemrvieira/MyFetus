@@ -10,8 +10,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { apiUrl } from '../../../utils/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiUrl, fetchWithAuth } from '../../../utils/api';
 
 type TrafficLevel = 'green' | 'yellow' | 'red';
 
@@ -117,13 +116,7 @@ export default function AlertasScreen() {
     const fetchAlerts = async () => {
       try {
         setLoading(true);
-        const token = await AsyncStorage.getItem('authToken');
-        const response = await fetch(apiUrl(`/api/pregnants/${patientId}/alerts`), {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        const response = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}/alerts`));
         if (!response.ok) throw new Error('Erro ao carregar alertas');
         const json = await response.json();
         setData(json);
