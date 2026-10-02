@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  mobile-lint:
-    name: Mobile lint
+  mobile-quality:
+    name: Mobile quality
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -25,6 +25,9 @@ jobs:
           cache-dependency-path: apps/mobile/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:ci
+      - run: npx expo export --platform all --output-dir /tmp/myfetus-mobile-export
 
   api-unit:
     name: API unit tests

@@ -11,8 +11,9 @@ import {
 } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router'; 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiUrl } from '../utils/api';
+import { useSession } from '@/contexts/SessionContext';
+import { parseSessionUser } from '@/types/session';
 
 
 
@@ -21,6 +22,7 @@ export default function LoginScreen() {
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter(); 
+  const { signIn } = useSession();
 
   const handleLogin = async () => {
     if (!email || !senha) {
@@ -38,35 +40,26 @@ export default function LoginScreen() {
         body: JSON.stringify({ email: email, password: senha }),
       });
 
-      const data = await response.json();
+      const data: unknown = await response.json();
+      const payload = data as { error?: string; message?: string; token?: unknown; user?: unknown };
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'E-mail ou senha inválidos');
+        throw new Error(payload.error || payload.message || 'E-mail ou senha inválidos');
       }
 
-      if (data.token) {
-        await AsyncStorage.setItem('authToken', data.token);
+      const user = parseSessionUser(payload.user);
+      if (typeof payload.token !== 'string' || !user) {
+        throw new Error('A resposta de autenticação é inválida.');
       }
+      await signIn(payload.token, user);
 
-      console.log('Usuário autenticado:', data);
-     
-      if (data.token) {
-        await AsyncStorage.setItem('authToken', data.token);
-      }
-      await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-     
-
-      // admin ou user
-      if (data.user.role === 'admin' || data.user.role === 'medico') {
-        // admin (médico)
-        router.push('/doctor/dashboard'); 
+      if (user.role === 'admin' || user.role === 'medico') {
+        router.replace('/doctor/dashboard');
       } else {
-        // É um paciente
-        router.push('/outra-gestacao'); // A tela padrão do paciente
+        router.replace('/outra-gestacao');
       }
 
     } catch (error) {
-      console.error('Erro no login:', error);
       Alert.alert('Erro no Login', error instanceof Error ? error.message : 'Tente novamente');
     } finally {
       setLoading(false);
