@@ -4,15 +4,20 @@ const router = express.Router();
 
 const agentController = require('../controllers/agentController');
 const { authenticateToken, requireRole } = require('../middlewares/auth');
-const { createClinicalLimiterOptions } = require('../middlewares/authRateLimit');
-const clinicalLimiter = rateLimit(createClinicalLimiterOptions());
+const { positiveInteger } = require('../middlewares/authRateLimit');
 
 // Apenas medico/admin; o vinculo medico-paciente e validado no controller.
 router.post(
   '/maternal-analysis',
   authenticateToken,
   requireRole('medico', 'admin'),
-  clinicalLimiter,
+  rateLimit({
+    windowMs: positiveInteger(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+    limit: positiveInteger(process.env.CLINICAL_RATE_LIMIT_MAX, 60),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Muitas tentativas. Tente novamente mais tarde.' },
+  }),
   agentController.handleMaternalAnalysis
 );
 

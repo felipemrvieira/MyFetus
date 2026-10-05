@@ -7,13 +7,32 @@ const {
   getGrowthChart
 } = require('../controllers/growthPercentileController');
 const { authenticateToken } = require('../middlewares/auth');
-const { createClinicalLimiterOptions } = require('../middlewares/authRateLimit');
-const clinicalLimiter = rateLimit(createClinicalLimiterOptions());
+const { positiveInteger } = require('../middlewares/authRateLimit');
 
-router.use(authenticateToken, clinicalLimiter);
+router.use(authenticateToken);
 
-router.post('/percentile', calculatePercentile);
+router.post(
+  '/percentile',
+  rateLimit({
+    windowMs: positiveInteger(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+    limit: positiveInteger(process.env.CLINICAL_RATE_LIMIT_MAX, 60),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Muitas tentativas. Tente novamente mais tarde.' },
+  }),
+  calculatePercentile
+);
 
-router.get('/chart', getGrowthChart);
+router.get(
+  '/chart',
+  rateLimit({
+    windowMs: positiveInteger(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+    limit: positiveInteger(process.env.CLINICAL_RATE_LIMIT_MAX, 60),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Muitas tentativas. Tente novamente mais tarde.' },
+  }),
+  getGrowthChart
+);
 
 module.exports = router;
