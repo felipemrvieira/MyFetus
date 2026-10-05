@@ -37,11 +37,20 @@ type PregnantDocument = {
   download_url?: string | null;
 };
 
+type ExamRequest = {
+  id: number;
+  exam_name: string;
+  instructions: string | null;
+  status: 'pending' | 'submitted' | 'reviewed' | 'cancelled' | string;
+  requested_at: string;
+};
+
 export default function ExamesTabScreen() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [docs, setDocs] = useState<PregnantDocument[]>([]);
+  const [examRequests, setExamRequests] = useState<ExamRequest[]>([]);
 
   const pregnantId = user?.pregnant_id ?? null;
 
@@ -74,6 +83,17 @@ export default function ExamesTabScreen() {
     setDocs(Array.isArray(data) ? data : []);
   }, [pregnantId]);
 
+  const fetchExamRequests = useCallback(async () => {
+    if (!pregnantId) {
+      setExamRequests([]);
+      return;
+    }
+    const res = await fetchWithAuth(apiUrl(`/api/exam-requests/pregnant/${pregnantId}`));
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Não foi possível carregar as solicitações');
+    setExamRequests(Array.isArray(data) ? data : []);
+  }, [pregnantId]);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -91,14 +111,16 @@ export default function ExamesTabScreen() {
     (async () => {
       setLoading(true);
       try {
-        await fetchDocs();
+        const results = await Promise.allSettled([fetchDocs(), fetchExamRequests()]);
+        const failure = results.find((result) => result.status === 'rejected');
+        if (failure?.status === 'rejected') throw failure.reason;
       } catch (err) {
         Alert.alert('Erro', err instanceof Error ? err.message : 'Erro de rede');
       } finally {
         setLoading(false);
       }
     })();
-  }, [user, fetchDocs]);
+  }, [user, fetchDocs, fetchExamRequests]);
 
   const handlePickAndUpload = useCallback(async () => {
     if (!pregnantId) {
@@ -234,6 +256,24 @@ export default function ExamesTabScreen() {
             <Text style={styles.title}>Exames</Text>
             <Text style={styles.subtitle}>Envie um exame e aguarde o relatório do médico.</Text>
 
+            <View style={styles.requestsBox}>
+              <Text style={styles.requestsTitle}>Solicitações do médico</Text>
+              {examRequests.length === 0 ? (
+                <Text style={styles.emptyRequestText}>Nenhuma solicitação pendente.</Text>
+              ) : examRequests.map((request) => (
+                <View key={request.id} style={styles.requestCard}>
+                  <View style={styles.rowBetween}>
+                    <Text style={styles.requestName}>{request.exam_name}</Text>
+                    <Text style={styles.requestStatus}>
+                      {request.status === 'pending' ? 'Pendente' : request.status === 'cancelled' ? 'Cancelada' : request.status === 'reviewed' ? 'Revisada' : 'Enviada'}
+                    </Text>
+                  </View>
+                  {!!request.instructions && <Text style={styles.requestInstructions}>{request.instructions}</Text>}
+                  {request.status === 'pending' && <Text style={styles.requestHint}>Envie o resultado usando o botão abaixo.</Text>}
+                </View>
+              ))}
+            </View>
+
             <TouchableOpacity
               style={[styles.primaryButton, uploading && styles.primaryButtonDisabled]}
               onPress={handlePickAndUpload}
@@ -297,6 +337,49 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 14,
     color: '#666',
+  },
+  requestsBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: '#F2FBFA',
+  },
+  requestsTitle: {
+    color: '#176B66',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  emptyRequestText: {
+    color: '#667085',
+    fontSize: 13,
+  },
+  requestCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+  },
+  requestName: {
+    color: '#202020',
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  requestStatus: {
+    color: '#176B66',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  requestInstructions: {
+    color: '#475467',
+    fontSize: 13,
+    marginTop: 6,
+  },
+  requestHint: {
+    color: '#667085',
+    fontSize: 12,
+    marginTop: 6,
   },
   primaryButton: {
     marginTop: 14,
