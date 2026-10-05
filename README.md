@@ -466,6 +466,7 @@ O arquivo `.env.example` na raiz é a referência oficial para configuração lo
 | `AUTH_RATE_LIMIT_MAX` | Não | `10` | Limite para login. |
 | `REGISTER_RATE_LIMIT_MAX` | Não | `5` | Limite para cadastro. |
 | `ADMIN_READ_RATE_LIMIT_MAX` | Não | `100` | Limite para leitura administrativa. |
+| `CLINICAL_RATE_LIMIT_MAX` | Não | `60` | Limite para consultas clínicas autenticadas. |
 
 ### Criptografia, documentos e IA
 
@@ -587,15 +588,15 @@ http://localhost:3000/api
 | `GET` | `/api/history/pregnancies/:pregnancyId` | Gestante/Médico/Admin | Consulta histórico clínico. |
 | `POST` | `/api/history/pregnancies/:pregnancyId/fetal-biometries` | Médico/Admin | Registra biometria fetal. |
 | `POST` | `/api/history/pregnancies/:pregnancyId/maternal-weights` | Médico/Admin | Registra peso materno. |
-| `GET` | `/api/growth/chart` | Não definido | Consulta dados de gráfico de crescimento. |
-| `POST` | `/api/growth/percentile` | Não definido | Calcula percentil. |
+| `GET` | `/api/growth/chart` | JWT | Consulta dados de gráfico de crescimento. |
+| `POST` | `/api/growth/percentile` | JWT | Calcula percentil. |
 | `POST` | `/api/internal/loinc/term` | Admin | Mapeia termo único para LOINC. |
 | `POST` | `/api/internal/loinc/text` | Admin | Mapeia bloco de texto para LOINC. |
 | `POST` | `/api/internal/rag/search` | JWT | Busca semântica na base clínica. |
 | `POST` | `/api/internal/rag/chat` | JWT | Chat clínico com RAG. |
 | `POST` | `/api/internal/rag/chat/agents` | JWT | Chat multiagente. |
 | `GET` | `/api/internal/rag/stats` | Admin | Estatísticas da base RAG. |
-| `POST` | `/api/agent/maternal-analysis` | JWT | Análise materna por agente. |
+| `POST` | `/api/agent/maternal-analysis` | JWT + `medico` (vinculado) / `admin` | Análise materna por agente. |
 | `GET` | `/api/admin/audit` | Admin | Lista auditoria. |
 | `POST` | `/api/sync` | Admin | Sincronização administrativa. |
 
@@ -688,6 +689,23 @@ Recursos implementados:
 - Suporte a HTTPS/HSTS em ambiente de produção.
 - Restrição de CORS por origem configurável.
 
+### Autorização de dados clínicos
+
+O controle de acesso da API combina até três verificações, nesta ordem:
+
+1. **Autenticação** (`authenticateToken`): exige `Authorization: Bearer <JWT>` válido e não expirado; caso contrário, `401`.
+2. **Papel** (`requireRole`): o papel do token (`gestante`, `medico`, `admin`) precisa estar autorizado na rota; caso contrário, `403`.
+3. **Vínculo com o recurso** (`ensureCanAccessPregnant`, em `utils/clinicalAccess.js`): `admin` acessa qualquer gestante; `gestante` acessa apenas o próprio registro; `medico` acessa apenas gestantes com vínculo `active` em `doctor_patient_links`. Sem vínculo, `403` — antes de qualquer leitura do prontuário.
+
+Aplicação nas rotas corrigidas na E1-05 (issue #43):
+
+| Rota | Regra |
+|---|---|
+| `POST /api/agent/maternal-analysis` | JWT + papel `medico`/`admin` + vínculo com o `patientId` enviado. Gestante recebe `403`. Para médico, o vínculo é verificado antes da existência: ID sem vínculo e ID inexistente recebem o mesmo `403`, evitando enumeração de IDs. |
+| `GET /api/growth/chart`, `POST /api/growth/percentile` | JWT obrigatório (qualquer papel), aplicado no router de `/api/growth`. |
+
+Antes da correção, qualquer usuário autenticado podia trocar o `patientId` no corpo de `/api/agent/maternal-analysis` e receber a análise do prontuário descriptografado de outra paciente (IDOR). Agora o `patientId` é validado como inteiro e o vínculo é verificado antes das consultas clínicas; os testes `tests/agentController.test.js` comprovam que, ao trocar o ID, nenhuma consulta ao prontuário é executada e nenhum dado chega ao agente.
+
 Recomendações para continuidade:
 
 - Nunca versionar `.env` com segredos reais.
@@ -726,7 +744,8 @@ Execute dentro de `apps/api`.
 | `npm run test:rag` | Valida chunking, embeddings, vector store e busca RAG. |
 | `npm run test:stress` | Testa componentes do simulador de estresse. |
 | `npm run test:generation-service` | Testa serviço de geração de respostas. |
-| `npm run test:agent-controller` | Testa controlador de agentes clínicos. |
+| `npm run test:agent-controller` | Testa autenticação, papel e vínculo (IDOR) em `/api/agent/maternal-analysis`. |
+| `node --test ./tests/growthRoutes.test.js` | Testa exigência de JWT em `/api/growth/*` e o acesso autenticado. |
 | `npm run test:hadlockCalculator` | Valida cálculos associados a crescimento fetal. |
 | `npm run test:clinical-history` | Valida histórico clínico e séries temporais. |
 

@@ -423,7 +423,7 @@ essas dependências estão disponíveis ou aprovadas.
 - [ ] Registrar evidências e versões no README.
 - [ ] Suspender o autocadastro ativo de médicos até existir validação de identidade profissional.
 - [ ] Exigir aceite/convite da gestante ou aprovação administrativa para criar vínculos.
-- [ ] Aplicar autorização por paciente em `/api/agent/maternal-analysis`.
+- [x] Aplicar autorização por paciente em `/api/agent/maternal-analysis` (E1-05, issue #43).
 - [ ] Corrigir a chamada indefinida de `audit` no controller de vínculos.
 
 **Gate:** outra pessoa consegue clonar, configurar, migrar, testar e iniciar a API
@@ -448,7 +448,7 @@ cruzado entre usuários.
 
 - [ ] Versionar fontes, fórmulas, limites e regras de alerta.
 - [ ] Obter revisão e aceite de profissional habilitado.
-- [ ] Proteger rotas de crescimento e revisar todas as autorizações.
+- [ ] Proteger rotas de crescimento e revisar todas as autorizações. (Rotas de crescimento protegidas com JWT na E1-05, issue #43; revisão geral pendente.)
 - [ ] Remover ou unificar a rota legada `/api/agent` com o fluxo canônico de RAG.
 - [ ] Remover mutações de schema do startup e adotar migration runner.
 - [ ] Criar testes de propriedade de recurso, rotação de chaves e restauração.
