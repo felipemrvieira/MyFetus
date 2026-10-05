@@ -1,4 +1,5 @@
 const express = require('express');
+const { rateLimit } = require('express-rate-limit');
 const router = express.Router();
 
 const {
@@ -6,8 +7,8 @@ const {
   getGrowthChart
 } = require('../controllers/growthPercentileController');
 const { authenticateToken } = require('../middlewares/auth');
-const { createAuthLimiters } = require('../middlewares/authRateLimit');
-const { clinicalLimiter } = createAuthLimiters();
+const { createClinicalLimiterOptions } = require('../middlewares/authRateLimit');
+const clinicalLimiter = rateLimit(createClinicalLimiterOptions());
 
 router.use(authenticateToken, clinicalLimiter);
 
