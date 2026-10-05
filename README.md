@@ -466,6 +466,7 @@ O arquivo `.env.example` na raiz é a referência oficial para configuração lo
 | `AUTH_RATE_LIMIT_MAX` | Não | `10` | Limite para login. |
 | `REGISTER_RATE_LIMIT_MAX` | Não | `5` | Limite para cadastro. |
 | `ADMIN_READ_RATE_LIMIT_MAX` | Não | `100` | Limite para leitura administrativa. |
+| `CLINICAL_RATE_LIMIT_MAX` | Não | `60` | Limite para consultas clínicas autenticadas. |
 
 ### Criptografia, documentos e IA
 

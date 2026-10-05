@@ -23,28 +23,37 @@ function createAuthLimiters(options = {}) {
     options.adminReadMax ?? process.env.ADMIN_READ_RATE_LIMIT_MAX,
     100
   );
-  const common = {
-    windowMs,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    message: {
-      error: 'Muitas tentativas. Tente novamente mais tarde.',
-    },
-    handler(req, res, _next, options) {
-      audit(req, {
-        action: 'USER_LOGIN_BLOCKED',
-        resource: 'users',
-        outcome: 'FAILURE',
-        detail: { path: req.originalUrl, method: req.method },
-      });
-      return res.status(options.statusCode).json(options.message);
-    },
-  };
+  const clinicalMax = positiveInteger(
+    options.clinicalMax ?? process.env.CLINICAL_RATE_LIMIT_MAX,
+    60
+  );
+
+  function createLimiter(limit, action, resource) {
+    return rateLimit({
+      windowMs,
+      limit,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      message: {
+        error: 'Muitas tentativas. Tente novamente mais tarde.',
+      },
+      handler(req, res, _next, limiterOptions) {
+        audit(req, {
+          action,
+          resource,
+          outcome: 'FAILURE',
+          detail: { path: req.originalUrl, method: req.method },
+        });
+        return res.status(limiterOptions.statusCode).json(limiterOptions.message);
+      },
+    });
+  }
 
   return {
-    loginLimiter: rateLimit({ ...common, limit: loginMax }),
-    registerLimiter: rateLimit({ ...common, limit: registerMax }),
-    adminReadLimiter: rateLimit({ ...common, limit: adminReadMax }),
+    loginLimiter: createLimiter(loginMax, 'USER_LOGIN_BLOCKED', 'users'),
+    registerLimiter: createLimiter(registerMax, 'USER_REGISTER_BLOCKED', 'users'),
+    adminReadLimiter: createLimiter(adminReadMax, 'ADMIN_READ_BLOCKED', 'users'),
+    clinicalLimiter: createLimiter(clinicalMax, 'CLINICAL_READ_BLOCKED', 'clinical_data'),
   };
 }
 

@@ -6,8 +6,10 @@ const {
   getGrowthChart
 } = require('../controllers/growthPercentileController');
 const { authenticateToken } = require('../middlewares/auth');
+const { createAuthLimiters } = require('../middlewares/authRateLimit');
+const { clinicalLimiter } = createAuthLimiters();
 
-router.use(authenticateToken);
+router.use(authenticateToken, clinicalLimiter);
 
 router.post('/percentile', calculatePercentile);
 
