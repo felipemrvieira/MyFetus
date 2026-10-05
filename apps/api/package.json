@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
+    "db:migrate:cloud": "node ./scripts/migrate.js",
     "jwt:secret": "node ./scripts/generate-jwt-secret.js",
     "jwt:test-token": "node ./scripts/generate-jwt-test-token.js",
     "jwt:rotate": "node ./scripts/rotate-jwt-secret-and-generate-token.js",
@@ -17,6 +18,7 @@
     "rag:ingest": "node workers/ingestRagDocuments.js",
     "rag:test-search": "node tests/ragSearch.test.js",
     "test:chunking": "node tests/chunkingService.test.js",
+    "test:ci": "node --test tests/chunkingService.test.js tests/clinicalDataService.test.js tests/cryptoService.test.js tests/emailLookupService.node.test.js tests/fileCryptoService.test.js tests/generationService.test.js tests/hadlockCalculator.test.js tests/logger.test.js tests/piiSanitizer.test.js tests/securityBaseline.test.js",
     "test:embedding": "node tests/embeddingService.test.js",
     "test:pinecone": "node tests/vectorStoreService.test.js",
     "test:pii": "node ./tests/piiSanitizer.test.js",
@@ -39,7 +41,7 @@
     "test:stress": "node ./tests/stressTest.test.js",
     "test:stress:integration": "node ./tests/stressIntegration.test.js --integration",
     "test:generation-service": "node --test ./tests/generationService.test.js",
-    "test:agent-controller": "node --test ./tests/agentController.test.js"
+    "test:agent-controller": "node --test ./tests/agentController.test.js",
     "test:hadlockCalculator": "node ./tests/hadlockCalculator.test.js",
     "test:clinical-history": "node ./tests/clinicalHistoryService.test.js"
   },

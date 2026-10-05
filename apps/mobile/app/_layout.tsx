@@ -1,21 +1,11 @@
 // app/_layout.tsx
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { View } from 'react-native';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [fontsLoaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: 'black' }} />;
-  }
-
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack

@@ -10,9 +10,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome } from '@expo/vector-icons';
-// import { calculateGestationWeek } from '../utils/gestationWeekCalculator';
-import { getChecklistForWeek, ChecklistItem, checklistData } from '../data/checklistData';
-import { getLastPeriod, calculateGestationWeek, getBabySize, getBabyDescription } from '../../utils/gestationUtils';
+import { ChecklistItem, checklistData } from '../data/checklistData';
+import { getLastPeriod, calculateGestationWeek } from '../../utils/gestationUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WEB_MAX_WIDTH = 430;
@@ -25,12 +24,24 @@ const TRIMESTER_RANGES = {
 
 const CHECKLIST_STATE_KEY = '@myFetus:checklistState';
 
+function getTrimesterItems(trimester: number, completionState: Record<string, boolean>): ChecklistItem[] {
+  const range = TRIMESTER_RANGES[trimester as keyof typeof TRIMESTER_RANGES];
+  return checklistData
+    .filter((checklist) => {
+      const [start, end] = checklist.weekRange.split('-').map(Number);
+      return start >= range.start && end <= range.end;
+    })
+    .flatMap((checklist) => checklist.items.map((item) => ({
+      ...item,
+      completed: completionState[item.id] || false,
+    })));
+}
+
 export default function ChecklistScreen() {
   const { width: windowWidth, height } = useWindowDimensions();
   const width = Platform.OS === 'web' ? Math.min(windowWidth, WEB_MAX_WIDTH) : windowWidth;
   const styles = React.useMemo(() => createStyles(width, height), [width, height]);
 
-  const [currentWeek, setCurrentWeek] = useState(0);
   const [currentTrimester, setCurrentTrimester] = useState(1);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [savedState, setSavedState] = useState<Record<string, boolean>>({});
@@ -71,47 +82,20 @@ export default function ChecklistScreen() {
         console.log('Checklist - Data última menstruação:', lastPeriod);
         const result = calculateGestationWeek(lastPeriod);
         console.log('Checklist - Semana calculada:', result.weeks);
-        setCurrentWeek(result.weeks);
-        
-        // Determina o trimestre atual baseado na semana
         const trimester = result.weeks <= 13 ? 1 : result.weeks <= 26 ? 2 : 3;
         setCurrentTrimester(trimester);
-        
-        // Carrega o estado salvo primeiro
-        await loadSavedState();
-        
-        // Carrega os itens do trimestre atual
-        await loadTrimesterItems(trimester);
+
+        const completionState = await loadSavedState();
+        setChecklistItems(getTrimesterItems(trimester, completionState));
       }
     };
 
     loadGestationData();
   }, []);
 
-  const loadTrimesterItems = async (trimester: number) => {
-    const range = TRIMESTER_RANGES[trimester as keyof typeof TRIMESTER_RANGES];
-    const items: ChecklistItem[] = [];
-    
-    // Filtra os checklists que estão dentro do trimestre atual
-    const trimesterChecklists = checklistData.filter(checklist => {
-      const [start, end] = checklist.weekRange.split("-").map(Number);
-      return start >= range.start && end <= range.end;
-    });
-    
-    // Adiciona todos os itens dos checklists do trimestre
-    trimesterChecklists.forEach(checklist => {
-      items.push(...checklist.items.map(item => ({
-        ...item,
-        completed: savedState[item.id] || false
-      })));
-    });
-    
-    setChecklistItems(items);
-  };
-
-  const changeTrimester = async (trimester: number) => {
+  const changeTrimester = (trimester: number) => {
     setCurrentTrimester(trimester);
-    await loadTrimesterItems(trimester);
+    setChecklistItems(getTrimesterItems(trimester, savedState));
   };
 
   const toggleItem = async (id: string) => {
