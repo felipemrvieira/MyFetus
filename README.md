@@ -567,9 +567,9 @@ http://localhost:3000/api
 | `POST` | `/api/doctors` | Não | Cria conta médica. |
 | `GET` | `/api/pregnants` | Médico/Admin | Lista gestantes. |
 | `POST` | `/api/pregnants` | Gestante/Admin | Cria registro de gestante. |
-| `GET` | `/api/pregnants/:id` | JWT | Consulta gestante. |
+| `GET` | `/api/pregnants/:id` | Própria gestante/Médico vinculado/Admin | Consulta gestante. |
 | `PUT` | `/api/pregnants/:id` | Médico/Admin | Atualiza gestante. |
-| `GET` | `/api/pregnants/:id/alerts` | Médico/Admin | Consulta alertas de risco. |
+| `GET` | `/api/pregnants/:id/alerts` | Médico vinculado/Admin | Consulta alertas de risco. |
 | `POST` | `/api/pregnancies` | Gestante/Médico/Admin | Cria gestação. |
 | `GET` | `/api/pregnancies` | Gestante/Médico/Admin | Lista gestações. |
 | `PUT` | `/api/pregnancies/:id` | Médico/Admin | Atualiza gestação. |
@@ -696,6 +696,13 @@ O controle de acesso da API combina até três verificações, nesta ordem:
 1. **Autenticação** (`authenticateToken`): exige `Authorization: Bearer <JWT>` válido e não expirado; caso contrário, `401`.
 2. **Papel** (`requireRole`): o papel do token (`gestante`, `medico`, `admin`) precisa estar autorizado na rota; caso contrário, `403`.
 3. **Vínculo com o recurso** (`ensureCanAccessPregnant`, em `utils/clinicalAccess.js`): `admin` acessa qualquer gestante; `gestante` acessa apenas o próprio registro; `medico` acessa apenas gestantes com vínculo `active` em `doctor_patient_links`. Sem vínculo, `403` — antes de qualquer leitura do prontuário.
+
+Essa mesma checagem é aplicada antes de carregar alertas, histórico, gestações,
+eventos e documentos. O teste `apps/api/tests/crossPatientAuthorization.test.js`
+mantém o caso de regressão: a gestante A pode consultar seus próprios dados,
+mas recebe `403` e nenhum dado clínico da gestante B é lido quando tenta usar o
+identificador de B. O CI executa `npm audit --audit-level=high` nos lockfiles da
+raiz e da API; o Dependabot acompanha os três workspaces npm e as GitHub Actions.
 
 Aplicação nas rotas corrigidas na E1-05 (issue #43):
 
