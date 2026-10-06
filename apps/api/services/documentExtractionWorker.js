@@ -5,6 +5,7 @@ const fileCryptoService = require('./fileCryptoService');
 const { extractDocumentText } = require('./pdfTextExtractor');
 
 const runningJobs = new Set();
+let workerTimer = null;
 
 async function findDocument(documentId) {
   const result = await client.query(
@@ -142,12 +143,30 @@ async function processPendingDocumentTextExtractions(limit = 5) {
 function startDocumentTextExtractionWorker({
   intervalMs = Number(process.env.DOCUMENT_EXTRACTION_INTERVAL_MS || 30000),
   batchSize = Number(process.env.DOCUMENT_EXTRACTION_BATCH_SIZE || 5),
+  runImmediately = true,
+  processPending = processPendingDocumentTextExtractions,
+  setIntervalFn = setInterval,
 } = {}) {
-  setInterval(() => {
-    processPendingDocumentTextExtractions(batchSize).catch((err) => {
+  if (workerTimer !== null) return workerTimer;
+
+  const runCycle = () => Promise.resolve()
+    .then(() => processPending(batchSize))
+    .catch((err) => {
       console.error('Erro no ciclo do worker de extração de PDFs:', err);
     });
-  }, intervalMs);
+
+  workerTimer = setIntervalFn(runCycle, intervalMs);
+  if (runImmediately) runCycle();
+
+  return workerTimer;
+}
+
+function stopDocumentTextExtractionWorker({ clearIntervalFn = clearInterval } = {}) {
+  if (workerTimer === null) return false;
+
+  clearIntervalFn(workerTimer);
+  workerTimer = null;
+  return true;
 }
 
 module.exports = {
@@ -157,4 +176,5 @@ module.exports = {
   processDocumentTextExtraction,
   processPendingDocumentTextExtractions,
   startDocumentTextExtractionWorker,
+  stopDocumentTextExtractionWorker,
 };
