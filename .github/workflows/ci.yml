@@ -51,6 +51,7 @@ jobs:
           cache-dependency-path: apps/mobile/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm run typecheck
 
   api-unit:
     name: API unit tests
