@@ -198,7 +198,7 @@ Para habilitar as colunas de extração em um banco existente, aplique:
 psql -U myuser -d mydatabase -f apps/api/db/migration_extracted_text.sql
 ```
 
-O backend também inicia um worker periódico a cada 30 segundos, processando até 5 documentos `pending` por ciclo. No upload, a API dispara uma tentativa assíncrona imediata sem bloquear a resposta HTTP.
+O backend inicia o worker assíncrono no boot: executa um ciclo imediatamente e repete a cada 30 segundos, processando até 5 documentos `pending` por ciclo. No upload, a API dispara uma tentativa assíncrona imediata sem bloquear a resposta HTTP. Ajuste `DOCUMENT_EXTRACTION_INTERVAL_MS` e `DOCUMENT_EXTRACTION_BATCH_SIZE` quando necessário; falhas de um ciclo são registradas e não impedem os ciclos seguintes.
 
 ---
 
