@@ -18,7 +18,7 @@
     "rag:ingest": "node workers/ingestRagDocuments.js",
     "rag:test-search": "node tests/ragSearch.test.js",
     "test:chunking": "node tests/chunkingService.test.js",
-    "test:ci": "node --test tests/chunkingService.test.js tests/clinicalDataService.test.js tests/cryptoService.test.js tests/emailLookupService.node.test.js tests/fileCryptoService.test.js tests/generationService.test.js tests/hadlockCalculator.test.js tests/logger.test.js tests/piiSanitizer.test.js tests/securityBaseline.test.js",
+    "test:ci": "node --test tests/chunkingService.test.js tests/clinicalDataService.test.js tests/crossPatientAuthorization.test.js tests/cryptoService.test.js tests/emailLookupService.node.test.js tests/fileCryptoService.test.js tests/generationService.test.js tests/hadlockCalculator.test.js tests/logger.test.js tests/piiSanitizer.test.js tests/securityBaseline.test.js",
     "test:embedding": "node tests/embeddingService.test.js",
     "test:pinecone": "node tests/vectorStoreService.test.js",
     "test:pii": "node ./tests/piiSanitizer.test.js",
