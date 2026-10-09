@@ -240,8 +240,11 @@ O comando de deploy deve preservar as configurações existentes do serviço, re
 ```bash
 export API_URL=https://myfetus-api-staging-3ajuqsazpa-rj.a.run.app
 
-# Health check público
+# Liveness check público
 curl -fsS -i "${API_URL}/ping"
+
+# Readiness check público (valida conectividade com PostgreSQL)
+curl -fsS -i "${API_URL}/health"
 
 # Endpoint público de dados estáticos
 curl -fsS -i "${API_URL}/api/growth/chart"
@@ -252,12 +255,15 @@ curl -sS -i "${API_URL}/api/users"
 
 Resultados esperados no staging atual:
 
-- `GET /ping` retorna `200`;
+- `GET /ping` retorna `200` (liveness);
+- `GET /health` retorna `200` (readiness; `status: "ok"` ou `"degraded"` se Pinecone não configurado);
 - `GET /api/growth/chart` retorna `200` enquanto público; se a proteção JWT
   da E1-05 estiver promovida, retorna `401` sem token;
 - `GET /api/users` sem `Authorization` retorna `401`;
 - HTTP é redirecionado para HTTPS;
-- os logs do Cloud Run registram conexão bem-sucedida com PostgreSQL.
+- os logs do Cloud Run registram formato JSON estruturado (NDJSON) e conexão bem-sucedida com PostgreSQL.
+
+Para a configuração do monitor contínuo gratuito e alertas de queda/recuperação no WhatsApp e e-mail da equipe, consulte o runbook em [`docs/runbooks/monitoring.md`](runbooks/monitoring.md).
 
 Os fluxos de cadastro e login devem ser testados com dados sintéticos e descartáveis. Não usar e-mail, senha ou dados clínicos reais.
 
