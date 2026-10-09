@@ -3,6 +3,6 @@ const { handleHealthRequest } = require('../services/healthService');
 
 const router = express.Router();
 
-router.get('/', handleHealthRequest);
+router.get('/', (req, res) => handleHealthRequest(req, res));
 
 module.exports = router;

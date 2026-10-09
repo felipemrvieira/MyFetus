@@ -206,4 +206,48 @@ test('Healthcheck and Readiness Probe', async (t) => {
     assert.strictEqual(capturedJson.checks.database.status, 'down');
     assert.strictEqual(capturedJson.checks.vector_store.status, 'down');
   });
+
+  await t.test('handleHealthRequest safely ignores Express next function passed as 3rd parameter', async () => {
+    const mockDb = { query: async () => ({ rows: [] }) };
+    const mockVectorStore = { describeIndexStats: async () => ({}) };
+
+    let capturedCode = null;
+    let capturedJson = null;
+    const req = {};
+    const res = {
+      status: (code) => {
+        capturedCode = code;
+        return res;
+      },
+      json: (data) => {
+        capturedJson = data;
+        return res;
+      },
+    };
+    const expressNext = () => {};
+
+    // Express calls route handlers as (req, res, next)
+    await handleHealthRequest(req, res, expressNext);
+
+    assert.ok(capturedCode === 200 || capturedCode === 503);
+    assert.ok(capturedJson);
+    assert.ok(capturedJson.status);
+    assert.ok(capturedJson.checks);
+  });
+
+  await t.test('getHealthStatus isolates database acquisition error from vector store status', async () => {
+    const mockVectorStore = { describeIndexStats: async () => ({}) };
+
+    const { httpStatus, payload } = await getHealthStatus({
+      db: null,
+      vectorStore: mockVectorStore,
+      version: '1.0.0',
+    });
+
+    assert.strictEqual(httpStatus, 503);
+    assert.strictEqual(payload.status, 'unhealthy');
+    assert.strictEqual(payload.checks.database.status, 'down');
+    assert.strictEqual(payload.checks.vector_store.status, 'up');
+  });
 });
+

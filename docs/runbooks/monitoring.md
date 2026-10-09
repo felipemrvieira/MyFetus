@@ -29,7 +29,7 @@ Recomendamos o **UptimeRobot** (plano gratuito com 50 monitores e checagens a ca
 2. Clique em **Add New Monitor**.
 3. Preencha as configurações:
    - **Monitor Type**: `HTTP(s)`
-   - **Friendly Name**: `MyFetus Staging API - Healthcheck`
+   - **Friendly Name**: `MyFetus Staging API - Readiness Probe`
    - **URL (or IP)**: `https://myfetus-api-staging-3ajuqsazpa-rj.a.run.app/health`
    - **Monitoring Interval**: `5 minutes`
    - **Monitor Timeout**: `10 seconds`

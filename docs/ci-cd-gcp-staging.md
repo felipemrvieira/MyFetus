@@ -240,10 +240,10 @@ O comando de deploy deve preservar as configurações existentes do serviço, re
 ```bash
 export API_URL=https://myfetus-api-staging-3ajuqsazpa-rj.a.run.app
 
-# Liveness check público
+# Liveness Probe pública
 curl -fsS -i "${API_URL}/ping"
 
-# Readiness check público (valida conectividade com PostgreSQL)
+# Readiness Probe pública (valida conectividade com PostgreSQL)
 curl -fsS -i "${API_URL}/health"
 
 # Endpoint público de dados estáticos
@@ -255,8 +255,8 @@ curl -sS -i "${API_URL}/api/users"
 
 Resultados esperados no staging atual:
 
-- `GET /ping` retorna `200` (liveness);
-- `GET /health` retorna `200` (readiness; `status: "ok"` ou `"degraded"` se Pinecone não configurado);
+- `GET /ping` retorna `200` (Liveness Probe);
+- `GET /health` retorna `200` (Readiness Probe; `status: "ok"` ou `"degraded"` se Pinecone não configurado);
 - `GET /api/growth/chart` retorna `200` enquanto público; se a proteção JWT
   da E1-05 estiver promovida, retorna `401` sem token;
 - `GET /api/users` sem `Authorization` retorna `401`;

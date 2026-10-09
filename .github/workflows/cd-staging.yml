@@ -123,6 +123,15 @@ jobs:
             --retry 10 --retry-delay 3 --retry-all-errors \
             --output "${health_response}" \
             "${API_URL}/health"
+          node -e '
+            const fs = require("fs");
+            const res = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (res.status === "unhealthy" || !res.checks || res.checks.database?.status !== "up") {
+              console.error("Readiness probe reported failure or database down:", JSON.stringify(res));
+              process.exit(1);
+            }
+          ' "${health_response}"
+
 
           growth_response="${RUNNER_TEMP}/growth-response.json"
           growth_status="$(curl --silent --show-error --location \

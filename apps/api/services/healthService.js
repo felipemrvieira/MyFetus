@@ -18,46 +18,59 @@ function withTimeout(promise, timeoutMs) {
 
 async function runProbe(probeFn, timeoutMs = 3000) {
   const start = Date.now();
+  let status = 'up';
 
   try {
     await withTimeout(probeFn(), timeoutMs);
-    const latency_ms = Date.now() - start;
-
-    return {
-      status: 'up',
-      latency_ms,
-    };
   } catch (_err) {
-    const latency_ms = Date.now() - start;
-
-    return {
-      status: 'down',
-      latency_ms,
-    };
+    status = 'down';
   }
+
+  return {
+    status,
+    latency_ms: Date.now() - start,
+  };
+}
+
+async function checkDependency(client, methodName, callFn, timeoutMs = 3000) {
+  if (!client || typeof client[methodName] !== 'function') {
+    return { status: 'down', latency_ms: 0 };
+  }
+
+  return runProbe(callFn, timeoutMs);
 }
 
 async function checkDatabase(db, timeoutMs = 3000) {
-  if (!db || typeof db.query !== 'function') {
-    return { status: 'down', latency_ms: 0 };
-  }
-
-  return runProbe(() => db.query('SELECT 1'), timeoutMs);
+  return checkDependency(db, 'query', () => db.query('SELECT 1'), timeoutMs);
 }
 
 async function checkVectorStore(vectorStore, timeoutMs = 3000) {
-  if (!vectorStore || typeof vectorStore.describeIndexStats !== 'function') {
-    return { status: 'down', latency_ms: 0 };
-  }
-
-  return runProbe(() => vectorStore.describeIndexStats(), timeoutMs);
+  return checkDependency(vectorStore, 'describeIndexStats', () => vectorStore.describeIndexStats(), timeoutMs);
 }
 
 async function getHealthStatus(options = {}) {
-  const db = options.db !== undefined ? options.db : require('../backend');
-  const vectorStore = options.vectorStore !== undefined ? options.vectorStore : require('./vectorStoreService');
-  const timeoutMs = options.timeoutMs || 3000;
-  const version = options.version || process.env.npm_package_version || '1.0.0';
+  const resolvedOptions = typeof options === 'object' && options !== null ? options : {};
+
+  let db = resolvedOptions.db;
+  if (db === undefined) {
+    try {
+      db = require('../backend');
+    } catch (_err) {
+      db = null;
+    }
+  }
+
+  let vectorStore = resolvedOptions.vectorStore;
+  if (vectorStore === undefined) {
+    try {
+      vectorStore = require('./vectorStoreService');
+    } catch (_err) {
+      vectorStore = null;
+    }
+  }
+
+  const timeoutMs = resolvedOptions.timeoutMs || 3000;
+  const version = resolvedOptions.version || process.env.npm_package_version || '1.0.0';
 
   const [dbResult, vectorResult] = await Promise.allSettled([
     checkDatabase(db, timeoutMs),
@@ -98,14 +111,16 @@ async function getHealthStatus(options = {}) {
 }
 
 async function handleHealthRequest(req, res, options = {}) {
+  const resolvedOptions = typeof options === 'object' && options !== null ? options : {};
+
   try {
-    const { httpStatus, payload } = await getHealthStatus(options);
+    const { httpStatus, payload } = await getHealthStatus(resolvedOptions);
     return res.status(httpStatus).json(payload);
   } catch (_err) {
     return res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      version: options.version || '1.0.0',
+      version: resolvedOptions.version || '1.0.0',
       checks: {
         database: { status: 'down', latency_ms: 0 },
         vector_store: { status: 'down', latency_ms: 0 },
