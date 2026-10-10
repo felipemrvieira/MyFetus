@@ -1,7 +1,7 @@
 const assert = require('assert');
 const test = require('node:test');
 
-test('Healthcheck and Readiness Probe', async (t) => {
+test('Readiness Probe and Liveness Probe', async (t) => {
   const {
     checkDatabase,
     checkVectorStore,

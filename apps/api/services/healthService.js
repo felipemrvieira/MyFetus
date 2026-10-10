@@ -32,9 +32,25 @@ async function runProbe(probeFn, timeoutMs = 3000) {
   };
 }
 
+const STATUS = {
+  UP: 'up',
+  DOWN: 'down',
+  OK: 'ok',
+  DEGRADED: 'degraded',
+  UNHEALTHY: 'unhealthy',
+};
+
+function safeRequire(modulePath) {
+  try {
+    return require(modulePath);
+  } catch (_err) {
+    return null;
+  }
+}
+
 async function checkDependency(client, methodName, callFn, timeoutMs = 3000) {
   if (!client || typeof client[methodName] !== 'function') {
-    return { status: 'down', latency_ms: 0 };
+    return { status: STATUS.DOWN, latency_ms: 0 };
   }
 
   return runProbe(callFn, timeoutMs);
@@ -51,24 +67,8 @@ async function checkVectorStore(vectorStore, timeoutMs = 3000) {
 async function getHealthStatus(options = {}) {
   const resolvedOptions = typeof options === 'object' && options !== null ? options : {};
 
-  let db = resolvedOptions.db;
-  if (db === undefined) {
-    try {
-      db = require('../backend');
-    } catch (_err) {
-      db = null;
-    }
-  }
-
-  let vectorStore = resolvedOptions.vectorStore;
-  if (vectorStore === undefined) {
-    try {
-      vectorStore = require('./vectorStoreService');
-    } catch (_err) {
-      vectorStore = null;
-    }
-  }
-
+  const db = resolvedOptions.db !== undefined ? resolvedOptions.db : safeRequire('../backend');
+  const vectorStore = resolvedOptions.vectorStore !== undefined ? resolvedOptions.vectorStore : safeRequire('./vectorStoreService');
   const timeoutMs = resolvedOptions.timeoutMs || 3000;
   const version = resolvedOptions.version || process.env.npm_package_version || '1.0.0';
 
@@ -77,20 +77,20 @@ async function getHealthStatus(options = {}) {
     checkVectorStore(vectorStore, timeoutMs),
   ]);
 
-  const dbCheck = dbResult.status === 'fulfilled' ? dbResult.value : { status: 'down', latency_ms: timeoutMs };
-  const vectorCheck = vectorResult.status === 'fulfilled' ? vectorResult.value : { status: 'down', latency_ms: timeoutMs };
+  const dbCheck = dbResult.status === 'fulfilled' ? dbResult.value : { status: STATUS.DOWN, latency_ms: timeoutMs };
+  const vectorCheck = vectorResult.status === 'fulfilled' ? vectorResult.value : { status: STATUS.DOWN, latency_ms: timeoutMs };
 
-  const isDbUp = dbCheck.status === 'up';
-  const isVectorUp = vectorCheck.status === 'up';
+  const isDbUp = dbCheck.status === STATUS.UP;
+  const isVectorUp = vectorCheck.status === STATUS.UP;
 
-  let status = 'ok';
+  let status = STATUS.OK;
   let httpStatus = 200;
 
   if (!isDbUp) {
-    status = 'unhealthy';
+    status = STATUS.UNHEALTHY;
     httpStatus = 503;
   } else if (!isVectorUp) {
-    status = 'degraded';
+    status = STATUS.DEGRADED;
     httpStatus = 200;
   }
 
