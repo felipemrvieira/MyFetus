@@ -12,6 +12,7 @@
  *   - GET    /:id/download : Baixa um documento específico pelo ID.
  *   - GET    /:id/text : Consulta o texto extraído do documento.
  *   - POST   /:id/extract : Reprocessa a extração de texto.
+ *   - PUT    /:id/report : Salva o laudo do médico e marca o documento como revisado.
  *   - DELETE /:id      : Remove um documento pelo ID.
  *   - PUT    /:id      : Atualiza informações de um documento pelo ID.
  *
