@@ -51,7 +51,7 @@ export default function WaterTrackingScreen() {
         setWaterHistory(parsed);
         setWaterAmount(getWaterAmountForDate(parsed, localDateKey()));
       })
-      .catch(error => console.error('Erro ao carregar histórico de água:', error));
+      .catch(() => undefined);
     return () => { active = false; };
   }, [user]);
 
@@ -60,8 +60,8 @@ export default function WaterTrackingScreen() {
       if (user) {
         await setScopedItem(user.id, WATER_HISTORY_SCOPED_KEY, JSON.stringify(newHistory));
       }
-    } catch (error) {
-      console.error('Erro ao salvar histórico de água:', error);
+    } catch {
+      // erro tratado na UI; sem log para não expor dados
     }
   };
 

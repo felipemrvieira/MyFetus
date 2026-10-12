@@ -86,7 +86,6 @@ export default function InfoPacienteScreen() {
         }
 
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);
@@ -137,15 +136,12 @@ export default function InfoPacienteScreen() {
         if (!pregnancyResponse.ok) {
           throw new Error('Falha ao salvar os dados da gestação');
         }
-      } else {
-        console.warn('Gestação não iniciada: pulando salvamento de pregnancies.');
       }
 
       // 3. NAVEGANDO
       router.push(`/doctor/${patientId}/antecedentes_familiares`);
 
     } catch (error) {
-      console.error(error);
       Alert.alert('Erro ao Salvar', error instanceof Error ? error.message : 'Erro de rede');
     } finally {
       setIsSaving(false);

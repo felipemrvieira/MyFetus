@@ -143,11 +143,11 @@ async function backfillPregnantsForUsers() {
         );
     `);
     if (result?.rowCount) {
-      console.log(`🧩 Backfill: ${result.rowCount} paciente(s) adicionada(s) em pregnants.`);
+      logger.info('Backfill de gestantes concluído', { rowCount: result.rowCount });
     }
   } catch (err) {
     // Não derruba o servidor se o banco ainda não estiver pronto.
-    console.warn('⚠️ Backfill de pregnants falhou:', err?.message || err);
+    logger.warn('Falha em rotina de inicialização do schema', { code: 'BACKFILL_PREGNANTS_FAILED' });
   }
 }
 
@@ -164,7 +164,7 @@ async function ensurePregnantDocumentsReportSchema() {
         ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP;
     `);
   } catch (err) {
-    console.warn('⚠️ ensurePregnantDocumentsReportSchema falhou:', err?.message || err);
+    logger.warn('Falha em rotina de inicialização do schema', { code: 'SCHEMA_DOCUMENTS_REPORT_FAILED' });
   }
 }
 
@@ -189,7 +189,7 @@ async function ensureDoctorWorkflowSchema() {
       );
     `);
   } catch (err) {
-    console.warn('⚠️ ensureDoctorWorkflowSchema falhou:', err?.message || err);
+    logger.warn('Falha em rotina de inicialização do schema', { code: 'SCHEMA_DOCTOR_WORKFLOW_FAILED' });
   }
 }
 

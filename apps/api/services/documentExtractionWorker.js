@@ -116,7 +116,7 @@ async function processDocumentTextExtraction(documentId) {
 function enqueueDocumentTextExtraction(documentId) {
   setImmediate(() => {
     processDocumentTextExtraction(documentId).catch((err) => {
-      console.error(`Erro inesperado no worker de extração do documento ${documentId}:`, err);
+      logger.error(`Erro inesperado no worker de extração do documento`);
     });
   });
 }
@@ -152,7 +152,8 @@ function startDocumentTextExtractionWorker({
   const runCycle = () => Promise.resolve()
     .then(() => processPending(batchSize))
     .catch((err) => {
-      console.error('Erro no ciclo do worker de extração de PDFs:', err);
+      const logger = require('../utils/logger');
+      logger.error('Falha no ciclo do worker de extração', { code: 'EXTRACTION_CYCLE_FAILED' });
     });
 
   workerTimer = setIntervalFn(runCycle, intervalMs);

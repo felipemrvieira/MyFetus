@@ -88,7 +88,6 @@ export default function InfoIniciaisScreen() {
         }
 
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);
@@ -144,15 +143,12 @@ export default function InfoIniciaisScreen() {
         if (!pregnancyResponse.ok) {
           throw new Error('Falha ao salvar os dados da gestação');
         }
-      } else {
-        console.warn("Não foi possível salvar Frequência Cardíaca: ID da gestação não encontrado.");
       }
 
       // 3. NAVEGANDO
       router.push(`/doctor/${patientId}/grafico`);
 
     } catch (error) {
-      console.error(error);
       Alert.alert('Erro ao Salvar', error instanceof Error ? error.message : 'Erro de rede');
     } finally {
       setIsSaving(false);

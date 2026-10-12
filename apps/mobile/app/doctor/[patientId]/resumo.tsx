@@ -209,7 +209,6 @@ export default function ResumoScreen() {
         const data = await response.json();
         setPaciente(data);
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);
