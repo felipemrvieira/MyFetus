@@ -1,84 +1,24 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getScopedItem, setScopedItem } from './scopedStorage';
+export { calculateDPP, calculateGestationWeek } from './gestationDate';
 
 const LAST_PERIOD_KEY = '@myFetus:lastPeriod';
+const LAST_PERIOD_SCOPED_KEY = 'lastPeriod';
 
-const formatDateToISO = (date: string): string => {
-  // Se a data já estiver no formato YYYY-MM-DD, retorna ela mesma
-  if (date.includes('-')) {
-    return date;
-  }
-  
-  // Se estiver no formato DD/MM/YYYY, converte para YYYY-MM-DD
-  const [day, month, year] = date.split('/');
-  return `${year}-${month}-${day}`;
-};
-
-export const saveLastPeriod = async (date: string): Promise<void> => {
+export const saveLastPeriod = async (userId: number, date: string): Promise<void> => {
   try {
-    await AsyncStorage.setItem(LAST_PERIOD_KEY, date);
+    await setScopedItem(userId, LAST_PERIOD_SCOPED_KEY, date);
   } catch {
-    // falha de armazenamento local; sem log para não expor dados
+    throw new Error('Não foi possível salvar a data da última menstruação.');
   }
 };
 
-export const getLastPeriod = async (): Promise<string | null> => {
+export const getLastPeriod = async (userId: number): Promise<string | null> => {
   try {
-    return await AsyncStorage.getItem(LAST_PERIOD_KEY);
+    return await getScopedItem(userId, LAST_PERIOD_SCOPED_KEY, LAST_PERIOD_KEY);
   } catch {
-    return null;
+    throw new Error('Não foi possível recuperar a data da última menstruação.');
   }
 };
-
-type GestationResult = {
-  weeks: number;
-  warning?: string;
-};
-
-export const calculateGestationWeek = (lastPeriod: string): GestationResult => {
-  const today = new Date();
-  const formattedDate = formatDateToISO(lastPeriod);
-  const lastPeriodDate = new Date(formattedDate);
-  
-  
-  
-  // Calcula a diferença em milissegundos
-  const diffTime = Math.abs(today.getTime() - lastPeriodDate.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  
-  
-  // Converte dias em semanas (dividindo por 7 e arredondando para baixo)
-  const weeks = Math.floor(diffDays / 7);
-  
-  
-  
-  const result: GestationResult = {
-    weeks: weeks
-  };
-
-  if (weeks > 42) {
-    result.warning = 'Atenção: A gestação está com mais de 42 semanas. Consulte seu médico imediatamente.';
-  }
-
-  return result;
-};
-
-export const calculateDPP = (lastPeriod: string): string => {
-  const formattedDate = formatDateToISO(lastPeriod);
-  const lastPeriodDate = new Date(formattedDate);
-  
-  // Adiciona 280 dias (40 semanas) à data da última menstruação
-  const dpp = new Date(lastPeriodDate);
-  dpp.setDate(dpp.getDate() + 280);
-  
-  // Formata a data para o padrão brasileiro (DD/MM/YYYY)
-  const day = dpp.getDate().toString().padStart(2, '0');
-  const month = (dpp.getMonth() + 1).toString().padStart(2, '0');
-  const year = dpp.getFullYear();
-  
-  return `${day}/${month}/${year}`;
-};
-
 export const getBabySize = (week: number): string => {
   const sizes: { [key: number]: string } = {
     4: 'Grão de lentilha',
@@ -167,4 +107,4 @@ export const getBabyDescription = (week: number): string => {
   };
 
   return descriptions[week] || 'Seu bebê está se desenvolvendo a cada dia!';
-}; 
+};
