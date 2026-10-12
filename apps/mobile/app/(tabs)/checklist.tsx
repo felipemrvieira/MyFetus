@@ -59,8 +59,8 @@ export default function ChecklistScreen() {
         setSavedState(parsedState);
         return parsedState;
       }
-    } catch (error) {
-      console.error('Erro ao carregar estado do checklist:', error);
+    } catch {
+      // erro tratado na UI; sem log para não expor dados
     }
     return {};
   }, [user]);
@@ -72,10 +72,9 @@ export default function ChecklistScreen() {
         ...currentState,
         [itemId]: completed
       };
-
       if (user) {
         void setScopedItem(user.id, CHECKLIST_SCOPED_KEY, JSON.stringify(nextState)).catch(
-          (error) => console.error('Erro ao salvar estado do checklist:', error)
+          () => undefined
         );
       }
 

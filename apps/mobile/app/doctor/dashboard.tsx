@@ -62,15 +62,12 @@ export default function DashboardScreen() {
       // Lista de pacientes vinculados ao profissional autenticado.
       const response = await fetchWithAuth(`${apiUrl('/api/pregnants')}?_=${Date.now()}`);
       if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        console.log('Resposta de erro da API:', response.status, body);
         throw new Error(`Erro ao buscar pacientes (${response.status})`);
       }
       const data = await response.json();
       setPatients(data);
       setError(null);
     } catch (e) {
-      console.error(e);
       setError(e instanceof Error ? e.message : 'Erro de rede');
     } finally {
       setLoading(false);

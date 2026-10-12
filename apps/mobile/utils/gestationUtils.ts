@@ -19,7 +19,6 @@ export const getLastPeriod = async (userId: number): Promise<string | null> => {
     throw new Error('Não foi possível recuperar a data da última menstruação.');
   }
 };
-
 export const getBabySize = (week: number): string => {
   const sizes: { [key: number]: string } = {
     4: 'Grão de lentilha',

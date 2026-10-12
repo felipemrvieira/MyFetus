@@ -95,7 +95,6 @@ export default function IdentificacaoScreen() {
         }
 
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);
@@ -159,7 +158,6 @@ export default function IdentificacaoScreen() {
       router.push(`/doctor/${patientId}/informacoes_iniciais`);
 
     } catch (error) {
-      console.error(error);
       Alert.alert('Erro ao Salvar', error instanceof Error ? error.message : 'Erro de rede');
     } finally {
       setIsSaving(false);

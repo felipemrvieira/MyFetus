@@ -72,7 +72,6 @@ export default function InformacoesGeraisScreen() {
         setPsicossocial(data.info_gerais_psicossocial || '');
 
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);
@@ -110,7 +109,6 @@ export default function InformacoesGeraisScreen() {
       router.push(`/doctor/${patientId}/resumo`);
 
     } catch (error) {
-      console.error(error);
       Alert.alert('Erro ao Salvar', error instanceof Error ? error.message : 'Erro de rede');
     } finally {
       setIsSaving(false);

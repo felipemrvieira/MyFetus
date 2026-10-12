@@ -16,7 +16,8 @@
     "generate:dataset": "node scripts/generate_dataset.js",
     "generate:dataset:ocr": "node scripts/generate_dataset.js --with-ocr",
     "test:pdf-extractor": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/pdfExtractor.test.js --runInBand",
-    "accuracy:pdf": "node scripts/accuracy_report.js"
+    "accuracy:pdf": "node scripts/accuracy_report.js",
+    "check:logs": "node scripts/check-no-console.js"
   },
   "repository": {
     "type": "git",

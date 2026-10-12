@@ -1,5 +1,5 @@
-const vectorStore = require('./services/vectorStoreService');
-const embedding = require('./services/embeddingService');
+const vectorStore = require('../services/vectorStoreService');
+const embedding = require('../services/embeddingService');
 
 async function testConnection() {
   try {

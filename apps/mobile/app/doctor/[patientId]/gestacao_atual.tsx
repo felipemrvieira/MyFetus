@@ -119,7 +119,6 @@ export default function GestacaoAtualScreen() {
         setExantema(data.exantema_rash || false); 
 
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);
@@ -172,7 +171,6 @@ export default function GestacaoAtualScreen() {
       router.push(`/doctor/${patientId}/vacina`);
 
     } catch (error) {
-      console.error(error);
       Alert.alert('Erro ao Salvar', error instanceof Error ? error.message : 'Erro de rede');
     } finally {
       setIsSaving(false);

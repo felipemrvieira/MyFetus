@@ -1,4 +1,5 @@
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken'); 
+const logger = require('../utils/logger');
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -18,8 +19,8 @@ function authenticateToken(req, res, next) {
     req.user = payload;
     next();
   } catch (err) {
-    console.error("🚨 MOTIVO DA FALHA NO TOKEN:", err.message);
-    return res.status(401).json({ error: 'Token inválido ou expirado' });
+    logger.warn('Falha de autenticação', { code: 'AUTH_TOKEN_INVALID', reason: err.name });
+return res.status(401).json({ error: 'Token inválido ou expirado' });
   }
 }
 
