@@ -17,6 +17,7 @@ processo e o roteiro para trocar de provedor estão em [`docs/ci-cd.md`](ci-cd.m
 flowchart LR
   A[Pull request ou push em main] --> B[GitHub Actions]
   B --> C[Mobile lint]
+  B --> S[Dependency audit]
   B --> D[Testes da API]
   B --> E[Testes raiz]
   B --> F[Build Docker]
@@ -49,6 +50,7 @@ O workflow concede somente `contents: read`. Cada job roda em uma máquina limpa
 
 | Job | Diretório | Verificação |
 | --- | --- | --- |
+| `dependency-audit` | raiz e `apps/api` | `npm audit --audit-level=high --omit=optional` |
 | `mobile-lint` | `apps/mobile` | `npm run lint` |
 | `api-unit` | `apps/api` | `npm run test:ci` |
 | `root-unit` | raiz e `apps/api` | `npm run test:pdf-extractor` |
@@ -57,6 +59,12 @@ O workflow concede somente `contents: read`. Cada job roda em uma máquina limpa
 O build Docker usa `apps/api` como contexto. Isso é importante porque o `.dockerignore` exclui `node_modules`, uploads, testes e artefatos locais, evitando enviar dados ou um contexto de vários gigabytes ao daemon Docker.
 
 O job de testes da API executa a suíte determinística definida em `apps/api/package.json`, incluindo criptografia, sanitização de PII, logger, serviços clínicos e baseline de segurança. A CI não usa o banco de homologação nem credenciais reais; testes que dependem de infraestrutura devem ser executados separadamente no ambiente apropriado.
+
+O job `dependency-audit` falha quando a raiz ou a API possuem vulnerabilidades
+high/critical no lockfile. A API foi atualizada para uma resolução sem achados
+high/critical; o mobile continua sendo acompanhado pelo Dependabot em
+`apps/mobile`, enquanto o lint garante que a atualização do toolchain Expo seja
+validada separadamente.
 
 ### 2.2 Workflow `CodeQL`
 
@@ -70,6 +78,9 @@ Gatilhos:
 - agenda semanal (`23 5 * * 1`).
 
 A análise cobre JavaScript e TypeScript com `build-mode: none`. O workflow possui `contents: read` e `security-events: write`, que é o mínimo necessário para publicar os resultados no painel de segurança do GitHub.
+
+O arquivo `.github/dependabot.yml` acompanha semanalmente os lockfiles da raiz,
+da API e do mobile, além das dependências dos próprios workflows.
 
 ### 2.3 Critério para avançar
 

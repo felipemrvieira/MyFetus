@@ -7,6 +7,10 @@ const { generateMaternalAgentAnalysis } = require('../services/generationService
 
 const embeddingService = require('../services/embeddingService');
 const vectorStore = require('../services/vectorStoreService');
+const {
+  doctorCanAccessPregnant,
+  ensureCanAccessPregnant,
+} = require('../utils/clinicalAccess');
 
 async function handleMaternalAnalysis(req, res) {
   console.log("DEBUG: Variáveis de ambiente no Controller:");
@@ -20,6 +24,22 @@ async function handleMaternalAnalysis(req, res) {
       return res.status(400).json({ error: 'patientId e query são obrigatórios.' });
     }
 
+    const pregnantId = Number(patientId);
+    if (!Number.isInteger(pregnantId) || pregnantId <= 0) {
+      return res.status(400).json({ error: 'patientId inválido.' });
+    }
+
+    // Medico: o vinculo ativo e verificado antes da existencia da gestante, para que
+    // ID inexistente e ID sem vinculo tenham a mesma resposta (evita enumerar IDs).
+    // Admin acessa qualquer gestante.
+    if (req.user.role === 'medico') {
+      if (!(await doctorCanAccessPregnant(req.user.id, pregnantId))) {
+        return res.status(403).json({ error: 'Acesso negado' });
+      }
+    } else if (!(await ensureCanAccessPregnant(req, res, pregnantId))) {
+      return;
+    }
+
     console.log("DEBUG: Procurando gestante com ID:", patientId);
     // 1. Buscar os dados na base de dados (espelhando o fluxo do pregnantController)
     const [rowResult, pregnancyResult, eventsResult] = await Promise.all([
@@ -28,13 +48,13 @@ async function handleMaternalAnalysis(req, res) {
            FROM pregnants p
            JOIN users u ON p.user_id = u.id
           WHERE p.id = $1`,
-        [patientId]
+        [pregnantId]
       ),
       client.query(
         `SELECT * FROM pregnancies
           WHERE pregnant_id = $1
           ORDER BY created_at DESC LIMIT 1`,
-        [patientId]
+        [pregnantId]
       ),
       client.query(
         `SELECT pe.*
@@ -42,7 +62,7 @@ async function handleMaternalAnalysis(req, res) {
            JOIN pregnancies preg ON preg.id = pe.pregnancy_id
           WHERE preg.pregnant_id = $1
           ORDER BY pe.created_at DESC`,
-        [patientId]
+        [pregnantId]
       ),
     ]);
 

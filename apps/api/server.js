@@ -197,4 +197,5 @@ const PORT = process.env.PORT || 3000;
 //importante: use '0.0.0.0' para aceitar conexões externas dentro do container Docker
 app.listen(PORT, '0.0.0.0', () => {
   logger.startup(`🚀 Servidor rodando em http://0.0.0.0:${PORT}`);
+  startDocumentTextExtractionWorker();
 });
