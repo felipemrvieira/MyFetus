@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiUrl } from '../utils/api';
-
+import { authService } from '../services/authService';
 
 
 export default function LoginScreen() {
@@ -30,31 +30,19 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const response = await fetch(apiUrl('/api/users/login'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: email, password: senha }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || data.message || 'E-mail ou senha inválidos');
-      }
+      const data = await authService.login(email, senha);
 
       if (data.token) {
         await AsyncStorage.setItem('authToken', data.token);
       }
 
       console.log('Usuário autenticado:', data);
-     
+      
       if (data.token) {
         await AsyncStorage.setItem('authToken', data.token);
       }
       await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-     
+      
 
       // admin ou user
       if (data.user.role === 'admin' || data.user.role === 'medico') {
