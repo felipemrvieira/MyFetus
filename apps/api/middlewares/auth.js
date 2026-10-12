@@ -24,7 +24,7 @@ function authenticateToken(req, res, next) {
 }
 
 function requireRole(...allowedRoles) {
-  return (req, res, next) => {
+  const middleware = (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Usuário não autenticado' });
     }
@@ -35,6 +35,10 @@ function requireRole(...allowedRoles) {
 
     next();
   };
+
+  // Exposto para o verificador do contrato OpenAPI comparar os papeis documentados.
+  middleware.allowedRoles = Object.freeze([...allowedRoles]);
+  return middleware;
 }
 
 module.exports = {

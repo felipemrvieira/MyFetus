@@ -120,6 +120,10 @@ app.use('/api/admin/audit', auditRoutes);
 app.use('/api/growth', growthRoutes);
 app.use('/api/history', clinicalHistoryRoutes);
 
+// Documentacao OpenAPI/Swagger (E1-09): contrato em apps/api/openapi.yaml.
+const docsRoutes = require('./routes/docs');
+app.use('/docs', docsRoutes);
+
 //Rota de teste (para verificar se o backend está no ar)
 app.get('/ping', (req, res) => {
   res.json({ message: 'Backend funcionando corretamente.' });
