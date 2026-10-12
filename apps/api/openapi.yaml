@@ -40,6 +40,24 @@ tags:
   - name: Historico
 
 paths:
+  /health:
+    get:
+      tags: [Sistema]
+      summary: Verifica a prontidao das dependencias do backend
+      operationId: health
+      security: []
+      responses:
+        '200':
+          description: Dependencias disponiveis ou degradadas.
+          content:
+            application/json:
+              schema: { type: object }
+        '503':
+          description: Dependencia bloqueante indisponivel.
+          content:
+            application/json:
+              schema: { type: object }
+
   /ping:
     get:
       tags: [Sistema]

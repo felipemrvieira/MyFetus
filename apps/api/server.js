@@ -102,6 +102,7 @@ const clinicalHistoryRoutes = require('./routes/clinicalHistory');
 const { startDocumentTextExtractionWorker } = require('./workers/pdfWorker');
 const agentRoutes = require('./routes/agent');
 const auditRoutes = require('./routes/audit');
+const healthRoutes = require('./routes/health');
 
 //Prefixo /api para padronização das rotas
 app.use('/api/users', userRoutes);
@@ -124,7 +125,10 @@ app.use('/api/history', clinicalHistoryRoutes);
 const docsRoutes = require('./routes/docs');
 app.use('/docs', docsRoutes);
 
-//Rota de teste (para verificar se o backend está no ar)
+// Rota de readiness probe (para verificar conectividade ativa com dependências)
+app.use('/health', healthRoutes);
+
+// Rota de liveness probe (para verificar se o backend está no ar)
 app.get('/ping', (req, res) => {
   res.json({ message: 'Backend funcionando corretamente.' });
 });
