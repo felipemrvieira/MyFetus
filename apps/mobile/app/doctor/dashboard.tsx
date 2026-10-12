@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { apiUrl, fetchWithAuth } from '../../utils/api';
+import { api } from '../../utils/apiClient';
 import { useSession } from '@/contexts/SessionContext';
 
 // Ícones para os status
@@ -59,12 +59,8 @@ export default function DashboardScreen() {
     try {
       setLoading(true);
 
-      // Lista de pacientes vinculados ao profissional autenticado.
-      const response = await fetchWithAuth(`${apiUrl('/api/pregnants')}?_=${Date.now()}`);
-      if (!response.ok) {
-        throw new Error(`Erro ao buscar pacientes (${response.status})`);
-      }
-      const data = await response.json();
+      const response = await api.get(`/pregnants?_=${Date.now()}`);
+      const data = response.data;
       setPatients(data);
       setError(null);
     } catch (e) {

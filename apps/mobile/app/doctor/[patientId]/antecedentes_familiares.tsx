@@ -11,7 +11,7 @@ import {
   Alert, 
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { apiUrl, fetchWithAuth } from '../../../utils/api';
+import { api } from '../../../utils/apiClient';
 // --- COMPONENTE REUTILIZÁVEL 'ToggleButton'  ---
 type ToggleButtonProps = {
   label: string;
@@ -70,11 +70,8 @@ export default function AntecedentesFamiliaresScreen() {
       try {
         setLoading(true);
         // 1. LENDO OS DADOS da API
-        const response = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}`));
-        if (!response.ok) {
-          throw new Error('Não foi possível buscar os dados da paciente');
-        }
-        const data = await response.json();
+        const response = await api.get(`/pregnants/${patientId}`);
+        const data = response.data;
         
         // Dados da Tabela 'pregnants'
         setDiabetes(data.antecedentes_diabetes || false);
@@ -102,7 +99,7 @@ export default function AntecedentesFamiliaresScreen() {
     try {
       // 1. ALIMENTANDO O BD (Tabela 'pregnants')
       // Usando a rota de update de gestante
-      const response = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}`), {
+      await api.put(`/pregnants/${patientId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -114,9 +111,6 @@ export default function AntecedentesFamiliaresScreen() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Falha ao salvar os dados');
-      }
 
       // 2. NAVEGANDO
       router.push(`/doctor/${patientId}/gestacao_anterior`);

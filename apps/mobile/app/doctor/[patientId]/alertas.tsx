@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { apiUrl, fetchWithAuth } from '../../../utils/api';
+import { api } from '../../../utils/apiClient';
 
 type TrafficLevel = 'green' | 'yellow' | 'red';
 
@@ -116,9 +116,8 @@ export default function AlertasScreen() {
     const fetchAlerts = async () => {
       try {
         setLoading(true);
-        const response = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}/alerts`));
-        if (!response.ok) throw new Error('Erro ao carregar alertas');
-        const json = await response.json();
+        const response = await api.get(`/pregnants/${patientId}/alerts`);
+        const json = response.data;
         setData(json);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erro de rede');
