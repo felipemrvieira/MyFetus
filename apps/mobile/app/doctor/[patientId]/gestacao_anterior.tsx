@@ -11,7 +11,7 @@ import {
   Alert, 
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { apiUrl, fetchWithAuth } from '../../../utils/api';
+import { api } from '../../../utils/apiClient';
 import { parseInputInt } from '../../../utils/clinicalInput';
 
 // --- COMPONENTE REUTILIZÁVEL 'ToggleButton' ---
@@ -96,11 +96,8 @@ export default function GestacaoAnteriorScreen() {
     const fetchPatientData = async () => {
       try {
         setLoading(true);
-        const response = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}`));
-        if (!response.ok) {
-          throw new Error('Não foi possível buscar os dados da paciente');
-        }
-        const data = await response.json();
+        const response = await api.get(`/pregnants/${patientId}`);
+        const data = response.data;
         
         // Carregando dados da Tabela 'pregnants'
         setPartos(intToString(data.gestacao_partos));
@@ -136,7 +133,7 @@ export default function GestacaoAnteriorScreen() {
     
     try {
       // 1. ALIMENTANDO O BD (Tabela 'pregnants')
-      const response = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}`), {
+     await api.put(`/pregnants/${patientId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -157,10 +154,6 @@ export default function GestacaoAnteriorScreen() {
           gestacao_final_gestacao_anterior_1ano: finalGestacao1Ano,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error('Falha ao salvar os dados');
-      }
 
       // 2. NAVEGANDO
       router.push(`/doctor/${patientId}/antecedentes_clinicos`);

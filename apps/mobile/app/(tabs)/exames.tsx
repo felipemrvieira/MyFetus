@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { apiUrl, fetchWithAuth } from '../../utils/api';
+import { api } from '../../utils/apiClient';
 import { useSession } from '@/contexts/SessionContext';
 import { downloadDocument } from '@/utils/downloadDocument';
 
@@ -43,12 +43,8 @@ export default function ExamesTabScreen() {
       return;
     }
 
-    const res = await fetchWithAuth(apiUrl(`/api/documents/?pregnant_id=${pregnantId}`));
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data?.error || 'Não foi possível carregar os exames');
-    }
+    const response = await api.get(`/documents/?pregnant_id=${pregnantId}`);
+    const data = response.data;
 
     setDocs(Array.isArray(data) ? data : []);
   }, [pregnantId]);
@@ -132,23 +128,10 @@ export default function ExamesTabScreen() {
         );
       }
 
-      const res = await fetchWithAuth(apiUrl('/api/documents/'), {
-        method: 'POST',
-        body: form,
-      });
-
-      const raw = await res.text();
-      let data: any = {};
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        data = {};
-      }
-
-      if (!res.ok) {
-        throw new Error(data?.error || data?.message || raw || 'Falha ao enviar exame');
-      }
-
+     const response = await api.post('/documents/', form, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+  });
+const data = response.data;
       const created: PregnantDocument | undefined = data?.document;
       if (created) {
         setDocs((prev) => [created, ...prev]);

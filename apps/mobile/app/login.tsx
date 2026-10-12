@@ -11,10 +11,9 @@ import {
 } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router'; 
-import { apiUrl } from '../utils/api';
+import { api } from '../utils/apiClient';
 import { useSession } from '@/contexts/SessionContext';
 import { parseSessionUser } from '@/types/session';
-
 
 
 export default function LoginScreen() {
@@ -32,21 +31,8 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const response = await fetch(apiUrl('/api/users/login'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: email, password: senha }),
-      });
-
-      const data: unknown = await response.json();
-      const payload = data as { error?: string; message?: string; token?: unknown; user?: unknown };
-
-      if (!response.ok) {
-        throw new Error(payload.error || payload.message || 'E-mail ou senha inválidos');
-      }
-
+      const response = await api.post('/users/login', { email, password: senha });
+      const payload = response.data as { error?: string; message?: string; token?: unknown; user?: unknown };
       const user = parseSessionUser(payload.user);
       if (typeof payload.token !== 'string' || !user) {
         throw new Error('A resposta de autenticação é inválida.');
