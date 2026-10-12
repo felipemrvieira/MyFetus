@@ -10,15 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiUrl, fetchWithAuth } from '../../../utils/api';
-
-type StoredUser = {
-  id: number;
-  role: string;
-};
+import { useSession } from '@/contexts/SessionContext';
+import { downloadDocument } from '@/utils/downloadDocument';
 
 type PregnantDocument = {
   id: number;
@@ -34,31 +29,19 @@ type PregnantDocument = {
 
 export default function ExamesScreen() {
   const router = useRouter();
-  const { patientId } = useLocalSearchParams();
+  const { patientId } = useLocalSearchParams<{ patientId: string }>();
+  const { user } = useSession();
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [docs, setDocs] = useState<PregnantDocument[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [reportText, setReportText] = useState('');
-  const [doctorUserId, setDoctorUserId] = useState<number | null>(null);
+  const doctorUserId = user?.id ?? null;
 
   const selectedDoc = useMemo(
     () => (selectedDocId ? docs.find((d) => d.id === selectedDocId) : undefined),
     [docs, selectedDocId]
   );
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem('userData');
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as StoredUser;
-        if (parsed?.id) setDoctorUserId(parsed.id);
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
 
   const fetchDocs = useCallback(async () => {
     if (!patientId) return;
@@ -133,12 +116,11 @@ export default function ExamesScreen() {
     }
   }, [isSaving, selectedDocId, reportText, doctorUserId, fetchDocs]);
 
-  const openDownload = useCallback(async (docId: number) => {
-    const url = apiUrl(`/api/documents/${docId}/download`);
+  const openDownload = useCallback(async (doc: PregnantDocument) => {
     try {
-      await WebBrowser.openBrowserAsync(url);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível abrir o exame');
+      await downloadDocument(doc.id, doc.document_name, doc.document_type);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível abrir o exame');
     }
   }, []);
 
@@ -165,7 +147,7 @@ export default function ExamesScreen() {
               <View style={styles.reportEditor}>
                 <Text style={styles.selectedTitle}>{selectedDoc.document_name}</Text>
                 <Text style={styles.meta}>Enviado em: {formatDate(selectedDoc.uploaded_at)}</Text>
-                <TouchableOpacity style={styles.openButton} onPress={() => openDownload(selectedDoc.id)}>
+                <TouchableOpacity style={styles.openButton} onPress={() => openDownload(selectedDoc)}>
                   <Text style={styles.openButtonText}>Abrir exame</Text>
                 </TouchableOpacity>
 
