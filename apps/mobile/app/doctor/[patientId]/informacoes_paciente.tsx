@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { apiUrl, fetchWithAuth } from '../../../utils/api';
+import { api } from '../../../utils/apiClient';
 import { parseInputFloat, parseInputInt } from '../../../utils/clinicalInput';
 
 // --- Funções de Classificação ---
@@ -67,11 +67,8 @@ export default function InfoPacienteScreen() {
       try {
         setLoading(true);
         // 1. LENDO OS DADOS 
-        const response = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}`));
-        if (!response.ok) {
-          throw new Error('Não foi possível buscar os dados da paciente');
-        }
-        const data = await response.json();
+       const response = await api.get(`/pregnants/${patientId}`);
+        const data = response.data;
         
         // Dados da Tabela 'pregnants'
         setSistole(data.pressao_sistole ? String(data.pressao_sistole) : '');
@@ -110,33 +107,19 @@ export default function InfoPacienteScreen() {
     try {
       // --- SALVAMENTO 1: Tabela 'pregnants' ---
       // (Sistole / Diastole)
-      const pregnantResponse = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pressao_sistole: parseInputInt(sistole),
-          pressao_diastole: parseInputInt(diastole)
-        }),
+      await api.put(`/pregnants/${patientId}`, {
+        pressao_sistole: parseInputInt(sistole),
+        pressao_diastole: parseInputInt(diastole)
       });
-      if (!pregnantResponse.ok) {
-        throw new Error('Falha ao salvar os dados de pressão');
-      }
 
       // --- SALVAMENTO 2: Tabela 'pregnancies' ---
       // (Glicemia / BCF / Altura Uterina)
       if (pregnancyId) {
-        const pregnancyResponse = await fetchWithAuth(apiUrl(`/api/pregnancies/${pregnancyId}`), {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            glicemia: parseInputFloat(glicemia),
-            frequencia_cardiaca: parseInputInt(bcf),
-            altura_uterina: parseInputFloat(alturaUterina)
-          }),
+        await api.put(`/pregnancies/${pregnancyId}`, {
+          glicemia: parseInputFloat(glicemia),
+          frequencia_cardiaca: parseInputInt(bcf),
+          altura_uterina: parseInputFloat(alturaUterina)
         });
-        if (!pregnancyResponse.ok) {
-          throw new Error('Falha ao salvar os dados da gestação');
-        }
       } else {
         console.warn('Gestação não iniciada: pulando salvamento de pregnancies.');
       }

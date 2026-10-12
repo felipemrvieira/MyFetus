@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { apiUrl, fetchWithAuth } from '../../../utils/api';
+import { api } from '../../../utils/apiClient';
 import { parseInputFloat, parseInputInt } from '../../../utils/clinicalInput';
 
 // --- Funções de Cálculo  ---
@@ -69,11 +69,8 @@ export default function InfoIniciaisScreen() {
       try {
         setLoading(true);
         // 1. LENDO OS DADOS 
-        const response = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}`));
-        if (!response.ok) {
-          throw new Error('Não foi possível buscar os dados da paciente');
-        }
-        const data = await response.json();
+        const response = await api.get(`/pregnants/${patientId}`);
+        const data = response.data;
         
         // Dados da Tabela 'pregnants'
         setAltura(data.altura ? String(data.altura) : '');
@@ -118,32 +115,18 @@ export default function InfoIniciaisScreen() {
     
     try {
       // --- SALVAMENTO 1: Tabela 'pregnants' ---
-      const pregnantResponse = await fetchWithAuth(apiUrl(`/api/pregnants/${patientId}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          altura: parseInputFloat(altura),
-          peso_pregestacional: parseInputFloat(pesoPre),
-          peso_atual: parseInputFloat(pesoAtual),
-          temperatura_materna: parseInputFloat(temperatura)
-        }),
+      await api.put(`/pregnants/${patientId}`, {
+        altura: parseInputFloat(altura),
+        peso_pregestacional: parseInputFloat(pesoPre),
+        peso_atual: parseInputFloat(pesoAtual),
+        temperatura_materna: parseInputFloat(temperatura)
       });
-      if (!pregnantResponse.ok) {
-        throw new Error('Falha ao salvar os dados da gestante');
-      }
       
       // --- SALVAMENTO 2: Tabela 'pregnancies' ---
       if (pregnancyId) { // Só salva se tivermos um ID de gestação
-        const pregnancyResponse = await fetchWithAuth(apiUrl(`/api/pregnancies/${pregnancyId}`), {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            frequencia_cardiaca: parseInputInt(freqCardiaca) 
-          }),
+       await api.put(`/pregnancies/${pregnancyId}`, {
+          frequencia_cardiaca: parseInputInt(freqCardiaca) 
         });
-        if (!pregnancyResponse.ok) {
-          throw new Error('Falha ao salvar os dados da gestação');
-        }
       } else {
         console.warn("Não foi possível salvar Frequência Cardíaca: ID da gestação não encontrado.");
       }

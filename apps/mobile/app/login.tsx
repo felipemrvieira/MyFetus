@@ -12,7 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiUrl } from '../utils/api';
+import { api } from '../utils/apiClient';
 import { authService } from '../services/authService';
 
 

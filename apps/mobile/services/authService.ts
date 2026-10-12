@@ -11,6 +11,6 @@ export const authService = {
 
   // função utilitária para deslogar (apaga o token do celular)
   logout: async (): Promise<void> => {
-    await AsyncStorage.removeItem('@myfetus:token');
+    await AsyncStorage.removeItem('authToken');
   }
 };

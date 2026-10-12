@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { apiUrl } from '../../../utils/api';
+import { api } from '../../../utils/apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type TrafficLevel = 'green' | 'yellow' | 'red';
@@ -117,15 +117,8 @@ export default function AlertasScreen() {
     const fetchAlerts = async () => {
       try {
         setLoading(true);
-        const token = await AsyncStorage.getItem('authToken');
-        const response = await fetch(apiUrl(`/api/pregnants/${patientId}/alerts`), {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Erro ao carregar alertas');
-        const json = await response.json();
+        const response = await api.get(`/pregnants/${patientId}/alerts`);
+        const json = response.data;
         setData(json);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erro de rede');

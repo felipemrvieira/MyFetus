@@ -56,13 +56,14 @@ export function apiUrl(path: string): string {
  * `Authorization: Bearer <token>`. Use no lugar de `fetch` em toda chamada às
  * rotas da API — a maioria exige `authenticateToken` e responde 401 sem isso.
  */
-export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-  const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+//PARTE DO CÓDIGO NÃO UTILIZADA POR TROCAR O TRATAMENTO DE RESPOSTAS PARA O AXIOS, APAGAR POSTERIORMENTE
+// export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+//   const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
 
-  const headers = new Headers(options.headers as HeadersInit | undefined);
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
+//   const headers = new Headers(options.headers as HeadersInit | undefined);
+//   if (token && !headers.has('Authorization')) {
+//     headers.set('Authorization', `Bearer ${token}`);
+//   }
 
-  return fetch(url, { ...options, headers });
-}
+//   return fetch(url, { ...options, headers });
+// }

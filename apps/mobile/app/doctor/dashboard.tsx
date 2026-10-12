@@ -12,7 +12,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { apiUrl, fetchWithAuth } from '../../utils/api';
+import { api } from '../../utils/apiClient';
 
 // Ícones para os status
 const statusIcons: { [key: string]: any } = {
@@ -68,13 +68,9 @@ export default function DashboardScreen() {
       }
 
       // 2. Lista de Pacientes (API Melhorada)
-      const response = await fetchWithAuth(`${apiUrl('/api/pregnants')}?_=${Date.now()}`);
-      if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        console.log('Resposta de erro da API:', response.status, body);
-        throw new Error(`Erro ao buscar pacientes (${response.status})`);
-      }
-      const data = await response.json();
+      const response = await api.get(`/pregnants?_=${Date.now()}`);
+      const data = response.data;
+
       setPatients(data);
       setError(null);
     } catch (e) {

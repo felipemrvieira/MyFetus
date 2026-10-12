@@ -13,7 +13,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { apiUrl, fetchWithAuth } from '../../../utils/api';
+import { apiUrl } from '../../../utils/api';
+import { api } from '../../../utils/apiClient';
 
 type StoredUser = {
   id: number;
@@ -61,12 +62,8 @@ export default function ExamesScreen() {
   }, []);
 
   const fetchDocs = useCallback(async () => {
-    if (!patientId) return;
-    const res = await fetchWithAuth(apiUrl(`/api/documents/?pregnant_id=${patientId}`));
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data?.error || 'Não foi possível buscar os exames enviados');
-    }
+   const res = await api.get(`/documents/?pregnant_id=${patientId}`);
+    const data = res.data;
     setDocs(Array.isArray(data) ? data : []);
   }, [patientId]);
 
@@ -105,18 +102,11 @@ export default function ExamesScreen() {
 
     setIsSaving(true);
     try {
-      const res = await fetchWithAuth(apiUrl(`/api/documents/${selectedDocId}/report`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          report_comment: reportText.trim(),
-          doctor_user_id: doctorUserId,
-        }),
+      const res = await api.put(`/documents/${selectedDocId}/report`, {
+        report_comment: reportText.trim(),
+        doctor_user_id: doctorUserId,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'Falha ao salvar relatório');
-      }
+      const data = res.data;
 
       const updated = data?.document;
       if (updated?.id) {
