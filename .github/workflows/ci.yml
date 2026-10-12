@@ -37,7 +37,7 @@ jobs:
       - run: npm audit --audit-level=high --omit=optional
 
   mobile-quality:
-    name: Mobile quality
+    name: Mobile lint
     runs-on: ubuntu-latest
     defaults:
       run:
