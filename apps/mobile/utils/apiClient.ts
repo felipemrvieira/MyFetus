@@ -1,9 +1,11 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApiBaseUrl } from './api';
+import { notifyUnauthorized } from './authEvents';
+import { getStoredToken } from './sessionStorage';
 
 // 1 - Cria a base da API. Se não houver variável no .env, usa localhost.
 export const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:3000/api',
+  baseURL: `${getApiBaseUrl()}/api`,
   timeout: 15000, 
 });
 
@@ -11,12 +13,12 @@ export const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
-        const token = await AsyncStorage.getItem('authToken');
+        const token = await getStoredToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-    } catch (error) {
-      console.error('Erro ao ler token', error);
+    } catch {
+      // Falha de leitura deixa a requisição sem autenticação.
     }
     return config;
   },
@@ -28,8 +30,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response && error.response.status === 401) {
-      // colocar a lógica para deslogar o utilizador aqui
-      console.warn('Sessão expirada ou não autorizada');
+      notifyUnauthorized();
     }
     return Promise.reject(error);
   }

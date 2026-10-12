@@ -42,7 +42,6 @@ export default function GraficoScreen() {
           setAlturaUterina(Number(data.latest_pregnancy.altura_uterina) || 0);
         }
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);

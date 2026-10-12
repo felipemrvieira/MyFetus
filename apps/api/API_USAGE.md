@@ -76,6 +76,10 @@ Authorization: Bearer <token-gerado>
 
 ## Endpoints principais
 
+> O contrato completo e atualizado (todas as rotas, papéis, corpos, respostas e erros) está em
+> [`openapi.yaml`](openapi.yaml) e pode ser navegado em `http://localhost:3000/docs/` com a API rodando.
+> Os exemplos abaixo são atalhos práticos; em caso de divergência, vale o `openapi.yaml`.
+
 Todos os exemplos usam `curl`. Substitua `localhost:3000` se necessário.
 
 ### Users

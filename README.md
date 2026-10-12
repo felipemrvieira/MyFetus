@@ -554,6 +554,27 @@ URL base local:
 http://localhost:3000/api
 ```
 
+### Documentação OpenAPI (Swagger)
+
+O contrato da API fica versionado em [`apps/api/openapi.yaml`](apps/api/openapi.yaml) (OpenAPI 3.1) e é a fonte de verdade das rotas, parâmetros, corpos, respostas, autenticação e papéis. Com a API rodando:
+
+| URL | Conteúdo |
+|---|---|
+| `http://localhost:3000/docs/` | Swagger UI (somente leitura; "Try it out" desabilitado). |
+| `http://localhost:3000/docs/openapi.json` | Especificação em JSON. |
+| `http://localhost:3000/docs/openapi.yaml` | Especificação bruta (o mesmo arquivo versionado). |
+
+O `/docs` é público, não acessa o banco nem dados clínicos e tem rate limit (`DOCS_RATE_LIMIT_MAX`, padrão 300 a cada 15 min). Os exemplos do contrato são sintéticos.
+
+**Ao criar ou alterar uma rota**, atualize o `openapi.yaml` no mesmo PR. O teste `tests/openapiContract.test.js` (no `npm run test:ci`) falha quando:
+
+- uma rota do Express não está documentada (ou não está em `config/openapiAllowlist.js` com justificativa);
+- um path documentado não existe mais no Express;
+- a operação não declara `security`, ou declara diferente do `authenticateToken` da rota;
+- `x-roles` diverge do `requireRole(...)` da rota.
+
+Verificação local: `npm run docs:check` (dentro de `apps/api`).
+
 ### Rotas principais
 
 | Método | Rota | Autenticação | Descrição |
@@ -753,6 +774,7 @@ Execute dentro de `apps/api`.
 | `npm run test:generation-service` | Testa serviço de geração de respostas. |
 | `npm run test:agent-controller` | Testa autenticação, papel e vínculo (IDOR) em `/api/agent/maternal-analysis`. |
 | `node --test ./tests/growthRoutes.test.js` | Testa exigência de JWT em `/api/growth/*` e o acesso autenticado. |
+| `npm run docs:check` | Valida o `openapi.yaml`, a cobertura das rotas (auth e papéis) e o smoke test de `/docs`. |
 | `npm run test:hadlockCalculator` | Valida cálculos associados a crescimento fetal. |
 | `npm run test:clinical-history` | Valida histórico clínico e séries temporais. |
 
@@ -925,7 +947,6 @@ Itens ainda recomendados para continuidade:
 |---|---|
 | Deploy de produção | Criar ambiente separado, domínio, observabilidade e aprovação de produção. |
 | Integrações adicionais | Adicionar testes DAST, carga e integração com banco efêmero. |
-| Documentação OpenAPI | Publicar contrato formal da API com Swagger/OpenAPI. |
 | Seeds de desenvolvimento | Criar massa de dados padronizada para demos e testes locais. |
 | Cobertura mobile | Ampliar testes automatizados no aplicativo. |
 | Observabilidade | Incluir métricas, tracing e dashboards de saúde da API. |

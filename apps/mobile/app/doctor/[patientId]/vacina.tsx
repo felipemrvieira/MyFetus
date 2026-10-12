@@ -148,7 +148,6 @@ export default function VacinasScreen() {
         setCovidDose2(formatarDataParaExibir(data.vacina_covid19_2dose));
 
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);
@@ -185,7 +184,6 @@ export default function VacinasScreen() {
       router.push(`/doctor/${patientId}/historico_ultrassons`);
 
     } catch (error) {
-      console.error(error);
       Alert.alert('Erro ao Salvar', error instanceof Error ? error.message : 'Erro de rede');
     } finally {
       setIsSaving(false);

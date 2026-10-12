@@ -10,19 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
-import * as WebBrowser from 'expo-web-browser';
-import { apiUrl } from '../../utils/api';
 import { api } from '../../utils/apiClient';
-
-type StoredUser = {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  pregnant_id?: number | null;
-};
+import { useSession } from '@/contexts/SessionContext';
+import { downloadDocument } from '@/utils/downloadDocument';
 
 type PregnantDocument = {
   id: number;
@@ -39,25 +30,12 @@ type PregnantDocument = {
 };
 
 export default function ExamesTabScreen() {
+  const { user } = useSession();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [user, setUser] = useState<StoredUser | null>(null);
   const [docs, setDocs] = useState<PregnantDocument[]>([]);
 
   const pregnantId = user?.pregnant_id ?? null;
-
-  const loadUser = useCallback(async () => {
-    try {
-      const raw = await AsyncStorage.getItem('userData');
-      if (!raw) {
-        setUser(null);
-        return;
-      }
-      setUser(JSON.parse(raw));
-    } catch {
-      setUser(null);
-    }
-  }, []);
 
   const fetchDocs = useCallback(async () => {
     if (!pregnantId) {
@@ -70,17 +48,6 @@ export default function ExamesTabScreen() {
 
     setDocs(Array.isArray(data) ? data : []);
   }, [pregnantId]);
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        await loadUser();
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [loadUser]);
 
   useEffect(() => {
     if (!user) return;
@@ -180,12 +147,11 @@ const data = response.data;
     }
   }, [pregnantId, uploading, fetchDocs]);
 
-  const openDownload = useCallback(async (docId: number) => {
-    const url = apiUrl(`/api/documents/${docId}/download`);
+  const openDownload = useCallback(async (doc: PregnantDocument) => {
     try {
-      await WebBrowser.openBrowserAsync(url);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível abrir o exame');
+      await downloadDocument(doc.id, doc.document_name, doc.document_type);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível abrir o exame');
     }
   }, []);
 
@@ -247,7 +213,7 @@ const data = response.data;
               </Text>
             </View>
 
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => openDownload(item.id)}>
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => openDownload(item)}>
               <Text style={styles.secondaryButtonText}>Abrir exame</Text>
             </TouchableOpacity>
           </View>

@@ -81,7 +81,6 @@ export default function AntecedentesFamiliaresScreen() {
         setOutrosTexto(data.antecedentes_texto || ''); 
 
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);
@@ -117,7 +116,6 @@ export default function AntecedentesFamiliaresScreen() {
       router.push(`/doctor/${patientId}/gestacao_anterior`);
 
     } catch (error) {
-      console.error(error);
       Alert.alert('Erro ao Salvar', error instanceof Error ? error.message : 'Erro de rede');
     } finally {
       setIsSaving(false);

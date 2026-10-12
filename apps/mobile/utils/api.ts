@@ -1,8 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-
-const AUTH_TOKEN_KEY = 'authToken';
+import { notifyUnauthorized } from './authEvents';
+import { getStoredToken } from './sessionStorage';
 
 function stripTrailingSlash(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -56,14 +55,15 @@ export function apiUrl(path: string): string {
  * `Authorization: Bearer <token>`. Use no lugar de `fetch` em toda chamada às
  * rotas da API — a maioria exige `authenticateToken` e responde 401 sem isso.
  */
-//PARTE DO CÓDIGO NÃO UTILIZADA POR TROCAR O TRATAMENTO DE RESPOSTAS PARA O AXIOS, APAGAR POSTERIORMENTE
-// export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-//   const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = await getStoredToken();
 
-//   const headers = new Headers(options.headers as HeadersInit | undefined);
-//   if (token && !headers.has('Authorization')) {
-//     headers.set('Authorization', `Bearer ${token}`);
-//   }
+  const headers = new Headers(options.headers as HeadersInit | undefined);
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
 
-//   return fetch(url, { ...options, headers });
-// }
+  const response = await fetch(url, { ...options, headers });
+  if (response.status === 401) notifyUnauthorized();
+  return response;
+}

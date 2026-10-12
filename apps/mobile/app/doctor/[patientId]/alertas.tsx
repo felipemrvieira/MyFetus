@@ -11,7 +11,6 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../utils/apiClient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type TrafficLevel = 'green' | 'yellow' | 'red';
 
@@ -107,7 +106,7 @@ function AlertCard({ categoryKey, alert }: { categoryKey: string; alert: AlertCa
 
 export default function AlertasScreen() {
   const router = useRouter();
-  const { patientId } = useLocalSearchParams();
+  const { patientId } = useLocalSearchParams<{ patientId: string }>();
   const [data, setData] = useState<AlertsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +125,7 @@ export default function AlertasScreen() {
         setLoading(false);
       }
     };
-    fetchAlerts();
+    void fetchAlerts();
   }, [patientId]);
 
   if (loading) {

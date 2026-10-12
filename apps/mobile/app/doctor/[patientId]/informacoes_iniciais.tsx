@@ -85,7 +85,6 @@ export default function InfoIniciaisScreen() {
         }
 
       } catch (error) {
-        console.error(error);
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
       } finally {
         setLoading(false);
@@ -128,14 +127,13 @@ export default function InfoIniciaisScreen() {
           frequencia_cardiaca: parseInputInt(freqCardiaca) 
         });
       } else {
-        console.warn("Não foi possível salvar Frequência Cardíaca: ID da gestação não encontrado.");
+        // Sem uma gestação ativa, não há registro de pregnancy para atualizar.
       }
 
       // 3. NAVEGANDO
       router.push(`/doctor/${patientId}/grafico`);
 
     } catch (error) {
-      console.error(error);
       Alert.alert('Erro ao Salvar', error instanceof Error ? error.message : 'Erro de rede');
     } finally {
       setIsSaving(false);
