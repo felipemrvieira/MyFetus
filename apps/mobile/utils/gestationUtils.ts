@@ -16,16 +16,15 @@ const formatDateToISO = (date: string): string => {
 export const saveLastPeriod = async (date: string): Promise<void> => {
   try {
     await AsyncStorage.setItem(LAST_PERIOD_KEY, date);
-  } catch (error) {
-    console.error('Erro ao salvar data da última menstruação:', error);
+  } catch {
+    // falha de armazenamento local; sem log para não expor dados
   }
 };
 
 export const getLastPeriod = async (): Promise<string | null> => {
   try {
     return await AsyncStorage.getItem(LAST_PERIOD_KEY);
-  } catch (error) {
-    console.error('Erro ao recuperar data da última menstruação:', error);
+  } catch {
     return null;
   }
 };
@@ -40,21 +39,18 @@ export const calculateGestationWeek = (lastPeriod: string): GestationResult => {
   const formattedDate = formatDateToISO(lastPeriod);
   const lastPeriodDate = new Date(formattedDate);
   
-  console.log('GestationUtils - Data atual:', today.toISOString());
-  console.log('GestationUtils - Data última menstruação (original):', lastPeriod);
-  console.log('GestationUtils - Data última menstruação (formatada):', formattedDate);
-  console.log('GestationUtils - Data última menstruação (objeto Date):', lastPeriodDate.toISOString());
+  
   
   // Calcula a diferença em milissegundos
   const diffTime = Math.abs(today.getTime() - lastPeriodDate.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
-  console.log('GestationUtils - Diferença em dias:', diffDays);
+  
   
   // Converte dias em semanas (dividindo por 7 e arredondando para baixo)
   const weeks = Math.floor(diffDays / 7);
   
-  console.log('GestationUtils - Semanas calculadas:', weeks);
+  
   
   const result: GestationResult = {
     weeks: weeks

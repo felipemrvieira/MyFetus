@@ -75,9 +75,7 @@ export default function HomeScreen() {
     const loadGestationData = async () => {
       const lastPeriod = await getLastPeriod();
       if (lastPeriod) {
-        console.log('Index - Data última menstruação:', lastPeriod);
         const result = calculateGestationWeek(lastPeriod);
-        console.log('Index - Semana calculada:', result.weeks);
         setGestationWeek(result.weeks);
         setBabySize(getBabySize(result.weeks));
         setBabyDescription(getBabyDescription(result.weeks));

@@ -89,8 +89,8 @@ test.describe('Generation Service - Agente Materno', () => {
 
   test.it('deve lançar um erro se a API do Gemini falhar', async () => {
     // Silencia o console.error temporariamente para não poluir o output do teste
-    const originalConsoleError = console.error;
-    console.error = test.mock.fn();
+    const mockError = test.mock.method(logger, 'error', () => {});
+    logger.error = test.mock.fn();
 
     // Força o mock a retornar um erro neste teste específico
     mockGenerateContent.mock.mockImplementationOnce(async () => {
@@ -103,7 +103,7 @@ test.describe('Generation Service - Agente Materno', () => {
     );
 
     // Restaura o console.error
-    console.error = originalConsoleError;
+    mockError.mock.restore();
   });
 
   test.it('deve lançar erro se a GEMINI_API_KEY não estiver configurada', async () => {

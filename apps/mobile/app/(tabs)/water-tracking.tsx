@@ -41,15 +41,15 @@ export default function WaterTrackingScreen() {
       .then(history => {
         if (active && history) setWaterHistory(JSON.parse(history));
       })
-      .catch(error => console.error('Erro ao carregar histórico de água:', error));
+      .catch(() => undefined);
     return () => { active = false; };
   }, []);
 
   const saveWaterHistory = async (newHistory: WaterEntry[]) => {
     try {
       await AsyncStorage.setItem(WATER_HISTORY_KEY, JSON.stringify(newHistory));
-    } catch (error) {
-      console.error('Erro ao salvar histórico de água:', error);
+    } catch {
+      // erro tratado na UI; sem log para não expor dados
     }
   };
 

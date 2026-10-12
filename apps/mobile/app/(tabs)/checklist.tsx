@@ -55,8 +55,8 @@ export default function ChecklistScreen() {
         setSavedState(parsedState);
         return parsedState;
       }
-    } catch (error) {
-      console.error('Erro ao carregar estado do checklist:', error);
+    } catch {
+      // erro tratado na UI; sem log para não expor dados
     }
     return {};
   };
@@ -70,8 +70,8 @@ export default function ChecklistScreen() {
       };
       setSavedState(newState);
       await AsyncStorage.setItem(CHECKLIST_STATE_KEY, JSON.stringify(newState));
-    } catch (error) {
-      console.error('Erro ao salvar estado do checklist:', error);
+    } catch {
+      // erro tratado na UI; sem log para não expor dados
     }
   };
 
@@ -79,9 +79,7 @@ export default function ChecklistScreen() {
     const loadGestationData = async () => {
       const lastPeriod = await getLastPeriod();
       if (lastPeriod) {
-        console.log('Checklist - Data última menstruação:', lastPeriod);
         const result = calculateGestationWeek(lastPeriod);
-        console.log('Checklist - Semana calculada:', result.weeks);
         const trimester = result.weeks <= 13 ? 1 : result.weeks <= 26 ? 2 : 3;
         setCurrentTrimester(trimester);
 

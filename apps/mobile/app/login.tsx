@@ -48,7 +48,6 @@ export default function LoginScreen() {
         await AsyncStorage.setItem('authToken', data.token);
       }
 
-      console.log('Usuário autenticado:', data);
      
       if (data.token) {
         await AsyncStorage.setItem('authToken', data.token);
@@ -66,7 +65,6 @@ export default function LoginScreen() {
       }
 
     } catch (error) {
-      console.error('Erro no login:', error);
       Alert.alert('Erro no Login', error instanceof Error ? error.message : 'Tente novamente');
     } finally {
       setLoading(false);
