@@ -7,7 +7,10 @@ import {
   StyleSheet,
   Image,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router'; 
@@ -62,70 +65,88 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient colors={["#cce5f6", "#f8cde9"]} style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Image
-          source={require("../assets/images/myfetus-logo.png")}
-          style={styles.logoMain}
-          resizeMode="contain"
-        />
-      </View>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <View style={styles.headerContainer}>
+            <Image
+              source={require("../assets/images/myfetus-logo.png")}
+              style={styles.logoMain}
+              resizeMode="contain"
+            />
+          </View>
 
-      <View style={styles.contentContainer}>
-        <View style={styles.formBox}>
-          <Image
-            source={require("../assets/images/fetus-heart.png")}
-            style={styles.heartImage}
-            resizeMode="contain"
-          />
-          <TextInput
-            placeholder="E-mail"
-            value={email}
-            onChangeText={setEmail}
-            style={[styles.input, { marginTop: 60 }]}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholderTextColor="#f9a9a7"
-            editable={!loading}
-          />
-          <TextInput
-            placeholder="Senha"
-            value={senha}
-            onChangeText={setSenha}
-            secureTextEntry
-            style={styles.input}
-            placeholderTextColor="#f9a9a7"
-            editable={!loading}
-          />
+          <View style={styles.contentContainer}>
+            <View style={styles.formBox}>
+              <Image
+                source={require("../assets/images/fetus-heart.png")}
+                style={styles.heartImage}
+                resizeMode="contain"
+              />
+              <TextInput
+                placeholder="E-mail"
+                value={email}
+                onChangeText={setEmail}
+                style={[styles.input, { marginTop: 60 }]}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholderTextColor="#f9a9a7"
+                editable={!loading}
+              />
+              <TextInput
+                placeholder="Senha"
+                value={senha}
+                onChangeText={setSenha}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.input}
+                placeholderTextColor="#f9a9a7"
+                editable={!loading}
+              />
 
-          <TouchableOpacity 
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.loginText}>Login</Text>
-            )}
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.loginText}>Login</Text>
+                )}
+              </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleCreateAccount} disabled={loading}>
-            <Text style={styles.createAccountText}>Crie uma conta (Paciente)</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={handleCreateDoctorAccount} disabled={loading} style={{ marginTop: 10 }}>
-            <Text style={styles.doctorAccountText}>Sou médico. Cadastrar</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+              <TouchableOpacity onPress={handleCreateAccount} disabled={loading}>
+                <Text style={styles.createAccountText}>Crie uma conta (Paciente)</Text>
+              </TouchableOpacity>
 
-      <View style={styles.footerContainer}>
-        <Image
-          source={require("../assets/images/poli-upe-logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
+              <TouchableOpacity
+                onPress={handleCreateDoctorAccount}
+                disabled={loading}
+                style={{ marginTop: 10 }}
+              >
+                <Text style={styles.doctorAccountText}>Sou médico. Cadastrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.footerContainer}>
+            <Image
+              source={require("../assets/images/poli-upe-logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
@@ -135,8 +156,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
+  },
+  keyboardView: {
+    flex: 1,
+    width: "100%",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 30,
+    paddingBottom: 24,
   },
   headerContainer: {
     width: "100%",
@@ -183,6 +213,8 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: "#fff",
     borderRadius: 25,
+    color: "#374151",
+    fontSize: 16,
     paddingHorizontal: 15,
     paddingVertical: 10,
     width: "100%",
