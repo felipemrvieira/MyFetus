@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { api } from '../utils/apiClient';
 import { useSession } from '@/contexts/SessionContext';
 import { parseSessionUser } from '@/types/session';
+import { getLastPeriod } from '../utils/gestationUtils';
 
 
 export default function LoginScreen() {
@@ -45,7 +46,8 @@ export default function LoginScreen() {
       if (user.role === 'admin' || user.role === 'medico') {
         router.replace('/doctor/dashboard');
       } else {
-        router.replace('/outra-gestacao');
+        const lastPeriod = await getLastPeriod(user.id);
+        router.replace(lastPeriod ? '/(tabs)' : '/outra-gestacao');
       }
 
     } catch (error) {
