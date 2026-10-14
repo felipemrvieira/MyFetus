@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { parseSessionUser, SessionUser } from '@/types/session';
 
-const TOKEN_KEY = '@myFetus:sessionToken';
+// SecureStore keys on Android only support alphanumeric characters, '.', '-' and '_'.
+const TOKEN_KEY = 'myfetus.session-token';
 const USER_KEY = '@myFetus:sessionUser';
 const LEGACY_TOKEN_KEY = 'authToken';
 const LEGACY_USER_KEY = 'userData';
