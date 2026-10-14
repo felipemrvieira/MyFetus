@@ -1,8 +1,13 @@
 {
   "expo": {
     "name": "myFetus",
-    "slug": "myFetus",
+    "slug": "myfetus",
     "version": "1.0.0",
+    "extra": {
+      "eas": {
+        "projectId": "612e7ee8-0a67-4157-b925-7a0a9d80421f"
+      }
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myfetus",
