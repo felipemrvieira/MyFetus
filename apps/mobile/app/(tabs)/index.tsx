@@ -107,15 +107,26 @@ export default function HomeScreen() {
           <View style={styles.header}>
             <Text style={styles.title}>Meu Bebê</Text>
             <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
-            <TouchableOpacity
-              accessibilityLabel="Sair da conta"
-              accessibilityRole="button"
-              onPress={handleSignOut}
-              style={styles.signOutButton}
-            >
-              <FontAwesome name="sign-out" size={18} color="#20B2AA" />
-              <Text style={styles.signOutText}>Sair</Text>
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                accessibilityLabel="Sobre o MyFetus"
+                accessibilityRole="link"
+                onPress={() => router.push('/sobre')}
+                style={styles.signOutButton}
+              >
+                <FontAwesome name="info-circle" size={18} color="#20B2AA" />
+                <Text style={styles.signOutText}>Sobre</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityLabel="Sair da conta"
+                accessibilityRole="button"
+                onPress={handleSignOut}
+                style={styles.signOutButton}
+              >
+                <FontAwesome name="sign-out" size={18} color="#20B2AA" />
+                <Text style={styles.signOutText}>Sair</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.imageContainer}>
@@ -183,11 +194,16 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     color: '#666',
     marginTop: 5,
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   signOutButton: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 6,
     marginTop: 12,
+    minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
