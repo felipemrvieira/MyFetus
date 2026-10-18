@@ -57,6 +57,14 @@ function createAuthLimiters(options = {}) {
     options.adminReadMax ?? process.env.ADMIN_READ_RATE_LIMIT_MAX,
     100
   );
+    const apiMax = positiveInteger(
+    options.apiMax ?? process.env.API_RATE_LIMIT_MAX,
+    300
+  );
+  const ragMax = positiveInteger(
+    options.ragMax ?? process.env.RAG_RATE_LIMIT_MAX,
+    20
+  );
   function createLimiter(limit, action, resource) {
     return rateLimit(createLimiterOptions(windowMs, limit, action, resource));
   }
@@ -66,6 +74,8 @@ function createAuthLimiters(options = {}) {
     registerLimiter: createLimiter(registerMax, 'USER_REGISTER_BLOCKED', 'users'),
     adminReadLimiter: createLimiter(adminReadMax, 'ADMIN_READ_BLOCKED', 'users'),
     clinicalLimiter: rateLimit(createClinicalLimiterOptions(options)),
+    apiLimiter: createLimiter(apiMax, 'API_RATE_LIMIT_BLOCKED', 'api'),
+    ragLimiter: createLimiter(ragMax, 'RAG_RATE_LIMIT_BLOCKED', 'rag'),
   };
 }
 

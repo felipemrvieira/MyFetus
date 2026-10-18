@@ -10,6 +10,7 @@ const {
 } = require('../services/documentExtractionWorker');
 const logger = require('../utils/logger');
 const { audit } = require('../services/auditService');
+const { sendInternalError } = require('../utils/httpErrors');
 
 const ALLOWED_DOCUMENT_UPDATE_FIELDS = ['document_name', 'document_type'];
 const ENCRYPTED_STORAGE_DIR = path.resolve(
@@ -217,7 +218,7 @@ const getDocuments = async (req, res) => {
     );
     return res.json(result.rows.map(sanitizeDocument));
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -230,7 +231,7 @@ const getDocumentById = async (req, res) => {
     if (!(await ensureCanAccessPregnant(req, res, document.pregnant_id))) return;
     return res.json(sanitizeDocument(document));
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -371,7 +372,7 @@ const updateDocument = async (req, res) => {
     );
     return res.json(sanitizeDocument(result.rows[0]));
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -406,7 +407,7 @@ const getDocumentExtractedText = async (req, res) => {
       extracted_text: document.extracted_text,
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -428,7 +429,7 @@ const retryDocumentTextExtraction = async (req, res) => {
       document_id: document.id,
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
