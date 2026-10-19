@@ -57,8 +57,15 @@ function main() {
     ? path.resolve(process.env.ENV_FILE_PATH)
     : path.join(rootDir, '.env');
 
-  const result = rotateJwtSecrets(envPath, { clearPrevious, dryRun });
-  logger.info('Operação de rotação de JWT executada', { result });
+  const sanitizedResult = {
+    action: result.action,
+    dryRun: result.dryRun,
+    message: result.message,
+    newSecret: result.newSecret ? '[REDACTED]' : undefined,
+    previousSecret: result.previousSecret ? '[REDACTED]' : undefined,
+  };
+  logger.info('Operação de rotação de JWT executada', { result: sanitizedResult });
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 
   if (!dryRun && restart) {
     try {

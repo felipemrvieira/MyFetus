@@ -24,6 +24,7 @@ function authenticateToken(req, res, next) {
         const payload = jwt.verify(token, process.env.JWT_SECRET_PREVIOUS);
         req.user = payload;
         logger.info('Autenticação com JWT_SECRET_PREVIOUS realizada com sucesso', {
+          code: 'AUTH_TOKEN_PREVIOUS_KEY',
           userId: payload.id,
           role: payload.role,
         });

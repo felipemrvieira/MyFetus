@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const fs = require('fs/promises');
 const path = require('path');
 const {
@@ -397,7 +398,7 @@ async function migrateExistingData(pool, options = {}) {
     if (summary.interrupted) break;
   }
 
-  if (!summary.interrupted) {
+  if (!summary.interrupted && options.migrateOrphanFiles === true) {
     const orphanSummary = await migrateOrphanFiles(pool, options);
     summary.orphanFilesMigrated = orphanSummary.migrated;
     summary.orphanFilesScanned = orphanSummary.scanned;
