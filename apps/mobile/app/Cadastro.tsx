@@ -1,13 +1,14 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, ActivityIndicator, Modal, ScrollView } from 'react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, ActivityIndicator, ScrollView } from 'react-native';
+import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { api } from '../utils/apiClient';
+import ConsentChecklist, { useConsentPolicy } from '../components/ConsentChecklist';
 import {
   buildSignupConsents,
-  ConsentPolicy,
+  ConsentSelection,
   getApiErrorInfo,
-  parseConsentPolicy,
+  getMissingRequired,
 } from '../utils/consent';
 
 export default function Cadastro() {
@@ -18,35 +19,10 @@ export default function Cadastro() {
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
-  const [policy, setPolicy] = useState<ConsentPolicy | null>(null);
-  const [aceitouTermo, setAceitouTermo] = useState(false);
-  const [mostrarTermo, setMostrarTermo] = useState(false);
+  // E7-01.1: termos, política e consentimentos vigentes vêm da API; sem eles não é possível cadastrar.
+  const { policy, reload: carregarTermo } = useConsentPolicy('gestante');
+  const [aceites, setAceites] = useState<ConsentSelection>({});
   const router = useRouter();
-
-  // E7-01.1: o termo vigente vem da API; sem ele não é possível cadastrar.
-  const carregarTermo = useCallback(async () => {
-    try {
-      const response = await api.get('/consents/policy');
-      setPolicy(parseConsentPolicy(response.data));
-    } catch {
-      setPolicy(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    let ativo = true;
-    api
-      .get('/consents/policy')
-      .then((response) => {
-        if (ativo) setPolicy(parseConsentPolicy(response.data));
-      })
-      .catch(() => {
-        if (ativo) setPolicy(null);
-      });
-    return () => {
-      ativo = false;
-    };
-  }, []);
 
   const validarEmail = (email: string) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -102,9 +78,9 @@ export default function Cadastro() {
     }
 
     if (!policy) {
-      novosErros.termo = 'Não foi possível carregar o termo. Verifique sua conexão.';
-    } else if (!aceitouTermo) {
-      novosErros.termo = 'É preciso aceitar o termo de uso e a política de privacidade';
+      novosErros.termo = 'Não foi possível carregar os termos. Verifique sua conexão.';
+    } else if (getMissingRequired(policy, aceites).length > 0) {
+      novosErros.termo = 'Marque os aceites obrigatórios: termos de uso, política de privacidade e uso dos dados de saúde';
     }
 
     setErrors(novosErros);
@@ -144,7 +120,7 @@ export default function Cadastro() {
         email: email,
         password: senha,
         birthdate: dataFormatada,
-        consents: buildSignupConsents(policy),
+        consents: buildSignupConsents(policy, aceites),
       };
 
       await api.post('/users', dadosCadastro);
@@ -164,10 +140,10 @@ export default function Cadastro() {
       let mensagemErro = 'Erro ao criar conta';
 
       if (apiError.code === 'CONSENT_VERSION_OUTDATED') {
-        // O termo mudou enquanto a pessoa preenchia: recarrega e pede novo aceite.
-        setAceitouTermo(false);
+        // Um documento mudou enquanto a pessoa preenchia: recarrega e pede novo aceite.
+        setAceites({});
         await carregarTermo();
-        mensagemErro = 'O termo de uso foi atualizado. Leia a nova versão e aceite novamente.';
+        mensagemErro = 'Os termos foram atualizados. Leia a nova versão e aceite novamente.';
       } else if (apiError.status === 409) {
         mensagemErro = 'Este e-mail já está cadastrado';
       } else if (apiError.message) {
@@ -278,39 +254,15 @@ export default function Cadastro() {
         />
         {errors.confirmarSenha && <Text style={styles.errorText}>{errors.confirmarSenha}</Text>}
 
-        <View style={styles.termRow}>
-          <TouchableOpacity
-            accessibilityRole="checkbox"
-            aria-checked={aceitouTermo}
-            aria-disabled={!policy || loading}
-            accessibilityLabel="Li e aceito o termo de uso e a política de privacidade"
-            disabled={!policy || loading}
-            onPress={() => {
-              setAceitouTermo((value) => !value);
-              setErrors(prev => ({...prev, termo: ''}));
-            }}
-            style={styles.checkboxTouch}
-          >
-            <View style={[styles.checkbox, aceitouTermo && styles.checkboxChecked]}>
-              {aceitouTermo && <Text style={styles.checkboxMark}>✓</Text>}
-            </View>
-            <Text style={styles.termText}>
-              Li e aceito o termo de uso e a política de privacidade
-              {policy ? ` (versão ${buildSignupConsents(policy).map((item) => item.version).join(', ')})` : ''}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Ler o termo de uso e a política de privacidade"
-          disabled={!policy}
-          onPress={() => setMostrarTermo(true)}
-          style={styles.readTermButton}
-        >
-          <Text style={styles.readTermText}>
-            {policy ? 'Ler o termo' : 'Carregando o termo...'}
-          </Text>
-        </TouchableOpacity>
+        <ConsentChecklist
+          policy={policy}
+          selection={aceites}
+          disabled={loading}
+          onToggle={(purpose) => {
+            setAceites((prev) => ({ ...prev, [purpose]: !prev[purpose] }));
+            setErrors(prev => ({...prev, termo: ''}));
+          }}
+        />
         {errors.termo ? <Text style={styles.errorText}>{errors.termo}</Text> : null}
 
         <TouchableOpacity
@@ -337,36 +289,6 @@ export default function Cadastro() {
         />
       </View>
       </ScrollView>
-
-      <Modal
-        visible={mostrarTermo}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setMostrarTermo(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            {policy?.purposes.map((item) => (
-              <View key={item.purpose} style={styles.modalSection}>
-                <Text accessibilityRole="header" style={styles.modalTitle}>
-                  {item.title}
-                </Text>
-                <Text style={styles.modalVersion}>Versão {item.version}</Text>
-                <ScrollView style={styles.modalScroll}>
-                  <Text style={styles.modalText}>{item.text}</Text>
-                </ScrollView>
-              </View>
-            ))}
-            <TouchableOpacity
-              accessibilityRole="button"
-              onPress={() => setMostrarTermo(false)}
-              style={styles.modalCloseButton}
-            >
-              <Text style={styles.loginText}>Fechar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </LinearGradient>
   );
 }
@@ -462,92 +384,5 @@ const styles = StyleSheet.create({
   logo: {
     width: 240,
     height: 80
-  },
-  termRow: {
-    width: "100%",
-    marginTop: 5,
-  },
-  checkboxTouch: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    minHeight: 44,
-  },
-  checkbox: {
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderColor: "#20B2AA",
-    borderRadius: 6,
-    borderWidth: 2,
-    height: 24,
-    justifyContent: "center",
-    width: 24,
-  },
-  checkboxChecked: {
-    backgroundColor: "#20B2AA",
-  },
-  checkboxMark: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  termText: {
-    color: "#444",
-    flex: 1,
-    fontSize: 13,
-  },
-  readTermButton: {
-    alignSelf: "flex-start",
-    justifyContent: "center",
-    marginBottom: 10,
-    marginLeft: 34,
-    minHeight: 44,
-  },
-  readTermText: {
-    color: "#20B2AA",
-    fontWeight: "bold",
-    textDecorationLine: "underline",
-  },
-  modalBackdrop: {
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
-    flex: 1,
-    justifyContent: "center",
-    padding: 20,
-  },
-  modalCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    maxHeight: "85%",
-    maxWidth: 600,
-    padding: 20,
-    width: "100%",
-  },
-  modalSection: {
-    flexShrink: 1,
-  },
-  modalTitle: {
-    color: "#b34d7a",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  modalVersion: {
-    color: "#555",
-    marginBottom: 10,
-    marginTop: 2,
-  },
-  modalScroll: {
-    flexGrow: 0,
-  },
-  modalText: {
-    color: "#333",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  modalCloseButton: {
-    alignItems: "center",
-    backgroundColor: "#20B2AA",
-    borderRadius: 25,
-    marginTop: 16,
-    paddingVertical: 12,
   },
 });

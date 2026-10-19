@@ -100,8 +100,10 @@ paths:
               password: senha-sintetica-123
               birthdate: '1995-04-12'
               consents:
-                - purpose: termos_e_privacidade
-                  version: 0.1-rascunho
+                - { purpose: termos_de_uso_gestante, version: 0.1-rascunho }
+                - { purpose: politica_de_privacidade, version: 0.1-rascunho }
+                - { purpose: tratamento_dados_saude, version: 0.1-rascunho }
+                - { purpose: uso_ia, version: 0.1-rascunho }
       responses:
         '201':
           description: Usuario criado (sem senha nem hashes).
@@ -253,16 +255,30 @@ paths:
   /api/consents/policy:
     get:
       tags: [Consentimento]
-      summary: Finalidades, versoes vigentes e texto do termo
+      summary: Finalidades, versoes vigentes e textos dos documentos
       operationId: getConsentPolicy
       security: []
-      description: Publico; usado na tela de cadastro para exibir o termo e enviar a versao aceita.
+      description: |
+        Publico; usado nas telas de cadastro. Cada finalidade tem um tipo: `acceptance` (aceite dos
+        Termos de Uso), `acknowledgment` (ciencia da Politica de Privacidade) ou `consent`
+        (consentimento; `highlighted` = destacado). Finalidades com `required: false` sao opcionais.
+      parameters:
+        - name: role
+          in: query
+          required: false
+          schema: { type: string, enum: [gestante, medico] }
+          description: Filtra as finalidades do perfil.
       responses:
         '200':
           description: Politica de consentimento vigente.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ConsentPolicy' }
+        '400':
+          description: Perfil invalido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
 
   /api/consents/me:
     get:
@@ -288,8 +304,10 @@ paths:
       operationId: recordMyConsent
       security: [{ bearerAuth: [] }]
       description: |
-        Cada decisao gera um novo registro (tabela append-only): revogar nao apaga o aceite anterior.
-        Aceite e recusa exigem a versao vigente; a revogacao vale para a finalidade.
+        Cada decisao gera um novo registro; revogar nao altera o aceite anterior (registros protegidos
+        durante o periodo de retencao). Aceite e recusa exigem a versao vigente; a revogacao vale para
+        a finalidade. Decisoes por tipo: `acceptance` aceita/recusa, `acknowledgment` so aceita,
+        `consent` aceita/recusa/revoga. So e possivel decidir finalidades do proprio perfil.
         O titular e sempre o usuario do token (nao ha ID de usuario no corpo).
       requestBody:
         required: true
@@ -303,7 +321,7 @@ paths:
                 decision: { type: string, enum: [accepted, refused, revoked] }
                 version: { type: string, description: Obrigatoria para accepted e refused. }
             example:
-              purpose: termos_e_privacidade
+              purpose: uso_ia
               decision: revoked
       responses:
         '201':
@@ -343,7 +361,10 @@ paths:
       summary: Cadastra um medico (CRM/UF)
       operationId: createDoctor
       security: []
-      description: Rota publica com rate limit de cadastro (`REGISTER_RATE_LIMIT_MAX`).
+      description: |
+        Rota publica com rate limit de cadastro (`REGISTER_RATE_LIMIT_MAX`). Exige o aceite dos Termos
+        de Uso do perfil medico e a ciencia da Politica de Privacidade (`consents`), gravados na mesma
+        transacao. O aceite do medico nao substitui a autorizacao da gestante sobre os dados dela.
       requestBody:
         required: true
         content:
@@ -357,6 +378,9 @@ paths:
               crm: '000000'
               crm_estado: PE
               especialidade: Obstetricia
+              consents:
+                - { purpose: termos_de_uso_medico, version: 0.1-rascunho }
+                - { purpose: politica_de_privacidade, version: 0.1-rascunho }
       responses:
         '201':
           description: Medico criado.
@@ -1702,7 +1726,9 @@ components:
       type: object
       required: [purpose, version]
       properties:
-        purpose: { type: string, examples: [termos_e_privacidade] }
+        purpose:
+          type: string
+          enum: [termos_de_uso_gestante, termos_de_uso_medico, politica_de_privacidade, tratamento_dados_saude, uso_ia, pesquisa_usabilidade]
         version: { type: string, examples: [0.1-rascunho] }
     ConsentError:
       type: object
@@ -1720,9 +1746,13 @@ components:
             properties:
               purpose: { type: string }
               title: { type: string }
-              version: { type: string }
+              kind: { type: string, enum: [acceptance, acknowledgment, consent] }
+              roles: { type: array, items: { type: string, enum: [gestante, medico] } }
               required: { type: boolean }
-              text: { type: string, description: Texto do termo (rascunho ate aprovacao do P.O.). }
+              highlighted: { type: boolean }
+              version: { type: string }
+              document_date: { type: string, format: date }
+              text: { type: string, description: Texto do documento (rascunho ate a aprovacao da gestao). }
     ConsentStatus:
       type: object
       properties:
@@ -1738,6 +1768,7 @@ components:
             type: object
             properties:
               purpose: { type: string }
+              kind: { type: string, enum: [acceptance, acknowledgment, consent] }
               current_version: { type: string }
               required: { type: boolean }
               status: { type: string, enum: [pending, accepted, outdated, refused, revoked] }
@@ -1745,8 +1776,12 @@ components:
               decided_at: { type: [string, 'null'], format: date-time }
     CreateDoctorRequest:
       type: object
-      required: [name, email, password, birthdate, crm, crm_estado]
+      required: [name, email, password, birthdate, crm, crm_estado, consents]
       properties:
+        consents:
+          type: array
+          description: Termos de Uso do medico e ciencia da Politica de Privacidade, na versao vigente.
+          items: { $ref: '#/components/schemas/ConsentReference' }
         name: { type: string }
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }

@@ -1,15 +1,20 @@
 /**
  * Consentimento versionado (E7-01.1).
  *
- * A tabela `consents` é append-only: o estado de uma finalidade é sempre o
- * registro mais recente do usuário. Funções recebem o cliente do banco para
- * permitir uso dentro de transações (ex.: cadastro).
+ * Cada aceite, recusa ou revogação é um novo registro em `consents`; o estado
+ * de uma finalidade é sempre o registro mais recente do usuário. Os registros
+ * ficam protegidos contra alteração durante o período de retenção (ver
+ * migration_consents.sql e scripts/consent-retention.js).
+ *
+ * Funções recebem o cliente do banco para permitir uso dentro de transações.
  */
 const {
   CONSENT_DECISIONS,
+  CONSENT_KINDS,
   CONSENT_PURPOSES,
   CONSENT_REQUIRED_ROLES,
   getPurpose,
+  getPurposesForRole,
   getRequiredPurposes,
 } = require('../config/consentPolicy');
 
@@ -22,65 +27,73 @@ class ConsentValidationError extends Error {
   }
 }
 
-function getPolicy() {
+const outdatedVersionError = () => new ConsentValidationError(
+  'Versão do documento desatualizada; recarregue a versão vigente',
+  { status: 409, code: 'CONSENT_VERSION_OUTDATED' }
+);
+
+function describePurpose(purpose, config) {
   return {
-    purposes: Object.entries(CONSENT_PURPOSES).map(([purpose, config]) => ({
-      purpose,
-      title: config.title,
-      version: config.version,
-      required: config.required,
-      text: config.text,
-    })),
+    purpose,
+    title: config.title,
+    kind: config.kind,
+    roles: [...config.roles],
+    required: config.required,
+    highlighted: Boolean(config.highlighted),
+    version: config.version,
+    document_date: config.documentDate,
+    text: config.text,
   };
 }
 
-/**
- * Valida o aceite enviado no cadastro: todas as finalidades obrigatórias, na
- * versão vigente. Retorna a lista normalizada para gravar.
- */
-function validateSignupConsents(consents) {
-  const required = getRequiredPurposes();
-  const sent = Array.isArray(consents) ? consents : [];
+function getPolicy(role) {
+  const entries = role
+    ? getPurposesForRole(role).map(({ purpose }) => [purpose, CONSENT_PURPOSES[purpose]])
+    : Object.entries(CONSENT_PURPOSES);
+  return { purposes: entries.map(([purpose, config]) => describePurpose(purpose, config)) };
+}
 
-  const missing = required.filter(
-    ({ purpose }) => !sent.some((item) => item && item.purpose === purpose)
+/**
+ * Valida as autorizações enviadas no cadastro de um papel: todas as obrigatórias
+ * na versão vigente; as opcionais enviadas também precisam ser válidas.
+ * Retorna a lista normalizada ({ purpose, version }) a gravar como aceita.
+ */
+function validateSignupConsents(consents, role) {
+  const sent = Array.isArray(consents) ? consents.filter(Boolean) : [];
+  const allowed = new Map(getPurposesForRole(role).map((item) => [item.purpose, item]));
+
+  for (const item of sent) {
+    const config = allowed.get(item.purpose);
+    if (!config) {
+      throw new ConsentValidationError('Finalidade de consentimento inválida para este perfil');
+    }
+    if (item.version !== config.version) throw outdatedVersionError();
+  }
+
+  const missing = getRequiredPurposes(role).filter(
+    ({ purpose }) => !sent.some((item) => item.purpose === purpose)
   );
   if (missing.length > 0) {
     throw new ConsentValidationError(
-      'Aceite do termo de uso e da política de privacidade é obrigatório',
+      'Aceite dos termos de uso, ciência da política de privacidade e consentimentos obrigatórios são necessários',
       { code: 'CONSENT_REQUIRED' }
     );
   }
 
-  const outdated = required.filter(({ purpose, version }) => {
-    const item = sent.find((candidate) => candidate && candidate.purpose === purpose);
-    return item.version !== version;
-  });
-  if (outdated.length > 0) {
-    throw new ConsentValidationError(
-      'Versão do termo desatualizada; recarregue o termo vigente',
-      { status: 409, code: 'CONSENT_VERSION_OUTDATED' }
-    );
-  }
-
-  return required;
+  const unique = new Map(sent.map((item) => [item.purpose, allowed.get(item.purpose).version]));
+  return [...unique].map(([purpose, version]) => ({ purpose, version }));
 }
 
-function normalizeDecision({ purpose, decision, version }) {
+function normalizeDecision({ purpose, decision, version }, role) {
   const config = getPurpose(purpose);
-  if (!config) {
-    throw new ConsentValidationError('Finalidade de consentimento desconhecida');
+  if (!config || !config.roles.includes(role)) {
+    throw new ConsentValidationError('Finalidade de consentimento inválida para este perfil');
   }
-  if (!CONSENT_DECISIONS.includes(decision)) {
-    throw new ConsentValidationError('decision deve ser accepted, refused ou revoked');
+  if (!CONSENT_DECISIONS.includes(decision) || !CONSENT_KINDS[config.kind].includes(decision)) {
+    throw new ConsentValidationError(`Decisão "${decision}" não se aplica a esta finalidade`);
   }
   // Revogação vale para a finalidade; aceite/recusa precisam citar a versão vigente.
-  if (decision !== 'revoked' && version !== config.version) {
-    throw new ConsentValidationError(
-      'Versão do termo desatualizada; recarregue o termo vigente',
-      { status: 409, code: 'CONSENT_VERSION_OUTDATED' }
-    );
-  }
+  if (decision !== 'revoked' && version !== config.version) throw outdatedVersionError();
   return { purpose, decision, version: config.version };
 }
 
@@ -112,18 +125,19 @@ function describeStatus(config, latest) {
 }
 
 /**
- * Status de consentimento do usuário. `required` indica se o papel exige
- * aceite vigente e ainda há finalidade obrigatória pendente.
+ * Status de consentimento do usuário nas finalidades do seu papel. `required`
+ * indica se o papel exige aceite vigente e ainda há finalidade obrigatória pendente.
  */
 async function getConsentStatus(db, { userId, role }) {
   const latestByPurpose = new Map(
     (await getLatestDecisions(db, userId)).map((row) => [row.purpose, row])
   );
 
-  const purposes = Object.entries(CONSENT_PURPOSES).map(([purpose, config]) => {
-    const latest = latestByPurpose.get(purpose) || null;
+  const purposes = getPurposesForRole(role).map((config) => {
+    const latest = latestByPurpose.get(config.purpose) || null;
     return {
-      purpose,
+      purpose: config.purpose,
+      kind: config.kind,
       current_version: config.version,
       required: config.required,
       status: describeStatus(config, latest),

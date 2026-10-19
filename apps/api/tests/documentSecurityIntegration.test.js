@@ -61,7 +61,7 @@ async function createTestUser(email) {
       email,
       password: 'StrongPass123!',
       birthdate: '1991-04-15',
-      consents: getRequiredPurposes(),
+      consents: getRequiredPurposes('gestante'),
     },
   }, response);
   assert.strictEqual(response.statusCode, 201);

@@ -581,14 +581,14 @@ Verificação local: `npm run docs:check` (dentro de `apps/api`).
 |---|---|---|---|
 | `POST` | `/api/users` | Não | Cria usuário (exige aceite do termo vigente em `consents`). |
 | `POST` | `/api/users/login` | Não | Realiza login, retorna JWT e termos pendentes (`consent`). |
-| `GET` | `/api/consents/policy` | Não | Finalidades, versões vigentes e texto do termo. |
+| `GET` | `/api/consents/policy` | Não | Finalidades (termos, política, consentimentos), versões e textos por perfil. |
 | `GET` | `/api/consents/me` | JWT | Status de consentimento do usuário autenticado. |
 | `POST` | `/api/consents` | JWT | Registra aceite, recusa ou revogação do próprio usuário. |
 | `GET` | `/api/users` | Admin | Lista usuários. |
 | `GET` | `/api/users/:id` | JWT | Consulta usuário por ID. |
 | `PUT` | `/api/users/:id` | JWT | Atualiza usuário. |
 | `DELETE` | `/api/users/:id` | Admin | Remove usuário. |
-| `POST` | `/api/doctors` | Não | Cria conta médica. |
+| `POST` | `/api/doctors` | Não | Cria conta médica (exige termos do médico e ciência da política em `consents`). |
 | `GET` | `/api/pregnants` | Médico/Admin | Lista gestantes. |
 | `POST` | `/api/pregnants` | Gestante/Admin | Cria registro de gestante. |
 | `GET` | `/api/pregnants/:id` | Própria gestante/Médico vinculado/Admin | Consulta gestante. |

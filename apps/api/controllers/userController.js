@@ -140,7 +140,7 @@ const createUser = async (req, res) => {
   // E7-01.1: sem aceite da versão vigente do termo, a conta não é criada.
   let acceptedConsents;
   try {
-    acceptedConsents = validateSignupConsents(consents);
+    acceptedConsents = validateSignupConsents(consents, PUBLIC_REGISTRATION_ROLE);
   } catch (error) {
     if (!(error instanceof ConsentValidationError)) throw error;
     audit(req, {

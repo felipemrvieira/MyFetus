@@ -47,7 +47,7 @@ async function run() {
         email,
         password,
         birthdate: '1992-08-17',
-        consents: getRequiredPurposes(),
+        consents: getRequiredPurposes('gestante'),
       },
     }, createResponseMock);
 

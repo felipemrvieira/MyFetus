@@ -23,7 +23,16 @@ function sendConsentError(res, error, context) {
   return res.status(500).json({ error: 'Erro ao processar consentimento' });
 }
 
-const getConsentPolicy = (req, res) => res.json(getPolicy());
+const POLICY_ROLES = Object.freeze(['gestante', 'medico']);
+
+// ?role=gestante|medico filtra as finalidades do perfil; sem filtro, devolve todas.
+const getConsentPolicy = (req, res) => {
+  const role = req.query?.role;
+  if (role !== undefined && !POLICY_ROLES.includes(role)) {
+    return res.status(400).json({ error: 'role deve ser gestante ou medico', code: 'CONSENT_INVALID' });
+  }
+  return res.json(getPolicy(role));
+};
 
 const getMyConsents = async (req, res) => {
   try {
@@ -37,7 +46,7 @@ const getMyConsents = async (req, res) => {
 // O titular é sempre o usuário do token: não há ID de usuário no corpo.
 const recordMyConsent = async (req, res) => {
   try {
-    const decision = normalizeDecision(req.body || {});
+    const decision = normalizeDecision(req.body || {}, req.user.role);
     const { ip_address: ipAddress, user_agent: userAgent } = buildAuditEntry(req, {});
     const record = await recordDecision(client, {
       userId: req.user.id,

@@ -1,14 +1,23 @@
 /**
  * Consentimento no cadastro (E7-01.1).
  *
- * A política (finalidades, versões e texto) vem da API em GET /consents/policy;
- * o app envia de volta exatamente as versões vigentes que a pessoa aceitou.
+ * A política (finalidades, tipos, versões e textos) vem da API em
+ * GET /consents/policy?role=<perfil>; o app envia de volta as versões vigentes
+ * das finalidades obrigatórias e das opcionais que a pessoa autorizou.
+ *
+ * Tipos: acceptance = aceite dos Termos de Uso; acknowledgment = ciência da
+ * Política de Privacidade; consent = consentimento (opcional quando required=false).
  */
+export type ConsentKind = 'acceptance' | 'acknowledgment' | 'consent';
+
 export type ConsentPurpose = {
   purpose: string;
   title: string;
-  version: string;
+  kind: ConsentKind;
   required: boolean;
+  highlighted: boolean;
+  version: string;
+  document_date: string;
   text: string;
 };
 
@@ -21,6 +30,10 @@ export type ConsentReference = {
   version: string;
 };
 
+export type ConsentSelection = Record<string, boolean>;
+
+const KINDS: ConsentKind[] = ['acceptance', 'acknowledgment', 'consent'];
+
 export function parseConsentPolicy(data: unknown): ConsentPolicy | null {
   const purposes = (data as { purposes?: unknown })?.purposes;
   if (!Array.isArray(purposes) || purposes.length === 0) return null;
@@ -29,17 +42,38 @@ export function parseConsentPolicy(data: unknown): ConsentPolicy | null {
     (item) =>
       item &&
       typeof item.purpose === 'string' &&
-      typeof item.version === 'string' &&
       typeof item.title === 'string' &&
-      typeof item.text === 'string' &&
-      typeof item.required === 'boolean'
+      KINDS.includes(item.kind) &&
+      typeof item.required === 'boolean' &&
+      typeof item.version === 'string' &&
+      typeof item.text === 'string'
   );
-  return valid ? { purposes: purposes as ConsentPurpose[] } : null;
+  if (!valid) return null;
+
+  return {
+    purposes: purposes.map((item) => ({
+      ...item,
+      highlighted: Boolean(item.highlighted),
+      document_date: typeof item.document_date === 'string' ? item.document_date : '',
+    })),
+  };
 }
 
-export function buildSignupConsents(policy: ConsentPolicy): ConsentReference[] {
+// Rótulo do checkbox conforme o tipo: aceite, ciência ou consentimento (opcional).
+export function getConsentLabel(item: ConsentPurpose): string {
+  if (item.kind === 'acceptance') return `Li e aceito os ${item.title}`;
+  if (item.kind === 'acknowledgment') return `Declaro que li e estou ciente da ${item.title}`;
+  return item.required ? item.title : `${item.title} (opcional)`;
+}
+
+export function getMissingRequired(policy: ConsentPolicy, selection: ConsentSelection): ConsentPurpose[] {
+  return policy.purposes.filter((item) => item.required && !selection[item.purpose]);
+}
+
+// Envia as obrigatórias e as opcionais marcadas, sempre na versão vigente recebida.
+export function buildSignupConsents(policy: ConsentPolicy, selection: ConsentSelection): ConsentReference[] {
   return policy.purposes
-    .filter((item) => item.required)
+    .filter((item) => item.required || selection[item.purpose])
     .map(({ purpose, version }) => ({ purpose, version }));
 }
 
