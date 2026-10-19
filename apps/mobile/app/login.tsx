@@ -116,6 +116,15 @@ export default function LoginScreen() {
           <TouchableOpacity onPress={handleCreateDoctorAccount} disabled={loading} style={{ marginTop: 10 }}>
             <Text style={styles.doctorAccountText}>Sou médico. Cadastrar</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            accessibilityRole="link"
+            accessibilityLabel="Sobre o MyFetus"
+            onPress={() => router.push('/sobre')}
+            style={styles.aboutLink}
+          >
+            <Text style={styles.aboutText}>Sobre o MyFetus</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -215,6 +224,16 @@ const styles = StyleSheet.create({
     color: "#b34d7a",
     fontWeight: "bold",
     fontSize: 14,
+  },
+  aboutLink: {
+    justifyContent: "center",
+    marginTop: 10,
+    minHeight: 44,
+  },
+  aboutText: {
+    color: "#555",
+    fontSize: 14,
+    textDecorationLine: "underline",
   },
   logo: {
     width: 240,
