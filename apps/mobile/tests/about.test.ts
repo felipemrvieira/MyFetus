@@ -7,7 +7,13 @@ import {
   ABOUT_IS_DRAFT,
   ABOUT_SECTIONS,
 } from '../constants/aboutContent';
-import { getAppVersionInfo } from '../utils/appVersion';
+import {
+  ACADEMIC_CYCLE,
+  formatBuildDate,
+  getAppVersionInfo,
+  getEnvironmentLabel,
+  TEST_ENVIRONMENT_LABEL,
+} from '../utils/appVersion';
 
 const root = join(__dirname, '..');
 const appJson = JSON.parse(readFileSync(join(root, 'app.json'), 'utf8'));
@@ -42,21 +48,55 @@ describe('versão exibida na tela Sobre', () => {
       label: 'não identificada',
     });
   });
+
+  it('identifica o ambiente de testes fora de produção', () => {
+    assert.equal(getEnvironmentLabel(undefined), TEST_ENVIRONMENT_LABEL);
+    assert.equal(getEnvironmentLabel('preview'), TEST_ENVIRONMENT_LABEL);
+    assert.equal(getEnvironmentLabel('production'), null);
+    assert.equal(TEST_ENVIRONMENT_LABEL, 'Ambiente de testes — uso acadêmico');
+  });
+
+  it('mostra a data da compilação só quando o build informa uma data válida', () => {
+    assert.equal(formatBuildDate('2026-10-19T12:00:00Z'), '19/10/2026');
+    assert.equal(formatBuildDate(undefined), null);
+    assert.equal(formatBuildDate('ontem'), null);
+    assert.match(aboutScreenSource, /Data da compilação/);
+  });
+
+  it('exibe o ciclo acadêmico separado da versão do aplicativo', () => {
+    assert.equal(ACADEMIC_CYCLE, '2026.2');
+    assert.match(aboutScreenSource, /Versão do aplicativo: \{versionInfo\.label\}/);
+    assert.match(aboutScreenSource, /Ciclo acadêmico: \{ACADEMIC_CYCLE\}/);
+  });
 });
 
 describe('conteúdo da tela Sobre', () => {
-  it('cobre projeto, aviso médico, limitações, equipe, contato e termos', () => {
+  it('usa os textos aprovados pela gestão', () => {
     const ids = ABOUT_SECTIONS.map((section) => section.id);
-    assert.deepEqual(ids, ['projeto', 'nao-substitui', 'limitacoes', 'equipe', 'contato', 'termos']);
-    assert.match(allText, /acadêmico/);
-    assert.match(allText, /não substituem consulta/);
-    assert.match(allText, /urgência/);
-    assert.match(allText, /dados sintéticos/);
+    assert.deepEqual(ids, ['limitacoes', 'seguranca', 'equipe', 'contato', 'termos']);
+    assert.match(allText, /destina-se a testes com dados fictícios/);
+    assert.match(allText, /não substitui consultas, o acompanhamento pré-natal/);
+    assert.match(allText, /A ausência de alertas não garante ausência de risco\./);
+    assert.match(allText, /ligue 192 — SAMU/);
+    assert.match(allText, /Não aguarde uma resposta do aplicativo/);
+    assert.match(allText, /Equipe MyFetus — ciclo 2026\.2/);
   });
 
-  it('fica marcado como rascunho enquanto o P.O. não aprova', () => {
+  it('não publica lista de sinais de alarme sem revisão clínica', () => {
+    for (const sign of [/sangramento/i, /convuls/i, /perda de l[ií]quido/i, /vis[aã]o turva/i, /movimentos do beb/i]) {
+      assert.doesNotMatch(allText, sign);
+    }
+  });
+
+  it('não cita instituição nem pessoas sem confirmação', () => {
+    for (const name of [/POLI/, /UPE/, /Rui/, /N[óo]brega/]) {
+      assert.doesNotMatch(allText, name);
+    }
+  });
+
+  it('mantém marcado o que ainda está em definição (contato e termos)', () => {
     assert.equal(ABOUT_IS_DRAFT, true);
-    assert.match(ABOUT_DRAFT_NOTICE, /aprovação/);
+    assert.match(ABOUT_DRAFT_NOTICE, /contato oficial/);
     assert.match(aboutScreenSource, /ABOUT_IS_DRAFT &&/);
   });
 

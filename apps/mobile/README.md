@@ -92,11 +92,14 @@ Ao selecionar uma paciente, o médico entra num fluxo de formulários sequenciai
 * Mostra o histórico completo de exames e vacinas.
 
 ### 5. Sobre o MyFetus (`sobre.tsx`, E7-09)
-* Disponível **com e sem login**: a rota fica fora dos `Stack.Protected` em `app/_layout.tsx`. Acesso pelo link "Sobre o MyFetus" no login, pelo botão "Sobre" na home da gestante e pelo ícone de informação no dashboard do médico.
-* Mostra o projeto acadêmico, o aviso de que o app não substitui atendimento médico, as limitações, a equipe, o contato, os termos e a versão.
-* **Versão:** lida de `Constants.expoConfig` (`utils/appVersion.ts`). Com `appVersionSource: "local"` no `eas.json`, coincide com a versão e o build do artefato instalado.
-* **Textos:** ficam todos em `constants/aboutContent.ts` e estão marcados como **rascunho** (`ABOUT_IS_DRAFT`) até a aprovação do P.O. Pendências: nome da equipe e da instituição, contato oficial, versão/ambiente/data a exibir, limitações e avisos legais, links de termos e política de privacidade (dependem da E7-01) e liberação da tela sem login.
-* A tela não exibe nomes de integrantes, URL da API, ambiente, IDs de build ou segredos. Os testes em `tests/about.test.ts` verificam isso.
+* Disponível **com e sem login** (aprovado pela gestão): a rota fica fora dos `Stack.Protected` em `app/_layout.tsx`. Acesso pelo link "Sobre o MyFetus" no login, pelo botão "Sobre" na home da gestante e pelo ícone de informação no dashboard do médico.
+* **Textos aprovados** (19/10/2026), em `constants/aboutContent.ts`: limitações e avisos, orientação de segurança (192 — SAMU) e "Equipe MyFetus — ciclo 2026.2". Uma lista de sinais de alarme só pode ser publicada após revisão clínica.
+* **Versão:** a versão instalada, lida de `Constants.expoConfig` (`utils/appVersion.ts`); com `appVersionSource: "local"` no `eas.json`, coincide com o artefato. O ciclo "2026.2" aparece separado da versão.
+* **Ambiente e data do build** (variáveis opcionais do build EAS):
+  * `EXPO_PUBLIC_APP_ENVIRONMENT`: qualquer valor diferente de `production` (ou ausente) exibe "Ambiente de testes — uso acadêmico".
+  * `EXPO_PUBLIC_BUILD_DATE`: data ISO da compilação (ex.: `2026-10-19`), exibida como "Data da compilação". Sem ela, a data não aparece.
+* **Pendências para fechar a issue:** contato oficial do projeto (canal em definição) e os documentos de termos de uso e política de privacidade aprovados na E7-01, com versão e data. Até lá, a tela mostra o aviso "Em definição" (`ABOUT_IS_DRAFT`).
+* A tela não exibe nomes de integrantes, instituição, URL da API, IDs de build ou segredos. Os testes em `tests/about.test.ts` verificam isso.
 
 ---
 

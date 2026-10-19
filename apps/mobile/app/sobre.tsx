@@ -9,12 +9,21 @@ import { useRouter } from 'expo-router';
 import { useSession } from '@/contexts/SessionContext';
 import { ABOUT_DRAFT_NOTICE, ABOUT_IS_DRAFT, ABOUT_SECTIONS } from '@/constants/aboutContent';
 import { isClinicianRole, isPatientRole } from '@/types/session';
-import { getAppVersionInfo } from '@/utils/appVersion';
+import {
+  ACADEMIC_CYCLE,
+  formatBuildDate,
+  getAppVersionInfo,
+  getEnvironmentLabel,
+  readBuildInfo,
+} from '@/utils/appVersion';
 
 export default function AboutScreen() {
   const router = useRouter();
   const { user } = useSession();
   const versionInfo = getAppVersionInfo(Constants.expoConfig, Platform.OS);
+  const buildInfo = readBuildInfo();
+  const environmentLabel = getEnvironmentLabel(buildInfo.environment);
+  const buildDate = formatBuildDate(buildInfo.buildDate);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -45,7 +54,10 @@ export default function AboutScreen() {
           <Text accessibilityRole="header" style={styles.title}>
             Sobre o MyFetus
           </Text>
-          <Text style={styles.version}>Versão {versionInfo.label}</Text>
+          <Text style={styles.version}>Versão do aplicativo: {versionInfo.label}</Text>
+          {buildDate && <Text style={styles.version}>Data da compilação: {buildDate}</Text>}
+          <Text style={styles.version}>Ciclo acadêmico: {ACADEMIC_CYCLE}</Text>
+          {environmentLabel && <Text style={styles.environment}>{environmentLabel}</Text>}
 
           {ABOUT_IS_DRAFT && (
             <View style={styles.draftBadge}>
@@ -92,6 +104,7 @@ const styles = StyleSheet.create({
   backText: { color: '#20B2AA', fontSize: 16, fontWeight: '600' },
   title: { color: '#20B2AA', fontSize: 28, fontWeight: 'bold', marginTop: 8 },
   version: { color: '#333', fontSize: 16, marginTop: 4 },
+  environment: { color: '#8a3b12', fontSize: 15, fontWeight: '600', marginTop: 6 },
   draftBadge: {
     backgroundColor: '#fff4d6',
     borderColor: '#8a6100',
