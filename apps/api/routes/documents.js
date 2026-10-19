@@ -34,7 +34,11 @@ const {
   getDocumentExtractedText,
   retryDocumentTextExtraction,
 } = require('../controllers/documentsController');
+const { rateLimit } = require('express-rate-limit');
 const { authenticateToken, requireRole } = require('../middlewares/auth');
+const { createApiLimiterOptions } = require('../middlewares/authRateLimit');
+
+router.use(rateLimit(createApiLimiterOptions()));
 
 const upload = multer({
   dest: 'uploads/',
