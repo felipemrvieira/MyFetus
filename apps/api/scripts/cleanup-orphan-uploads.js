@@ -1,12 +1,8 @@
 const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
-
-function argumentValue(name) {
-  const prefix = `${name}=`;
-  const argument = process.argv.find((value) => value.startsWith(prefix));
-  return argument ? argument.slice(prefix.length) : undefined;
-}
+const { argumentValue } = require('./cli-utils');
+const logger = require('../utils/logger');
 
 require('dotenv').config({
   path: process.env.ENV_FILE_PATH
@@ -14,9 +10,14 @@ require('dotenv').config({
     : path.resolve(__dirname, '../../../.env'),
 });
 
-async function pathExists(p) {
+const AUDIT_ACTIONS = Object.freeze({
+  DOCUMENT_INTEGRITY_ANOMALY: 'DOCUMENT_INTEGRITY_ANOMALY',
+  STORAGE_CLEANUP_QUARANTINE: 'STORAGE_CLEANUP_QUARANTINE',
+});
+
+async function pathExists(targetPath) {
   try {
-    await fs.access(p);
+    await fs.access(targetPath);
     return true;
   } catch {
     return false;
@@ -73,12 +74,14 @@ async function scanOrphanUploads(pool, options = {}) {
   const recentPreserved = [];
 
   // Helper para escanear diretório
-  async function scanDirectory(targetDir, category) {
+  async function scanDirectory(targetDir, category, fileFilter = () => true) {
     if (!(await pathExists(targetDir))) return;
     const entries = await fs.readdir(targetDir, { withFileTypes: true });
 
     for (const entry of entries) {
       if (entry.isDirectory()) continue;
+      if (!fileFilter(entry.name)) continue;
+
       const fullPath = path.join(targetDir, entry.name);
       const resolvedPath = path.resolve(fullPath);
 
@@ -110,8 +113,8 @@ async function scanOrphanUploads(pool, options = {}) {
 
   // Varredura de temporários na raiz de uploads
   await scanDirectory(uploadsDir, 'temp_orphan');
-  // Varredura de cifrados em uploads/encrypted
-  await scanDirectory(encryptedDir, 'encrypted_orphan');
+  // Varredura de cifrados em uploads/encrypted (apenas arquivos com extensão .mfe)
+  await scanDirectory(encryptedDir, 'encrypted_orphan', (name) => name.endsWith('.mfe'));
 
   const totalBytes = orphanFiles.reduce((acc, f) => acc + f.size, 0);
 
@@ -178,7 +181,7 @@ async function executeCleanupFromManifest(pool, options = {}) {
              action, resource, resource_id, outcome, detail
            ) VALUES ($1, $2, $3, $4, $5)`,
           [
-            'DOCUMENT_INTEGRITY_ANOMALY',
+            AUDIT_ACTIONS.DOCUMENT_INTEGRITY_ANOMALY,
             'pregnant_documents',
             String(missing.id),
             'WARNING',
@@ -199,7 +202,7 @@ async function executeCleanupFromManifest(pool, options = {}) {
            action, resource, outcome, detail
          ) VALUES ($1, $2, $3, $4)`,
         [
-          'STORAGE_CLEANUP_QUARANTINE',
+          AUDIT_ACTIONS.STORAGE_CLEANUP_QUARANTINE,
           'uploads',
           'SUCCESS',
           JSON.stringify({
@@ -251,20 +254,16 @@ async function main() {
   const purgeDays = Number(argumentValue('--purge-quarantine-older-than-days') || 0);
   const customOutput = argumentValue('--output');
 
-  console.log('=== Higienização e Auditoria de Uploads (LGPD) ===');
-  console.log(`Modo: ${dryRun ? 'SIMULAÇÃO (--dry-run)' : 'EXECUÇÃO ATIVA (--execute)'}`);
-  console.log(`Janela de carência (Grace Period): ${graceHours} horas`);
+  logger.info('Iniciando rotina de higienização e auditoria de uploads (LGPD)', {
+    mode: dryRun ? 'DRY_RUN' : 'EXECUTE',
+    graceHours,
+    purgeDays: purgeDays || null,
+  });
 
   try {
     if (dryRun) {
-      console.log('\nExecutando varredura em disco e checagem de integridade com o banco...');
+      logger.info('Executando varredura em disco e checagem de integridade com o banco...');
       const report = await scanOrphanUploads(client, { graceHours });
-
-      console.log('\n=== Resumo da Varredura ===');
-      console.log(`Arquivos órfãos elegíveis: ${report.summary.orphanCount}`);
-      console.log(`Espaço total de órfãos: ${(report.summary.orphanBytes / 1024).toFixed(2)} KB`);
-      console.log(`Arquivos recentes preservados (< ${graceHours}h): ${report.summary.recentPreservedCount}`);
-      console.log(`Inconsistências reversas (registros sem arquivo): ${report.summary.missingCount}`);
 
       const reportsDir = path.resolve(__dirname, '../../../reports');
       await fs.mkdir(reportsDir, { recursive: true });
@@ -274,35 +273,42 @@ async function main() {
         : path.join(reportsDir, `orphan-manifest-${timestampStr}.json`);
 
       await fs.writeFile(outputPath, JSON.stringify(report, null, 2), 'utf8');
-      console.log(`\nManifesto gerado com sucesso em: ${outputPath}`);
-      console.log('Para executar a quarentena com base neste manifesto, execute:');
-      console.log(`node scripts/cleanup-orphan-uploads.js --execute --manifest="${outputPath}"`);
+
+      logger.info('Varredura diagnóstica de uploads concluída com sucesso', {
+        summary: report.summary,
+        manifestFile: outputPath,
+      });
       return;
     }
 
     if (!manifestArg) {
-      console.error('\nERRO: Para executar a limpeza ativa (--execute), informe o manifesto gerado pelo dry-run via --manifest=<caminho>');
+      logger.error('Manifesto ausente para execução ativa', {
+        instruction: 'Para executar a limpeza ativa (--execute), informe o manifesto gerado pelo dry-run via --manifest=<caminho>',
+      });
       process.exit(1);
     }
 
-    console.log(`\nConsumindo manifesto aprovado: ${manifestArg}`);
+    logger.info('Consumindo manifesto aprovado para quarentena', {
+      manifestPath: manifestArg,
+    });
     const result = await executeCleanupFromManifest(client, {
       manifestPath: path.resolve(manifestArg),
       purgeQuarantineDays: purgeDays,
     });
 
-    console.log('\n=== Resultado da Limpeza ===');
-    console.log(`Arquivos movidos para quarentena: ${result.quarantinedCount}`);
-    console.log(`Pasta de quarentena: ${result.quarantineFolder}`);
-    console.log(`Registros de inconsistência sinalizados no banco: ${result.flaggedMissingCount}`);
-    if (purgeDays > 0) {
-      console.log(`Pastas de quarentena antigas expurgadas (> ${purgeDays} dias): ${result.purgedFoldersCount}`);
-    }
+    logger.info('Limpeza e movimentação para quarentena concluídas com sucesso', {
+      quarantinedCount: result.quarantinedCount,
+      quarantineFolder: result.quarantineFolder,
+      flaggedMissingCount: result.flaggedMissingCount,
+      purgedQuarantineFolders: purgeDays > 0 ? result.purgedFoldersCount : undefined,
+    });
   } finally {
     try {
       await client.end();
-    } catch (_) {
-      // Ignora erro ao fechar conexão.
+    } catch (closeError) {
+      logger.warn('Falha ao encerrar conexão do banco de dados', {
+        error: closeError.message,
+      });
     }
   }
 }
@@ -310,12 +316,17 @@ async function main() {
 if (require.main === module) {
   main()
     .catch((error) => {
-      console.error(`\nErro fatal durante a limpeza de uploads: ${error.message}`);
+      logger.error('Erro fatal durante a limpeza de uploads', {
+        error: error.message,
+        stack: error.stack,
+      });
       process.exitCode = 1;
     });
 }
 
 module.exports = {
+  AUDIT_ACTIONS,
   executeCleanupFromManifest,
+  pathExists,
   scanOrphanUploads,
 };

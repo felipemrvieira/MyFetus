@@ -68,17 +68,24 @@ async function prepareDocumentFile(record, dryRun) {
   if (await isEncryptedFile(record.file_path)) {
     const fileVersion = record.file_encryption_version;
     if (fileVersion !== undefined && fileVersion !== null && fileVersion < currentVersion) {
+      const targetPath = record.file_path;
+      const temporaryPath = `${targetPath}.${crypto.randomUUID()}.tmp`;
       if (!dryRun) {
-        await fileCryptoService.reencryptFile(
-          record.file_path,
+        const decrypted = await fileCryptoService.readDecryptedFile(
+          targetPath,
           { pregnantId: record.pregnant_id }
         );
+        const encrypted = fileCryptoService.encryptBuffer(decrypted, {
+          pregnantId: record.pregnant_id,
+        });
+        await fs.writeFile(temporaryPath, encrypted, { flag: 'wx', mode: 0o600 });
       }
       return {
         changed: true,
         cleanupAfterCommit: null,
-        createdPath: null,
-        filePath: record.file_path,
+        createdPath: dryRun ? null : temporaryPath,
+        filePath: targetPath,
+        targetCommitPath: targetPath,
       };
     }
 
@@ -176,55 +183,95 @@ async function updateRecord(dbClient, table, id, update) {
   return true;
 }
 
-async function migrateRecord(pool, table, record, options = {}) {
+async function migrateBatch(pool, table, records, options = {}) {
   const dryRun = options.dryRun === true;
-  const dbClient = await pool.connect();
-  let fileMigration;
+  const isDedicatedClient = typeof pool.connect !== 'function';
+  const dbClient = isDedicatedClient ? pool : await pool.connect();
+  const fileMigrations = [];
   let committed = false;
 
   try {
     await dbClient.query('BEGIN');
-    fileMigration = table === 'pregnant_documents'
-      ? await prepareDocumentFile(record, dryRun)
-      : null;
-    const update = buildUpdate(record, table, fileMigration);
-    const changed = Object.keys(update).length > 0;
-    if (!dryRun && changed) {
-      await updateRecord(dbClient, table, record.id, update);
+    const updates = [];
+
+    for (const record of records) {
+      const fileMigration = table === 'pregnant_documents'
+        ? await prepareDocumentFile(record, dryRun)
+        : null;
+      if (fileMigration) fileMigrations.push(fileMigration);
+
+      const update = buildUpdate(record, table, fileMigration);
+      const changed = Object.keys(update).length > 0;
+      if (changed) {
+        updates.push({ record, update, fileMigration });
+        if (!dryRun) {
+          await updateRecord(dbClient, table, record.id, update);
+        }
+      }
     }
-    if (dryRun) await dbClient.query('ROLLBACK');
-    else {
+
+    if (dryRun) {
+      await dbClient.query('ROLLBACK');
+    } else {
       await dbClient.query('COMMIT');
       committed = true;
     }
 
-    if (!dryRun && fileMigration?.cleanupAfterCommit) {
-      try {
-        await fs.rm(fileMigration.cleanupAfterCommit, { force: true });
-      } catch (error) {
-        return {
-          changed,
-          cleanupError: error.message,
-          id: record.id,
-        };
+    if (!dryRun && committed) {
+      for (const item of updates) {
+        if (item.fileMigration?.targetCommitPath && item.fileMigration?.createdPath) {
+          try {
+            await fs.rename(item.fileMigration.createdPath, item.fileMigration.targetCommitPath);
+          } catch (_) {
+            // Best-effort rename
+          }
+        }
+        if (item.fileMigration?.cleanupAfterCommit) {
+          try {
+            await fs.rm(item.fileMigration.cleanupAfterCommit, { force: true });
+          } catch (_) {
+            // Best-effort cleanup
+          }
+        }
       }
     }
-    return { changed, id: record.id };
+
+    return {
+      scanned: records.length,
+      migrated: updates.length,
+      unchanged: records.length - updates.length,
+    };
   } catch (error) {
     if (!committed) {
       try {
         await dbClient.query('ROLLBACK');
       } catch (_) {
-        // Preserve the original migration error.
+        // Preserva o erro original
       }
     }
-    if (!committed && fileMigration?.createdPath) {
-      await fs.rm(fileMigration.createdPath, { force: true });
+    for (const fm of fileMigrations) {
+      if (fm?.createdPath) {
+        try {
+          await fs.rm(fm.createdPath, { force: true });
+        } catch (_) {
+          // Ignora erro de limpeza temporária no rollback
+        }
+      }
     }
     throw error;
   } finally {
-    dbClient.release();
+    if (!isDedicatedClient) {
+      dbClient.release();
+    }
   }
+}
+
+async function migrateRecord(pool, table, record, options = {}) {
+  const batchResult = await migrateBatch(pool, table, [record], options);
+  return {
+    changed: batchResult.migrated > 0,
+    id: record.id,
+  };
 }
 
 async function getEncryptionStatus(pool, options = {}) {
@@ -270,6 +317,7 @@ async function migrateExistingData(pool, options = {}) {
 
   const summary = {
     errors: [],
+    interrupted: false,
     migrated: 0,
     orphanFilesMigrated: 0,
     orphanFilesScanned: 0,
@@ -282,6 +330,11 @@ async function migrateExistingData(pool, options = {}) {
     let tableProcessed = 0;
 
     while (true) {
+      if (options.shouldStop && options.shouldStop()) {
+        summary.interrupted = true;
+        break;
+      }
+
       if (limit > 0 && summary.scanned >= limit) break;
       const effectiveBatchSize = limit > 0
         ? Math.min(batchSize, limit - summary.scanned)
@@ -314,32 +367,43 @@ async function migrateExistingData(pool, options = {}) {
 
       if (rows.length === 0) break;
 
-      for (const record of rows) {
-        lastId = record.id;
-        summary.scanned += 1;
-        tableProcessed += 1;
-        try {
-          const result = await migrateRecord(pool, table, record, options);
-          if (result.changed) summary.migrated += 1;
-          else summary.unchanged += 1;
-        } catch (error) {
-          summary.errors.push({
-            id: record.id,
-            message: error.message,
-            table,
-          });
-          if (options.stopOnError) throw error;
-        }
+      lastId = rows[rows.length - 1].id;
+      tableProcessed += rows.length;
 
-        if (limit > 0 && summary.scanned >= limit) break;
+      try {
+        const batchResult = await migrateBatch(pool, table, rows, options);
+        summary.scanned += batchResult.scanned;
+        summary.migrated += batchResult.migrated;
+        summary.unchanged += batchResult.unchanged;
+      } catch (error) {
+        summary.scanned += rows.length;
+        summary.errors.push({
+          batchStartId: rows[0].id,
+          batchEndId: rows[rows.length - 1].id,
+          message: error.message,
+          table,
+        });
+        if (options.stopOnError) throw error;
       }
+
+      if (options.shouldStop && options.shouldStop()) {
+        summary.interrupted = true;
+        break;
+      }
+
+      if (limit > 0 && summary.scanned >= limit) break;
     }
+
+    if (summary.interrupted) break;
   }
 
-  const orphanSummary = await migrateOrphanFiles(pool, options);
-  summary.orphanFilesMigrated = orphanSummary.migrated;
-  summary.orphanFilesScanned = orphanSummary.scanned;
-  summary.errors.push(...orphanSummary.errors);
+  if (!summary.interrupted) {
+    const orphanSummary = await migrateOrphanFiles(pool, options);
+    summary.orphanFilesMigrated = orphanSummary.migrated;
+    summary.orphanFilesScanned = orphanSummary.scanned;
+    summary.errors.push(...orphanSummary.errors);
+  }
+
   return summary;
 }
 
@@ -409,6 +473,7 @@ module.exports = {
   buildUpdate,
   getEncryptionStatus,
   isEncryptedFile,
+  migrateBatch,
   migrateExistingData,
   migrateOrphanFiles,
   migrateRecord,

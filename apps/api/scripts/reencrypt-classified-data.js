@@ -1,10 +1,5 @@
 const path = require('path');
-
-function argumentValue(name) {
-  const prefix = `${name}=`;
-  const argument = process.argv.find((value) => value.startsWith(prefix));
-  return argument ? argument.slice(prefix.length) : undefined;
-}
+const { argumentValue } = require('./cli-utils');
 
 require('dotenv').config({
   path: process.env.ENV_FILE_PATH
@@ -21,17 +16,17 @@ const {
   migrateExistingData,
 } = require('../services/dataEncryptionMigrationService');
 const cryptoService = require('../services/cryptoService');
+const logger = require('../utils/logger');
 
 let isTerminating = false;
 
 process.on('SIGINT', () => {
   if (isTerminating) {
-    console.error('\nInterrupção forçada imediata.');
+    logger.error('Interrupção forçada imediata pelo operador');
     process.exit(130);
   }
   isTerminating = true;
-  console.log('\n[SIGINT recebido] Finalizando o lote em andamento com segurança...');
-  console.log('O estado foi preservado. Os registros já comitados permanecem na nova versão.');
+  logger.warn('Sinal SIGINT (Ctrl+C) recebido. Concluindo lote corrente com segurança antes de encerrar...');
 });
 
 async function main() {
@@ -45,16 +40,18 @@ async function main() {
   const table = argumentValue('--table');
 
   const currentVersion = cryptoService.getCurrentVersion();
-  console.log(`=== Re-criptografia e Gestão do Keyring AES ===`);
-  console.log(`Versão ativa da chave (AES_KEY_VERSION): ${currentVersion}`);
-  console.log(`Modo: ${dryRun ? 'SIMULAÇÃO (--dry-run)' : 'EXECUÇÃO ATIVA (--execute)'}`);
-  console.log(`Tamanho do lote: ${batchSize} | Limite total: ${limit || 'Ilimitado'}`);
-  if (table) console.log(`Tabela selecionada: ${table}`);
-  console.log('--------------------------------------------------');
+  logger.info('Iniciando rotina de re-criptografia AES', {
+    activeVersion: currentVersion,
+    mode: dryRun ? 'DRY_RUN' : 'EXECUTE',
+    batchSize,
+    limit: limit || 'unlimited',
+    table: table || 'all',
+  });
 
   const initialStatus = await getEncryptionStatus(client, { table });
-  console.log('Estado atual das tabelas classificadas:');
-  console.table(initialStatus);
+  logger.info('Inventário de versões de dados classificados (pré-migração)', {
+    status: initialStatus,
+  });
 
   if (showStatus) {
     return;
@@ -65,43 +62,61 @@ async function main() {
     batchSize,
     dryRun,
     limit,
+    shouldStop: () => isTerminating,
     stopOnError,
     table,
   });
 
-  const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
-  console.log('\n=== Resultado da Operação ===');
-  console.log(`Tempo decorrido: ${durationSec}s`);
-  console.log(`Total de registros verificados: ${summary.scanned}`);
-  console.log(`Total de registros re-criptografados: ${summary.migrated}`);
-  console.log(`Total inalterado (já na versão atual): ${summary.unchanged}`);
-  console.log(`Arquivos órfãos verificados: ${summary.orphanFilesScanned}`);
-  console.log(`Erros encontrados: ${summary.errors.length}`);
+  const durationSec = Number(((Date.now() - startTime) / 1000).toFixed(2));
+  logger.info('Resultado da operação de re-criptografia', {
+    durationSec,
+    scanned: summary.scanned,
+    migrated: summary.migrated,
+    unchanged: summary.unchanged,
+    orphanFilesScanned: summary.orphanFilesScanned,
+    orphanFilesMigrated: summary.orphanFilesMigrated,
+    errorCount: summary.errors.length,
+    interrupted: summary.interrupted,
+  });
+
+  if (summary.interrupted) {
+    logger.warn('Re-criptografia pausada graciosamente pelo operador (SIGINT). Lotes anteriores foram comitados com sucesso e a execução pode ser retomada a qualquer momento.', {
+      lastProcessedTable: table || 'all',
+      migratedCount: summary.migrated,
+    });
+  }
 
   if (summary.errors.length > 0) {
-    console.error('\nErros detalhados:');
-    console.error(JSON.stringify(summary.errors, null, 2));
+    logger.error('Erros identificados durante a re-criptografia', {
+      errors: summary.errors,
+    });
     process.exitCode = 1;
   }
 
   if (!dryRun && summary.migrated > 0) {
-    console.log('\nEstado após migração:');
     const finalStatus = await getEncryptionStatus(client, { table });
-    console.table(finalStatus);
+    logger.info('Inventário de versões de dados classificados (pós-migração)', {
+      status: finalStatus,
+    });
   }
 }
 
 if (require.main === module) {
   main()
     .catch((error) => {
-      console.error(`\nErro fatal durante a re-criptografia: ${error.message}`);
+      logger.error('Erro fatal durante a re-criptografia', {
+        error: error.message,
+        stack: error.stack,
+      });
       process.exitCode = 1;
     })
     .finally(async () => {
       try {
         await client.end();
-      } catch (_) {
-        // Ignora erro no encerramento do pool.
+      } catch (closeError) {
+        logger.warn('Falha ao encerrar pool de conexões com o banco', {
+          error: closeError.message,
+        });
       }
     });
 }

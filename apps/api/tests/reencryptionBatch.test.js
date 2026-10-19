@@ -7,6 +7,7 @@ const crypto = require('crypto');
 
 const {
   buildUpdate,
+  migrateBatch,
   migrateExistingData,
   getEncryptionStatus,
 } = require('../services/dataEncryptionMigrationService');
@@ -143,6 +144,104 @@ test('Re-criptografia em lotes (AES-256-GCM)', async (t) => {
       const selectQuery = queries.find(q => q.sql.includes('SELECT * FROM "users"'));
       assert.ok(selectQuery, 'Deveria ter executado SELECT em users');
       assert.ok(selectQuery.sql.includes('encryption_key_version'), 'Deveria filtrar por encryption_key_version');
+    } finally {
+      process.env = originalEnv;
+    }
+  });
+
+  await t.test('migrateBatch deve garantir atomicidade transacional: falha em um item reverte o lote inteiro', async () => {
+    const executedTxCommands = [];
+    const mockClient = {
+      query: async (sql, params) => {
+        if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') {
+          executedTxCommands.push(sql);
+          return { rows: [] };
+        }
+        if (sql.includes('UPDATE "users"')) {
+          // Simula falha ao atualizar o segundo registro
+          if (params && params.includes(202)) {
+            throw new Error('Simulated DB error on record 202');
+          }
+          return { rowCount: 1, rows: [] };
+        }
+        return { rows: [] };
+      },
+      release: () => {},
+    };
+
+    const mockPool = {
+      connect: async () => mockClient,
+      query: mockClient.query,
+    };
+
+    const originalEnv = process.env;
+    try {
+      process.env = { ...originalEnv, ...envV2 };
+      const records = [
+        { id: 201, name: 'Alice', encryption_key_version: 1 },
+        { id: 202, name: 'Bob', encryption_key_version: 1 },
+      ];
+
+      await assert.rejects(
+        migrateBatch(mockPool, 'users', records, { dryRun: false }),
+        /Simulated DB error on record 202/
+      );
+
+      // Valida que houve BEGIN e ROLLBACK, e NUNCA COMMIT
+      assert.ok(executedTxCommands.includes('BEGIN'));
+      assert.ok(executedTxCommands.includes('ROLLBACK'));
+      assert.ok(!executedTxCommands.includes('COMMIT'));
+    } finally {
+      process.env = originalEnv;
+    }
+  });
+
+  await t.test('migrateExistingData deve suportar interrupção graciosa via shouldStop', async () => {
+    const mockClient = {
+      query: async (sql, params) => {
+        if (sql.includes('to_regclass')) {
+          return { rows: [{ relation: 'public.users' }] };
+        }
+        if (sql.includes('SELECT * FROM "users"')) {
+          return {
+            rows: [
+              { id: 301, name: 'Carlos', encryption_key_version: 1 }
+            ]
+          };
+        }
+        if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') {
+          return { rows: [] };
+        }
+        if (sql.includes('UPDATE "users"')) {
+          return { rowCount: 1, rows: [] };
+        }
+        return { rows: [] };
+      },
+      release: () => {},
+    };
+
+    const mockPool = {
+      connect: async () => mockClient,
+      query: mockClient.query,
+    };
+
+    const originalEnv = process.env;
+    try {
+      process.env = { ...originalEnv, ...envV2 };
+      // Deverá parar imediatamente antes ou logo após o primeiro lote
+      let shouldStopTriggered = false;
+      const summary = await migrateExistingData(mockPool, {
+        batchSize: 1,
+        shouldStop: () => {
+          if (!shouldStopTriggered) {
+            shouldStopTriggered = true;
+            return false; // permite processar o primeiro lote
+          }
+          return true; // interrompe antes do segundo
+        },
+      });
+
+      assert.equal(summary.interrupted, true, 'O summary deve registrar interrupted: true');
     } finally {
       process.env = originalEnv;
     }

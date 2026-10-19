@@ -37,10 +37,15 @@ test('Scanner de Órfãos, Quarentena e Inconsistências de Upload', async (t) =
   const recentUpload = path.join(uploadsDir, 'recent-upload.tmp');
   await fs.writeFile(recentUpload, 'upload-in-progress'); // mtime atual
 
-  // 4. Arquivo cifrado órfão antigo (> 24h) em uploads/encrypted/
+  // 4. Arquivo cifrado órfão antigo (> 24h) em uploads/encrypted/ (.mfe válido)
   const oldEncryptedOrphan = path.join(encryptedDir, 'orphan-doc-2.mfe');
   await fs.writeFile(oldEncryptedOrphan, 'abandoned-encrypted-file');
   await fs.utimes(oldEncryptedOrphan, pastTime, pastTime);
+
+  // 5. Arquivo avulso antigo (> 24h) em uploads/encrypted/ que NÃO é .mfe (deve ser ignorado)
+  const nonMfeInEncrypted = path.join(encryptedDir, 'stray-file.txt');
+  await fs.writeFile(nonMfeInEncrypted, 'not-an-mfe-file');
+  await fs.utimes(nonMfeInEncrypted, pastTime, pastTime);
 
   // Mock do pool de banco de dados
   const dbUpdates = [];
@@ -87,6 +92,7 @@ test('Scanner de Órfãos, Quarentena e Inconsistências de Upload', async (t) =
     assert.ok(orphanPaths.includes(path.resolve(oldTempOrphan)));
     assert.ok(orphanPaths.includes(path.resolve(oldEncryptedOrphan)));
     assert.ok(!orphanPaths.includes(path.resolve(recentUpload)), 'Arquivo recente com < 24h não deve ser listado como órfão');
+    assert.ok(!orphanPaths.includes(path.resolve(nonMfeInEncrypted)), 'Arquivo em uploads/encrypted/ sem extensão .mfe não deve ser listado como órfão cifrado');
 
     // Valida detecção de inconsistência reversa
     assert.equal(report.missingFiles[0].id, 2);

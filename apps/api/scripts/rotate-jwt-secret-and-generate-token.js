@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const path = require('path');
 const { execSync } = require('child_process');
 const { getEnvValue, removeEnvKey, updateEnvValue } = require('./env-file');
+const logger = require('../utils/logger');
 
 function rotateJwtSecrets(envPath, options = {}) {
   const dryRun = options.dryRun === true;
@@ -57,7 +58,7 @@ function main() {
     : path.join(rootDir, '.env');
 
   const result = rotateJwtSecrets(envPath, { clearPrevious, dryRun });
-  console.log(JSON.stringify(result, null, 2));
+  logger.info('Operação de rotação de JWT executada', { result });
 
   if (!dryRun && restart) {
     try {
@@ -65,9 +66,11 @@ function main() {
         cwd: rootDir,
         stdio: 'inherit',
       });
-      console.log('Backend reiniciado com o novo segredo.');
+      logger.info('Backend reiniciado com o novo segredo JWT');
     } catch (error) {
-      console.error('Falha ao reiniciar o backend automaticamente.');
+      logger.error('Falha ao reiniciar o backend automaticamente', {
+        error: error.message,
+      });
       process.exitCode = 1;
     }
   }
@@ -77,7 +80,9 @@ if (require.main === module) {
   try {
     main();
   } catch (err) {
-    console.error(`Erro ao rotacionar segredo JWT: ${err.message}`);
+    logger.error('Erro ao rotacionar segredo JWT', {
+      error: err.message,
+    });
     process.exitCode = 1;
   }
 }
