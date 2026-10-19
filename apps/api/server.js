@@ -121,6 +121,10 @@ app.use('/api/admin/audit', auditRoutes);
 app.use('/api/growth', growthRoutes);
 app.use('/api/history', clinicalHistoryRoutes);
 
+// Consentimento LGPD (E7-01.1)
+const consentRoutes = require('./routes/consents');
+app.use('/api/consents', consentRoutes);
+
 // Documentacao OpenAPI/Swagger (E1-09): contrato em apps/api/openapi.yaml.
 const docsRoutes = require('./routes/docs');
 app.use('/docs', docsRoutes);

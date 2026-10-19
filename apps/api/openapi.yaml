@@ -24,6 +24,7 @@ servers:
 tags:
   - name: Sistema
   - name: Usuarios
+  - name: Consentimento
   - name: Medicos
   - name: Gestantes
   - name: Gestacoes
@@ -83,7 +84,11 @@ paths:
       summary: Cadastra uma gestante (usuario com papel gestante)
       operationId: createUser
       security: []
-      description: Rota publica com rate limit de cadastro (`REGISTER_RATE_LIMIT_MAX`).
+      description: |
+        Rota publica com rate limit de cadastro (`REGISTER_RATE_LIMIT_MAX`).
+        Exige o aceite (`consents`) de todas as finalidades obrigatorias na versao vigente
+        de `GET /api/consents/policy` (E7-01.1). Usuario e consentimento sao gravados na
+        mesma transacao.
       requestBody:
         required: true
         content:
@@ -94,14 +99,28 @@ paths:
               email: maria.exemplo@example.com
               password: senha-sintetica-123
               birthdate: '1995-04-12'
+              consents:
+                - purpose: termos_e_privacidade
+                  version: 0.1-rascunho
       responses:
         '201':
           description: Usuario criado (sem senha nem hashes).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/User' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '400':
+          description: Dados invalidos ou aceite obrigatorio ausente (`code` = `CONSENT_REQUIRED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
+              example:
+                error: Aceite do termo de uso e da política de privacidade é obrigatório
+                code: CONSENT_REQUIRED
+        '409':
+          description: E-mail ja cadastrado, ou aceite de versao desatualizada (`code` = `CONSENT_VERSION_OUTDATED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
     get:
@@ -153,6 +172,9 @@ paths:
                   email: maria.exemplo@example.com
                   role: gestante
                   pregnant_id: 1
+                consent:
+                  required: false
+                  pending: []
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
@@ -224,6 +246,93 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFoundText' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ----------------------------------------------------------- Consentimento
+  /api/consents/policy:
+    get:
+      tags: [Consentimento]
+      summary: Finalidades, versoes vigentes e texto do termo
+      operationId: getConsentPolicy
+      security: []
+      description: Publico; usado na tela de cadastro para exibir o termo e enviar a versao aceita.
+      responses:
+        '200':
+          description: Politica de consentimento vigente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentPolicy' }
+
+  /api/consents/me:
+    get:
+      tags: [Consentimento]
+      summary: Status de consentimento do usuario autenticado
+      operationId: getMyConsents
+      security: [{ bearerAuth: [] }]
+      description: O titular e sempre o usuario do token.
+      responses:
+        '200':
+          description: Status por finalidade (o registro mais recente vale).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/consents:
+    post:
+      tags: [Consentimento]
+      summary: Registra aceite, recusa ou revogacao do usuario autenticado
+      operationId: recordMyConsent
+      security: [{ bearerAuth: [] }]
+      description: |
+        Cada decisao gera um novo registro (tabela append-only): revogar nao apaga o aceite anterior.
+        Aceite e recusa exigem a versao vigente; a revogacao vale para a finalidade.
+        O titular e sempre o usuario do token (nao ha ID de usuario no corpo).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose, decision]
+              properties:
+                purpose: { type: string }
+                decision: { type: string, enum: [accepted, refused, revoked] }
+                version: { type: string, description: Obrigatoria para accepted e refused. }
+            example:
+              purpose: termos_e_privacidade
+              decision: revoked
+      responses:
+        '201':
+          description: Decisao registrada; devolve o registro e o status atualizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consent:
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      purpose: { type: string }
+                      version: { type: string }
+                      decision: { type: string }
+                      created_at: { type: string, format: date-time }
+                  status: { $ref: '#/components/schemas/ConsentStatus' }
+        '400':
+          description: Finalidade desconhecida ou decisao invalida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Versao do termo desatualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
@@ -1540,12 +1649,16 @@ components:
         created_at: { type: string, format: date-time }
     CreateUserRequest:
       type: object
-      required: [name, email, password, birthdate]
+      required: [name, email, password, birthdate, consents]
       properties:
         name: { type: string, minLength: 1 }
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
         birthdate: { type: string, format: date }
+        consents:
+          type: array
+          description: Aceite das finalidades obrigatorias, na versao vigente.
+          items: { $ref: '#/components/schemas/ConsentReference' }
     UpdateUserRequest:
       type: object
       minProperties: 1
@@ -1574,6 +1687,62 @@ components:
             email: { type: string }
             role: { $ref: '#/components/schemas/Role' }
             pregnant_id: { type: [integer, 'null'] }
+        consent:
+          description: 'Termos pendentes de aceite (ex.: nova versao). `null` se o status estiver indisponivel.'
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                required: { type: boolean }
+                pending:
+                  type: array
+                  items: { $ref: '#/components/schemas/ConsentReference' }
+
+    ConsentReference:
+      type: object
+      required: [purpose, version]
+      properties:
+        purpose: { type: string, examples: [termos_e_privacidade] }
+        version: { type: string, examples: [0.1-rascunho] }
+    ConsentError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        code: { type: string, enum: [CONSENT_REQUIRED, CONSENT_VERSION_OUTDATED, CONSENT_INVALID] }
+    ConsentPolicy:
+      type: object
+      properties:
+        purposes:
+          type: array
+          items:
+            type: object
+            properties:
+              purpose: { type: string }
+              title: { type: string }
+              version: { type: string }
+              required: { type: boolean }
+              text: { type: string, description: Texto do termo (rascunho ate aprovacao do P.O.). }
+    ConsentStatus:
+      type: object
+      properties:
+        required:
+          type: boolean
+          description: true se o papel exige consentimento e ha finalidade obrigatoria pendente.
+        pending:
+          type: array
+          items: { $ref: '#/components/schemas/ConsentReference' }
+        purposes:
+          type: array
+          items:
+            type: object
+            properties:
+              purpose: { type: string }
+              current_version: { type: string }
+              required: { type: boolean }
+              status: { type: string, enum: [pending, accepted, outdated, refused, revoked] }
+              decided_version: { type: [string, 'null'] }
+              decided_at: { type: [string, 'null'], format: date-time }
     CreateDoctorRequest:
       type: object
       required: [name, email, password, birthdate, crm, crm_estado]
