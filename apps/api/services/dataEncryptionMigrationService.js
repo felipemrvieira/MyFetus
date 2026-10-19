@@ -63,7 +63,25 @@ async function prepareDocumentFile(record, dryRun) {
     };
   }
 
+  const currentVersion = cryptoService.getCurrentVersion();
+
   if (await isEncryptedFile(record.file_path)) {
+    const fileVersion = record.file_encryption_version;
+    if (fileVersion !== undefined && fileVersion !== null && fileVersion < currentVersion) {
+      if (!dryRun) {
+        await fileCryptoService.reencryptFile(
+          record.file_path,
+          { pregnantId: record.pregnant_id }
+        );
+      }
+      return {
+        changed: true,
+        cleanupAfterCommit: null,
+        createdPath: null,
+        filePath: record.file_path,
+      };
+    }
+
     const possibleLegacyPath = record.file_path.endsWith('.mfe')
       ? record.file_path.slice(0, -4)
       : null;
@@ -97,7 +115,16 @@ async function prepareDocumentFile(record, dryRun) {
 }
 
 function buildUpdate(record, table, fileMigration) {
-  const update = cryptoService.encryptRecord(record, table);
+  const currentVersion = cryptoService.getCurrentVersion();
+  let sourceRecord = record;
+
+  if (record.encryption_key_version !== null &&
+      record.encryption_key_version !== undefined &&
+      record.encryption_key_version < currentVersion) {
+    sourceRecord = cryptoService.decryptRecord(record, table);
+  }
+
+  const update = cryptoService.encryptRecord(sourceRecord, table);
   const changedFields = {};
 
   for (const field of ENCRYPTED_FIELDS[table]) {
@@ -114,15 +141,15 @@ function buildUpdate(record, table, fileMigration) {
   if (
     table === 'pregnant_documents' &&
     fileMigration &&
-    record.file_encryption_version !== cryptoService.getCurrentVersion()
+    record.file_encryption_version !== currentVersion
   ) {
-    changedFields.file_encryption_version = cryptoService.getCurrentVersion();
+    changedFields.file_encryption_version = currentVersion;
   }
   if (
     Object.keys(changedFields).length > 0 ||
-    record.encryption_key_version !== cryptoService.getCurrentVersion()
+    record.encryption_key_version !== currentVersion
   ) {
-    changedFields.encryption_key_version = cryptoService.getCurrentVersion();
+    changedFields.encryption_key_version = currentVersion;
   }
   if (table === 'users' && record.email) {
     const decrypted = cryptoService.decryptRecord(record, 'users');
@@ -200,8 +227,47 @@ async function migrateRecord(pool, table, record, options = {}) {
   }
 }
 
+async function getEncryptionStatus(pool, options = {}) {
+  const currentVersion = options.currentVersion || cryptoService.getCurrentVersion();
+  const status = {};
+  const tables = options.table ? [options.table] : Object.keys(ENCRYPTED_FIELDS);
+
+  for (const table of tables) {
+    const dbClient = await pool.connect();
+    try {
+      if (!(await tableExists(dbClient, table))) continue;
+      const result = await dbClient.query(
+        `SELECT
+           COUNT(*)::INTEGER AS total,
+           COUNT(*) FILTER (WHERE encryption_key_version = $1)::INTEGER AS current_version_count,
+           COUNT(*) FILTER (WHERE encryption_key_version IS NULL OR encryption_key_version < $1)::INTEGER AS legacy_count
+         FROM ${quoteIdentifier(table)}`,
+        [currentVersion]
+      );
+      const row = result.rows[0] || {};
+      const total = Number(row.total || 0);
+      const current = Number(row.current_version_count || 0);
+      const legacy = Number(row.legacy_count || 0);
+      status[table] = {
+        total,
+        currentVersion: current,
+        legacyOrPlaintext: legacy,
+        pending: legacy,
+      };
+    } finally {
+      dbClient.release();
+    }
+  }
+  return status;
+}
+
 async function migrateExistingData(pool, options = {}) {
   const limit = Number(options.limit || 0);
+  const batchSize = Math.max(1, Number(options.batchSize || 100));
+  const currentVersion = cryptoService.getCurrentVersion();
+  const pendingOnly = options.pendingOnly !== false;
+  const targetTables = options.table ? [options.table] : Object.keys(ENCRYPTED_FIELDS);
+
   const summary = {
     errors: [],
     migrated: 0,
@@ -211,34 +277,61 @@ async function migrateExistingData(pool, options = {}) {
     unchanged: 0,
   };
 
-  for (const table of Object.keys(ENCRYPTED_FIELDS)) {
-    const dbClient = await pool.connect();
-    let rows;
-    try {
-      if (!(await tableExists(dbClient, table))) continue;
-      const limitClause = limit > 0 ? ' LIMIT $1' : '';
-      const result = await dbClient.query(
-        `SELECT * FROM ${quoteIdentifier(table)} ORDER BY id${limitClause}`,
-        limit > 0 ? [limit] : []
-      );
-      rows = result.rows;
-    } finally {
-      dbClient.release();
-    }
+  for (const table of targetTables) {
+    let lastId = 0;
+    let tableProcessed = 0;
 
-    for (const record of rows) {
-      summary.scanned += 1;
+    while (true) {
+      if (limit > 0 && summary.scanned >= limit) break;
+      const effectiveBatchSize = limit > 0
+        ? Math.min(batchSize, limit - summary.scanned)
+        : batchSize;
+
+      const dbClient = await pool.connect();
+      let rows = [];
       try {
-        const result = await migrateRecord(pool, table, record, options);
-        if (result.changed) summary.migrated += 1;
-        else summary.unchanged += 1;
-      } catch (error) {
-        summary.errors.push({
-          id: record.id,
-          message: error.message,
-          table,
-        });
-        if (options.stopOnError) throw error;
+        if (!(await tableExists(dbClient, table))) break;
+
+        const whereClause = pendingOnly
+          ? `WHERE id > $1 AND (encryption_key_version IS NULL OR encryption_key_version < $2)`
+          : `WHERE id > $1`;
+        const queryParams = pendingOnly
+          ? [lastId, currentVersion, effectiveBatchSize]
+          : [lastId, effectiveBatchSize];
+        const limitParamIndex = queryParams.length;
+
+        const result = await dbClient.query(
+          `SELECT * FROM ${quoteIdentifier(table)}
+           ${whereClause}
+           ORDER BY id ASC
+           LIMIT $${limitParamIndex}`,
+          queryParams
+        );
+        rows = result.rows;
+      } finally {
+        dbClient.release();
+      }
+
+      if (rows.length === 0) break;
+
+      for (const record of rows) {
+        lastId = record.id;
+        summary.scanned += 1;
+        tableProcessed += 1;
+        try {
+          const result = await migrateRecord(pool, table, record, options);
+          if (result.changed) summary.migrated += 1;
+          else summary.unchanged += 1;
+        } catch (error) {
+          summary.errors.push({
+            id: record.id,
+            message: error.message,
+            table,
+          });
+          if (options.stopOnError) throw error;
+        }
+
+        if (limit > 0 && summary.scanned >= limit) break;
       }
     }
   }
@@ -314,6 +407,7 @@ async function migrateOrphanFiles(pool, options = {}) {
 
 module.exports = {
   buildUpdate,
+  getEncryptionStatus,
   isEncryptedFile,
   migrateExistingData,
   migrateOrphanFiles,
