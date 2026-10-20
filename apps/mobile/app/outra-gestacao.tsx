@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useSession } from '@/contexts/SessionContext';
+import { getLastPeriod } from '../utils/gestationUtils';
 
 const WEB_MAX_WIDTH = 430;
 
@@ -12,6 +14,48 @@ export default function OutraGestacaoScreen() {
 
   const [hadPreviousPregnancies, setHadPreviousPregnancies] = useState<null | boolean>(null);
   const router = useRouter();
+  const { user } = useSession();
+  const [checkingExistingPregnancy, setCheckingExistingPregnancy] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    const checkExistingPregnancy = async () => {
+      if (!user) {
+        if (active) setCheckingExistingPregnancy(false);
+        return;
+      }
+
+      try {
+        const lastPeriod = await getLastPeriod(user.id);
+        if (active && lastPeriod) {
+          router.replace('/(tabs)');
+          return;
+        }
+      } catch {
+        // Se o storage local estiver indisponível, mantém o onboarding acessível.
+      } finally {
+        if (active) setCheckingExistingPregnancy(false);
+      }
+    };
+
+    void checkExistingPregnancy();
+
+    return () => {
+      active = false;
+    };
+  }, [router, user]);
+
+  if (checkingExistingPregnancy) {
+    return (
+      <LinearGradient
+        colors={['#cce5f6', '#f8cde9']}
+        style={styles.container}
+      >
+        <ActivityIndicator size="large" color="#20B2AA" />
+      </LinearGradient>
+    );
+  }
 
   const handleSubmit = () => {
     router.push('/welcome');
