@@ -2,6 +2,7 @@ const client = require('../backend');
 const logger = require('../utils/logger');
 const { audit } = require('../services/auditService');
 const { ensureCanAccessPregnant } = require('../utils/clinicalAccess');
+const { sendInternalError } = require('../utils/httpErrors');
 
 const TRAFFIC = { GREEN: 'green', YELLOW: 'yellow', RED: 'red' };
 
@@ -246,7 +247,7 @@ const getPatientAlerts = async (req, res) => {
     });
   } catch (err) {
     logger.error('Erro ao gerar alertas', { details: err.message, pregnantId: id });
-    res.status(500).json({ error: err.message });
+    sendInternalError(res);
   }
 };
 

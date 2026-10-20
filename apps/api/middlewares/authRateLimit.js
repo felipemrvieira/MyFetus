@@ -85,8 +85,20 @@ function createApiLimiterOptions(options = {}) {
     options.apiMax ?? process.env.API_RATE_LIMIT_MAX,
     300
   );
-
   return createLimiterOptions(windowMs, apiMax, 'API_RATE_LIMIT_BLOCKED', 'api');
+}
+
+function createRagLimiterOptions(options = {}) {
+  const windowMs = positiveInteger(
+    options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  );
+  const ragMax = positiveInteger(
+    options.ragMax ?? process.env.RAG_RATE_LIMIT_MAX,
+    20
+  );
+
+  return createLimiterOptions(windowMs, ragMax, 'RAG_RATE_LIMIT_BLOCKED', 'rag');
 }
 
 function createAuthLimiters(options = {}) {
@@ -96,6 +108,7 @@ function createAuthLimiters(options = {}) {
     adminReadLimiter: rateLimit(createAdminReadLimiterOptions(options)),
     clinicalLimiter: rateLimit(createClinicalLimiterOptions(options)),
     apiLimiter: rateLimit(createApiLimiterOptions(options)),
+    ragLimiter: rateLimit(createRagLimiterOptions(options)),
   };
 }
 
@@ -108,6 +121,7 @@ module.exports = {
   createAdminReadLimiterOptions,
   createClinicalLimiterOptions,
   createApiLimiterOptions,
+  createRagLimiterOptions,
   createAuthLimiters,
   positiveInteger,
   ...defaultLimiters,
