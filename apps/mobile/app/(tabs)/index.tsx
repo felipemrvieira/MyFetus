@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLastPeriod, calculateGestationWeek, getBabySize, getBabyDescription, calculateDPP } from '../../utils/gestationUtils';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/contexts/SessionContext';
@@ -102,58 +103,63 @@ export default function HomeScreen() {
       colors={['#cce5f6', '#f8cde9']}
       style={styles.container}
     >
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.page}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Meu Bebê</Text>
-            <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
-            <TouchableOpacity
-              accessibilityLabel="Sair da conta"
-              accessibilityRole="button"
-              onPress={handleSignOut}
-              style={styles.signOutButton}
-            >
-              <FontAwesome name="sign-out" size={18} color="#20B2AA" />
-              <Text style={styles.signOutText}>Sair</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.imageContainer}>
-            <View style={styles.imageWrapper}>
-              <Image
-                source={getFetusImage(gestationWeek)}
-                style={styles.fetusImage}
-                resizeMode="cover"
-              />
-            </View>
-          </View>
-
-          <View style={styles.infoContainer}>
-            <View style={styles.infoCard}>
-              <FontAwesome name="calendar" size={24} color="#20B2AA" />
-              <Text style={styles.infoTitle}>Data Prevista do Parto</Text>
-              <Text style={styles.infoValue}>{dpp}</Text>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.page}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Meu Bebê</Text>
+              <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
+              <TouchableOpacity
+                accessibilityLabel="Sair da conta"
+                accessibilityRole="button"
+                onPress={handleSignOut}
+                style={styles.signOutButton}
+              >
+                <FontAwesome name="sign-out" size={18} color="#20B2AA" />
+                <Text style={styles.signOutText}>Sair</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.infoCard}>
-              <FontAwesome name="arrows-alt" size={24} color="#20B2AA" />
-              <Text style={styles.infoTitle}>Tamanho do Bebê</Text>
-              <Text style={styles.infoValue}>{babySize}</Text>
+            <View style={styles.imageContainer}>
+              <View style={styles.imageWrapper}>
+                <Image
+                  source={getFetusImage(gestationWeek)}
+                  style={styles.fetusImage}
+                  resizeMode="cover"
+                />
+              </View>
+            </View>
+
+            <View style={styles.infoContainer}>
+              <View style={styles.infoCard}>
+                <FontAwesome name="calendar" size={24} color="#20B2AA" />
+                <Text style={styles.infoTitle}>Data Prevista do Parto</Text>
+                <Text style={styles.infoValue}>{dpp}</Text>
+              </View>
+
+              <View style={styles.infoCard}>
+                <FontAwesome name="arrows-alt" size={24} color="#20B2AA" />
+                <Text style={styles.infoTitle}>Tamanho do Bebê</Text>
+                <Text style={styles.infoValue}>{babySize}</Text>
+              </View>
+            </View>
+
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.descriptionTitle}>Desenvolvimento</Text>
+              <Text style={styles.descriptionText}>{babyDescription}</Text>
             </View>
           </View>
-
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionTitle}>Desenvolvimento</Text>
-            <Text style={styles.descriptionText}>{babyDescription}</Text>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
 const createStyles = (width: number, height: number) => StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  safeArea: {
     flex: 1,
   },
   scrollView: {

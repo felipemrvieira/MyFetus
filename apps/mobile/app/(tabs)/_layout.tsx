@@ -1,16 +1,20 @@
 import { Tabs } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  const baseTabBarHeight = 65;
+
   return (
     <Tabs
       screenOptions={{
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 0,
-          height: 65,
-          paddingBottom: 10,
+          height: baseTabBarHeight + insets.bottom,
+          paddingBottom: insets.bottom + 6,
           paddingTop: 5,
           elevation: 0,
           shadowOpacity: 0,
@@ -24,6 +28,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: '#20B2AA',
         tabBarInactiveTintColor: '#f9a9a7',
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',

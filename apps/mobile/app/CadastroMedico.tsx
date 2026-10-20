@@ -5,12 +5,14 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../utils/apiClient';
 
 const formatarData = (text: string) => {
@@ -71,115 +73,159 @@ export default function CadastroMedicoScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Cadastro de médico</Text>
-        <Text style={styles.subtitle}>Preencha seus dados profissionais para criar sua conta.</Text>
-
-        <TextInput
-          placeholder="Nome completo"
-          value={nome}
-          onChangeText={setNome}
-          style={styles.input}
-          editable={!loading}
-        />
-        <TextInput
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          style={styles.input}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          editable={!loading}
-        />
-        <TextInput
-          placeholder="Senha (mín. 8 caracteres)"
-          value={senha}
-          onChangeText={setSenha}
-          style={styles.input}
-          secureTextEntry
-          editable={!loading}
-        />
-        <TextInput
-          placeholder="Data de nascimento (DD/MM/AAAA)"
-          value={dataNascimento}
-          onChangeText={(text) => setDataNascimento(formatarData(text))}
-          style={styles.input}
-          keyboardType="numeric"
-          maxLength={10}
-          editable={!loading}
-        />
-
-        <View style={styles.row}>
-          <TextInput
-            placeholder="CRM"
-            value={crm}
-            onChangeText={setCrm}
-            style={[styles.input, styles.rowInput]}
-            keyboardType="numeric"
-            editable={!loading}
-          />
-          <TextInput
-            placeholder="UF"
-            value={crmEstado}
-            onChangeText={setCrmEstado}
-            style={[styles.input, styles.ufInput]}
-            maxLength={2}
-            autoCapitalize="characters"
-            editable={!loading}
-          />
-        </View>
-
-        <TextInput
-          placeholder="Especialidade (opcional)"
-          value={especialidade}
-          onChangeText={setEspecialidade}
-          style={styles.input}
-          editable={!loading}
-        />
-        <TextInput
-          placeholder="Telefone (opcional)"
-          value={telefone}
-          onChangeText={setTelefone}
-          style={styles.input}
-          keyboardType="phone-pad"
-          editable={!loading}
-        />
-
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleCriar}
-          disabled={loading}
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Criar conta de médico</Text>
-          )}
-        </TouchableOpacity>
+          <Text style={styles.title}>Cadastro de médico</Text>
+          <Text style={styles.subtitle}>Preencha seus dados profissionais para criar sua conta.</Text>
 
-        <TouchableOpacity onPress={() => router.back()} disabled={loading}>
-          <Text style={styles.cancelText}>Voltar</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <Text style={styles.label}>Nome completo</Text>
+          <TextInput
+            placeholder="Digite seu nome"
+            placeholderTextColor="#6B7280"
+            value={nome}
+            onChangeText={setNome}
+            style={styles.input}
+            autoCapitalize="words"
+            autoCorrect={false}
+            editable={!loading}
+          />
+
+          <Text style={styles.label}>E-mail</Text>
+          <TextInput
+            placeholder="Digite seu e-mail"
+            placeholderTextColor="#6B7280"
+            value={email}
+            onChangeText={setEmail}
+            style={styles.input}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+
+          <Text style={styles.label}>Senha</Text>
+          <TextInput
+            placeholder="Mínimo de 8 caracteres"
+            placeholderTextColor="#6B7280"
+            value={senha}
+            onChangeText={setSenha}
+            style={styles.input}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+
+          <Text style={styles.label}>Data de nascimento</Text>
+          <TextInput
+            placeholder="DD/MM/AAAA"
+            placeholderTextColor="#6B7280"
+            value={dataNascimento}
+            onChangeText={(text) => setDataNascimento(formatarData(text))}
+            style={styles.input}
+            keyboardType="numeric"
+            maxLength={10}
+            editable={!loading}
+          />
+
+          <View style={styles.row}>
+            <View style={styles.rowField}>
+              <Text style={styles.label}>CRM</Text>
+              <TextInput
+                placeholder="Número"
+                placeholderTextColor="#6B7280"
+                value={crm}
+                onChangeText={setCrm}
+                style={[styles.input, styles.rowInput]}
+                keyboardType="numeric"
+                editable={!loading}
+              />
+            </View>
+            <View style={styles.ufField}>
+              <Text style={styles.label}>UF</Text>
+              <TextInput
+                placeholder="UF"
+                placeholderTextColor="#6B7280"
+                value={crmEstado}
+                onChangeText={setCrmEstado}
+                style={[styles.input, styles.ufInput]}
+                maxLength={2}
+                autoCapitalize="characters"
+                editable={!loading}
+              />
+            </View>
+          </View>
+
+          <Text style={styles.label}>Especialidade <Text style={styles.optionalLabel}>(opcional)</Text></Text>
+          <TextInput
+            placeholder="Ex.: obstetrícia"
+            placeholderTextColor="#6B7280"
+            value={especialidade}
+            onChangeText={setEspecialidade}
+            style={styles.input}
+            editable={!loading}
+          />
+
+          <Text style={styles.label}>Telefone <Text style={styles.optionalLabel}>(opcional)</Text></Text>
+          <TextInput
+            placeholder="(00) 00000-0000"
+            placeholderTextColor="#6B7280"
+            value={telefone}
+            onChangeText={setTelefone}
+            style={styles.input}
+            keyboardType="phone-pad"
+            editable={!loading}
+          />
+
+          <TouchableOpacity
+            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            onPress={handleCriar}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Criar conta de médico</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.back()} disabled={loading}>
+            <Text style={styles.cancelText}>Voltar</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#E6E0F8' },
-  container: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
+  keyboardView: { flex: 1 },
+  container: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },
   title: { fontSize: 26, fontWeight: 'bold', color: '#333' },
   subtitle: { fontSize: 14, color: '#555', marginTop: 6, marginBottom: 20 },
+  label: { color: '#374151', fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  optionalLabel: { color: '#6B7280', fontWeight: '400' },
   input: {
     backgroundColor: '#FFF',
     borderRadius: 25,
     paddingHorizontal: 20,
     paddingVertical: 14,
     fontSize: 16,
+    color: '#1F2937',
     marginBottom: 12,
   },
   row: { flexDirection: 'row', gap: 10 },
+  rowField: { flex: 1 },
+  ufField: { width: 70 },
   rowInput: { flex: 1 },
   ufInput: { width: 70 },
   submitButton: {
