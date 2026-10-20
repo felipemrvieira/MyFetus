@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { execFileSync } = require('child_process');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
@@ -178,6 +179,31 @@ test('rotateJwtSecrets em arquivo .env', async (t) => {
 
     const content = fs.readFileSync(tempEnv, 'utf8');
     assert.ok(!content.includes('JWT_SECRET_PREVIOUS='));
+  });
+
+  await t.test('CLI deve executar a rotação em dry-run', () => {
+    fs.writeFileSync(tempEnv, 'JWT_SECRET=initial-secret-key-at-least-32-chars\nPORT=3000\n');
+    const scriptPath = path.join(
+      __dirname,
+      '..',
+      'scripts',
+      'rotate-jwt-secret-and-generate-token.js'
+    );
+    const stdout = execFileSync(
+      process.execPath,
+      [scriptPath, '--dry-run'],
+      {
+        env: { ...process.env, ENV_FILE_PATH: tempEnv },
+        encoding: 'utf8',
+      }
+    );
+    const resultStart = stdout.lastIndexOf('\n{');
+    const result = JSON.parse(stdout.slice(resultStart).trim());
+
+    assert.equal(result.action, 'ROTATE_DUAL_KEY');
+    assert.equal(result.dryRun, true);
+    assert.equal(result.previousSecret, 'initial-secret-key-at-least-32-chars');
+    assert.ok(result.newSecret.length >= 32);
   });
 });
 

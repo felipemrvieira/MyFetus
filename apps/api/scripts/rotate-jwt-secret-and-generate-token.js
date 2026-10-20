@@ -56,6 +56,7 @@ function main() {
   const envPath = process.env.ENV_FILE_PATH
     ? path.resolve(process.env.ENV_FILE_PATH)
     : path.join(rootDir, '.env');
+  const result = rotateJwtSecrets(envPath, { dryRun, clearPrevious });
 
   const sanitizedResult = {
     action: result.action,
