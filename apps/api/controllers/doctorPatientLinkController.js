@@ -7,6 +7,7 @@
 const client = require('../backend');
 const cryptoService = require('../services/cryptoService');
 const { findUserByEmail } = require('./userController');
+const { sendInternalError } = require('../utils/httpErrors');
 
 /**
  * Função 1
@@ -52,7 +53,7 @@ const searchPatientByEmail = async (req, res) => {
       already_linked: linkResult.rows[0].already_linked,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendInternalError(res);
   }
 };
 
@@ -101,7 +102,7 @@ const createLink = async (req, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendInternalError(res);
   }
 };
 
@@ -136,7 +137,7 @@ const removeLink = async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendInternalError(res);
   }
 };
 

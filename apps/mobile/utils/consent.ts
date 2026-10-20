@@ -30,6 +30,21 @@ export type ConsentReference = {
   version: string;
 };
 
+export type ConsentStatusPurpose = ConsentReference & {
+  kind: ConsentKind;
+  current_version: string;
+  required: boolean;
+  status: string;
+  decided_version: string | null;
+  decided_at: string | null;
+};
+
+export type ConsentStatus = {
+  required: boolean;
+  pending: ConsentReference[];
+  purposes: ConsentStatusPurpose[];
+};
+
 export type ConsentSelection = Record<string, boolean>;
 
 const KINDS: ConsentKind[] = ['acceptance', 'acknowledgment', 'consent'];

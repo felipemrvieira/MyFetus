@@ -51,7 +51,8 @@ const createDoctor = async (req, res) => {
     acceptedConsents = validateSignupConsents(consents, DOCTOR_ROLE);
   } catch (error) {
     if (!(error instanceof ConsentValidationError)) throw error;
-    return res.status(error.status).json({ error: error.message, code: error.code });
+    const { status, code, message } = error;
+    return res.status(status).json({ error: message, code });
   }
 
   let dbClient;

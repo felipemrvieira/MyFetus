@@ -21,7 +21,7 @@
     "rag:test-search": "node tests/ragSearch.test.js",
     "test:chunking": "node tests/chunkingService.test.js",
     "test:health": "node --test tests/health.test.js",
-    "test:ci": "node --test tests/chunkingService.test.js tests/clinicalDataService.test.js tests/consent.test.js tests/crossPatientAuthorization.test.js tests/cryptoService.test.js tests/docsRoutes.test.js tests/emailLookupService.node.test.js tests/fileCryptoService.test.js tests/generationService.test.js tests/hadlockCalculator.test.js tests/health.test.js tests/logger.test.js tests/openapiContract.test.js tests/piiSanitizer.test.js tests/securityBaseline.test.js && npm run test:document-worker",
+    "test:ci": "node --test tests/chunkingService.test.js tests/clinicalDataService.test.js tests/consent.test.js tests/consentMiddleware.test.js tests/crossPatientAuthorization.test.js tests/cryptoService.test.js tests/docsRoutes.test.js tests/apiHardening.test.js tests/noErrorLeak.test.js tests/emailLookupService.node.test.js tests/fileCryptoService.test.js tests/generationService.test.js tests/hadlockCalculator.test.js tests/health.test.js tests/jwtRotationDualKey.test.js tests/logger.test.js tests/openapiContract.test.js tests/piiSanitizer.test.js tests/securityBaseline.test.js && npm run test:document-worker",
     "docs:check": "node --test tests/openapiContract.test.js tests/docsRoutes.test.js",
     "test:embedding": "node tests/embeddingService.test.js",
     "test:pinecone": "node tests/vectorStoreService.test.js",
@@ -47,7 +47,9 @@
     "test:generation-service": "node --test ./tests/generationService.test.js",
     "test:agent-controller": "node --test ./tests/agentController.test.js",
     "test:hadlockCalculator": "node ./tests/hadlockCalculator.test.js",
-    "test:clinical-history": "node ./tests/clinicalHistoryService.test.js"
+    "test:clinical-history": "node ./tests/clinicalHistoryService.test.js",
+    "test:no-error-leak": "node --test tests/noErrorLeak.test.js",
+    "test:api-hardening": "node --test tests/apiHardening.test.js"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",
@@ -60,6 +62,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.2",
     "express-validator": "^7.2.1",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.0",
     "pdfjs-dist": "^4.10.38",

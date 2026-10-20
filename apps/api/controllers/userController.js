@@ -20,6 +20,7 @@ const {
   VALID_ROLES,
   getAllowedUserUpdateFields,
 } = require('../utils/userPolicy');
+const { sendInternalError } = require('../utils/httpErrors');
 
 const SALT_ROUNDS = 10;
 
@@ -149,7 +150,8 @@ const createUser = async (req, res) => {
       outcome: 'FAILURE',
       detail: { reason: error.code },
     });
-    return res.status(error.status).json({ error: error.message, code: error.code });
+    const { status, code, message } = error;
+    return res.status(status).json({ error: message, code });
   }
 
   let dbClient;
@@ -252,7 +254,7 @@ const getUsers = async (req, res) => {
     );
     return res.json(result.rows.map((row) => sanitizeUser(decryptUser(row))));
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -268,7 +270,7 @@ const getUserById = async (req, res) => {
     if (!result.rows[0]) return res.status(404).send('Usuario nao encontrado');
     return res.json(sanitizeUser(decryptUser(result.rows[0])));
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -343,7 +345,7 @@ const deleteUser = async (req, res) => {
     if (!result.rows[0]) return res.status(404).send('Usuario nao encontrado');
     return res.send('Usuario deletado com sucesso');
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 

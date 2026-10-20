@@ -17,7 +17,8 @@ const AUDIT_ACTIONS = Object.freeze({
 
 function sendConsentError(res, error, context) {
   if (error instanceof ConsentValidationError) {
-    return res.status(error.status).json({ error: error.message, code: error.code });
+    const { status, code, message } = error;
+    return res.status(status).json({ error: message, code });
   }
   logger.error(context, { details: error.message });
   return res.status(500).json({ error: 'Erro ao processar consentimento' });
