@@ -118,7 +118,6 @@ test('authenticateToken com suporte dual-key JWT', async (t) => {
     assert.equal(responseBody.error, 'Token inválido ou expirado');
   });
 });
-
 test('getSecurityConfig validação de JWT_SECRET_PREVIOUS', async (t) => {
   await t.test('deve lançar erro se JWT_SECRET_PREVIOUS tiver menos de 32 caracteres', () => {
     assert.throws(

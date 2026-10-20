@@ -15,4 +15,3 @@ O **GitHub Projects** será utilizado para gerenciamento do backlog do projeto n
 * O backlog ficará integrado ao ambiente do GitHub.
 * As tarefas poderão ser acompanhadas e organizadas por meio do GitHub Projects.
 * A equipe utilizará uma única ferramenta principal para o gerenciamento do backlog neste ciclo.
-

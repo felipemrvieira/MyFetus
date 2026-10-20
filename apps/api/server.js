@@ -41,6 +41,7 @@ const db = require('./backend');
 const logger = require('./utils/logger');
 const { getSecurityConfig, requireHttps } = require('./config/security');
 const hardening = require('./config/apiHardening');
+const { requireCurrentConsent } = require('./middlewares/consent');
 const { createAuthLimiters } = require('./middlewares/authRateLimit');
 
 const app = express();
@@ -69,6 +70,10 @@ app.use((req, res, next) => {
   logger.request(req);
   next();
 });
+
+// Verifica consentimento vigente antes de qualquer uso autenticado da API.
+// Cadastro, login e os próprios endpoints de consentimento são exceções.
+app.use(requireCurrentConsent);
 
 //Importação das rotas
 const userRoutes = require('./routes/users');
@@ -105,6 +110,10 @@ app.use('/api/agent', agentRoutes);
 app.use('/api/admin/audit', auditRoutes);
 app.use('/api/growth', growthRoutes);
 app.use('/api/history', clinicalHistoryRoutes);
+
+// Consentimento LGPD (E7-01.1)
+const consentRoutes = require('./routes/consents');
+app.use('/api/consents', consentRoutes);
 
 // Documentacao OpenAPI/Swagger (E1-09): contrato em apps/api/openapi.yaml.
 const docsRoutes = require('./routes/docs');

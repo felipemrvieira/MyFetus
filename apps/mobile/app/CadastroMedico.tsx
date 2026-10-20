@@ -14,6 +14,13 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../utils/apiClient';
+import ConsentChecklist, { useConsentPolicy } from '../components/ConsentChecklist';
+import {
+  buildSignupConsents,
+  ConsentSelection,
+  getApiErrorInfo,
+  getMissingRequired,
+} from '../utils/consent';
 
 const formatarData = (text: string) => {
   const cleaned = text.replace(/\D/g, '');
@@ -33,6 +40,9 @@ export default function CadastroMedicoScreen() {
   const [especialidade, setEspecialidade] = useState('');
   const [telefone, setTelefone] = useState('');
   const [loading, setLoading] = useState(false);
+  // E7-01.1: médico aceita os termos do próprio perfil e declara ciência da política.
+  const { policy, reload: carregarTermos } = useConsentPolicy('medico');
+  const [aceites, setAceites] = useState<ConsentSelection>({});
 
   const handleCriar = async () => {
     if (!nome.trim() || !email.trim() || senha.length < 8 || !dataNascimento || !crm.trim() || crmEstado.trim().length !== 2) {
@@ -49,6 +59,15 @@ export default function CadastroMedicoScreen() {
       return;
     }
 
+    if (!policy) {
+      Alert.alert('Atenção', 'Não foi possível carregar os termos. Verifique sua conexão.');
+      return;
+    }
+    if (getMissingRequired(policy, aceites).length > 0) {
+      Alert.alert('Atenção', 'Aceite os termos de uso e declare ciência da política de privacidade.');
+      return;
+    }
+
     setLoading(true);
     try {
       await api.post('/doctors', {
@@ -60,13 +79,21 @@ export default function CadastroMedicoScreen() {
         crm_estado: crmEstado.trim().toUpperCase(),
         especialidade: especialidade.trim() || undefined,
         telefone: telefone.trim() || undefined,
+        consents: buildSignupConsents(policy, aceites),
       });
 
       Alert.alert('Sucesso', 'Sua conta de médico foi criada com sucesso! Você já pode fazer login.', [
         { text: 'OK', onPress: () => router.push('/login') },
       ]);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
+      const apiError = getApiErrorInfo(error);
+      if (apiError.code === 'CONSENT_VERSION_OUTDATED') {
+        setAceites({});
+        await carregarTermos();
+        Alert.alert('Atenção', 'Os termos foram atualizados. Leia a nova versão e aceite novamente.');
+      } else {
+        Alert.alert('Erro', apiError.message || (error instanceof Error ? error.message : 'Erro de rede'));
+      }
     } finally {
       setLoading(false);
     }
@@ -183,6 +210,13 @@ export default function CadastroMedicoScreen() {
             style={styles.input}
             keyboardType="phone-pad"
             editable={!loading}
+          />
+
+          <ConsentChecklist
+            policy={policy}
+            selection={aceites}
+            disabled={loading}
+            onToggle={(purpose) => setAceites((prev) => ({ ...prev, [purpose]: !prev[purpose] }))}
           />
 
           <TouchableOpacity

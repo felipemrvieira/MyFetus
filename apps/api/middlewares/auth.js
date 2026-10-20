@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 
 function authenticateToken(req, res, next) {
+  if (req.consentChecked && req.user) return next();
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {

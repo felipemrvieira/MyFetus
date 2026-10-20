@@ -579,13 +579,16 @@ Verificação local: `npm run docs:check` (dentro de `apps/api`).
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
-| `POST` | `/api/users` | Não | Cria usuário. |
-| `POST` | `/api/users/login` | Não | Realiza login e retorna JWT. |
+| `POST` | `/api/users` | Não | Cria usuário (exige aceite do termo vigente em `consents`). |
+| `POST` | `/api/users/login` | Não | Realiza login, retorna JWT e termos pendentes (`consent`). |
+| `GET` | `/api/consents/policy` | Não | Finalidades (termos, política, consentimentos), versões e textos por perfil. |
+| `GET` | `/api/consents/me` | JWT | Status de consentimento do usuário autenticado. |
+| `POST` | `/api/consents` | JWT | Registra aceite, recusa ou revogação do próprio usuário. |
 | `GET` | `/api/users` | Admin | Lista usuários. |
 | `GET` | `/api/users/:id` | JWT | Consulta usuário por ID. |
 | `PUT` | `/api/users/:id` | JWT | Atualiza usuário. |
 | `DELETE` | `/api/users/:id` | Admin | Remove usuário. |
-| `POST` | `/api/doctors` | Não | Cria conta médica. |
+| `POST` | `/api/doctors` | Não | Cria conta médica (exige termos do médico e ciência da política em `consents`). |
 | `GET` | `/api/pregnants` | Médico/Admin | Lista gestantes. |
 | `POST` | `/api/pregnants` | Gestante/Admin | Cria registro de gestante. |
 | `GET` | `/api/pregnants/:id` | Própria gestante/Médico vinculado/Admin | Consulta gestante. |
@@ -1006,6 +1009,7 @@ Arquivos importantes no repositório:
 |---|---|
 | `docs/ci-cd.md` | Contrato de CI/CD, deploy, rollback e troca de provedor. |
 | `docs/ci-cd-gcp-staging.md` | Implementação atual do CI/CD no Google Cloud. |
+| `docs/lgpd/consentimento.md` | Consentimento LGPD no cadastro (E7-01.1) e decisões pendentes do P.O. |
 | `apps/api/API_USAGE.md` | Exemplos de uso da API. |
 | `apps/api/CURL_RAG_EXAMPLES.md` | Exemplos de chamadas RAG. |
 | `apps/api/README_RAG_SPRINT4.md` | Documentação histórica do módulo RAG. |

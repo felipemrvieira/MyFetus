@@ -7,7 +7,13 @@ const {
   normalizeEmail,
 } = require('../services/emailLookupService');
 const logger = require('../utils/logger');
-const { audit } = require('../services/auditService');
+const { audit, buildAuditEntry } = require('../services/auditService');
+const {
+  ConsentValidationError,
+  getConsentStatus,
+  recordDecision,
+  validateSignupConsents,
+} = require('../services/consentService');
 const updateEntity = require('../utils/updateEntity');
 const {
   PUBLIC_REGISTRATION_ROLE,
@@ -116,7 +122,7 @@ async function findUserByEmail(email) {
 }
 
 const createUser = async (req, res) => {
-  const { name, email, password, birthdate } = req.body || {};
+  const { name, email, password, birthdate, consents } = req.body || {};
   if (
     typeof name !== 'string' ||
     !name.trim() ||
@@ -130,6 +136,22 @@ const createUser = async (req, res) => {
     return res.status(400).json({
       error: 'Nome, email, data de nascimento e senha de ao menos 8 caracteres sao obrigatorios',
     });
+  }
+
+  // E7-01.1: sem aceite da versão vigente do termo, a conta não é criada.
+  let acceptedConsents;
+  try {
+    acceptedConsents = validateSignupConsents(consents, PUBLIC_REGISTRATION_ROLE);
+  } catch (error) {
+    if (!(error instanceof ConsentValidationError)) throw error;
+    audit(req, {
+      action: 'USER_CREATED',
+      resource: 'users',
+      outcome: 'FAILURE',
+      detail: { reason: error.code },
+    });
+    const { status, code, message } = error;
+    return res.status(status).json({ error: message, code });
   }
 
   let dbClient;
@@ -164,6 +186,17 @@ const createUser = async (req, res) => {
     await dbClient.query('INSERT INTO pregnants (user_id) VALUES ($1)', [
       result.rows[0].id,
     ]);
+    const { ip_address: ipAddress, user_agent: userAgent } = buildAuditEntry(req, {});
+    for (const { purpose, version } of acceptedConsents) {
+      await recordDecision(dbClient, {
+        userId: result.rows[0].id,
+        purpose,
+        version,
+        decision: 'accepted',
+        ipAddress,
+        userAgent,
+      });
+    }
     await dbClient.query('COMMIT');
 
     audit(req, {
@@ -172,6 +205,15 @@ const createUser = async (req, res) => {
       resource_id: result.rows[0].id,
       outcome: 'SUCCESS',
       detail: { role: PUBLIC_REGISTRATION_ROLE, email: normalizedEmail },
+    });
+    audit(req, {
+      action: 'CONSENT_ACCEPTED',
+      resource: 'consents',
+      resource_id: result.rows[0].id,
+      actor_id: result.rows[0].id,
+      actor_role: PUBLIC_REGISTRATION_ROLE,
+      outcome: 'SUCCESS',
+      detail: { consents: acceptedConsents },
     });
 
     return res.status(201).json(sanitizeUser(decryptUser(result.rows[0])));
@@ -344,6 +386,16 @@ const loginUser = async (req, res) => {
       outcome: 'SUCCESS',
       detail: { role: user.role },
     });
+
+    // E7-01.1: informa se há termo pendente (ex.: nova versão). Falha aqui não impede o login.
+    let consent = null;
+    try {
+      const status = await getConsentStatus(client, { userId: user.id, role: user.role });
+      consent = { required: status.required, pending: status.pending };
+    } catch (consentError) {
+      logger.warn('Status de consentimento indisponivel no login', { details: consentError.message });
+    }
+
     return res.status(200).json({
       message: 'Login bem-sucedido',
       token,
@@ -354,6 +406,7 @@ const loginUser = async (req, res) => {
         role: user.role,
         pregnant_id: user.pregnant_id || null,
       },
+      consent,
     });
   } catch (error) {
     logger.error('Erro no login', { details: error.message });

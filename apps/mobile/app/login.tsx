@@ -36,12 +36,23 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const response = await api.post('/users/login', { email, password: senha });
-      const payload = response.data as { error?: string; message?: string; token?: unknown; user?: unknown };
+      const payload = response.data as {
+        error?: string;
+        message?: string;
+        token?: unknown;
+        user?: unknown;
+        consent?: { required?: boolean; pending?: unknown[] };
+      };
       const user = parseSessionUser(payload.user);
       if (typeof payload.token !== 'string' || !user) {
         throw new Error('A resposta de autenticação é inválida.');
       }
       await signIn(payload.token, user);
+
+      if (payload.consent?.required === true) {
+        router.replace('/consentimento' as never);
+        return;
+      }
 
       if (user.role === 'admin' || user.role === 'medico') {
         router.replace('/doctor/dashboard');

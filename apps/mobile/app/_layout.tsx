@@ -1,12 +1,14 @@
 // app/_layout.tsx
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { SessionProvider, useSession } from '@/contexts/SessionContext';
 import { isClinicianRole, isPatientRole } from '@/types/session';
+import { subscribeToConsentRequired } from '@/utils/consentEvents';
 
 export default function RootLayout() {
   return (
@@ -21,6 +23,11 @@ export default function RootLayout() {
 function RootNavigator() {
   const colorScheme = useColorScheme();
   const { user, isLoading } = useSession();
+  const router = useRouter();
+
+  useEffect(() => subscribeToConsentRequired(() => {
+    if (user) router.replace('/consentimento' as never);
+  }), [router, user]);
 
   if (isLoading) {
     return (
@@ -51,6 +58,10 @@ function RootNavigator() {
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="Cadastro" options={{ headerShown: false }} />
           <Stack.Screen name="CadastroMedico" options={{ headerShown: false }} />
+        </Stack.Protected>
+
+        <Stack.Protected guard={Boolean(user)}>
+          <Stack.Screen name="consentimento" options={{ headerShown: false }} />
         </Stack.Protected>
 
         <Stack.Protected guard={isPatient}>

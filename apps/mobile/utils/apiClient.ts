@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getApiBaseUrl } from './api';
 import { notifyUnauthorized } from './authEvents';
+import { notifyConsentRequired } from './consentEvents';
 import { getStoredToken } from './sessionStorage';
 
 // 1 - Cria a base da API. Se não houver variável no .env, usa localhost.
@@ -31,6 +32,9 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response && error.response.status === 401) {
       notifyUnauthorized();
+    }
+    if (error.response && error.response.status === 428) {
+      notifyConsentRequired();
     }
     return Promise.reject(error);
   }
