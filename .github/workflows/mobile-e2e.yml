@@ -134,8 +134,12 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
+          cores: 4
+          ram-size: 6144M
+          heap-size: 576M
+          emulator-boot-timeout: 600
           force-avd-creation: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
             adb install -r apps/mobile/android/app/build/outputs/apk/release/app-release.apk
