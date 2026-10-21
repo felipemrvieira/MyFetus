@@ -75,6 +75,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`Falha na verificação E2E: ${error.message}`);
+  console.error(`Falha na verificação E2E (${error.name || 'Error'})`);
   process.exitCode = 1;
 });
