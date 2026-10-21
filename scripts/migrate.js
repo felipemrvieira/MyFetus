@@ -74,6 +74,7 @@ function runMigrations() {
     { id: '10_audit_trail.sql', path: 'apps/api/db/migration_audit_trail.sql' },
     { id: '11_normalize_update_triggers.sql', path: 'apps/api/db/migration_normalize_update_triggers.sql' },
     { id: '12_consents.sql', path: 'apps/api/db/migration_consents.sql' },
+    { id: '13_exam_requests.sql', path: 'apps/api/db/migration_exam_requests.sql' },
   ];
 
   // 4. Consulta quais migracoes ja constam como aplicadas

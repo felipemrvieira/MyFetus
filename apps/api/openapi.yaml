@@ -30,6 +30,7 @@ tags:
   - name: Gestacoes
   - name: Eventos
   - name: Documentos
+  - name: Exames
   - name: Medicoes
   - name: Vinculos
   - name: Sincronizacao
@@ -943,6 +944,85 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ------------------------------------------------------------------ Exames
+  /api/exam-requests/pregnant/{pregnantId}:
+    parameters:
+      - name: pregnantId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Exames]
+      summary: Lista pedidos de exame de uma gestante
+      operationId: getExamRequests
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, gestante, medico]
+      responses:
+        '200':
+          description: Pedidos de exame, mais recentes primeiro.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ExamRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/exam-requests:
+    post:
+      tags: [Exames]
+      summary: Cria um pedido de exame para uma gestante vinculada
+      operationId: createExamRequest
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateExamRequest' }
+            example:
+              pregnant_id: 1
+              exam_name: Ultrassonografia morfológica
+              instructions: Levar resultado anterior.
+      responses:
+        '201':
+          description: Pedido criado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/exam-requests/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    delete:
+      tags: [Exames]
+      summary: Cancela um pedido de exame pendente
+      operationId: cancelExamRequest
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      responses:
+        '200':
+          description: Pedido cancelado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ---------------------------------------------------------------- Medicoes
@@ -1935,6 +2015,24 @@ components:
       properties:
         document_name: { type: string }
         document_type: { type: string }
+    ExamRequest:
+      type: object
+      properties:
+        id: { type: integer }
+        pregnant_id: { type: integer }
+        doctor_id: { type: integer }
+        exam_name: { type: string }
+        instructions: { type: [string, 'null'] }
+        status: { type: string, enum: [pending, submitted, reviewed, cancelled] }
+        requested_at: { type: string, format: date-time }
+        cancelled_at: { type: [string, 'null'], format: date-time }
+    CreateExamRequest:
+      type: object
+      required: [pregnant_id, exam_name]
+      properties:
+        pregnant_id: { type: integer, minimum: 1 }
+        exam_name: { type: string, minLength: 1, maxLength: 255 }
+        instructions: { type: [string, 'null'], maxLength: 2000 }
     DocumentText:
       type: object
       properties:
