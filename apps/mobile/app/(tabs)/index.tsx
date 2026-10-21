@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Platform,
@@ -15,6 +14,8 @@ import { getLastPeriod, calculateGestationWeek, getBabySize, getBabyDescription,
 import { useRouter } from 'expo-router';
 import { useSession } from '@/contexts/SessionContext';
 import { FetusWeekImage } from '../../components/FetusWeekImage';
+import { AccessibleText as Text } from '../../components/AccessibleText';
+import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 
 const WEB_MAX_WIDTH = 430;
 
@@ -69,7 +70,7 @@ export default function HomeScreen() {
                 onPress={handleSignOut}
                 style={styles.signOutButton}
               >
-                <FontAwesome name="sign-out" size={18} color="#20B2AA" />
+                <FontAwesome name="sign-out" size={18} color={ACCESSIBLE_COLORS.primary} />
                 <Text style={styles.signOutText}>Sair</Text>
               </TouchableOpacity>
             </View>
@@ -86,13 +87,13 @@ export default function HomeScreen() {
 
             <View style={styles.infoContainer}>
               <View style={styles.infoCard}>
-                <FontAwesome name="calendar" size={24} color="#20B2AA" />
+                <FontAwesome name="calendar" size={24} color={ACCESSIBLE_COLORS.primary} />
                 <Text style={styles.infoTitle}>Data Prevista do Parto</Text>
                 <Text style={styles.infoValue}>{dpp}</Text>
               </View>
 
               <View style={styles.infoCard}>
-                <FontAwesome name="arrows-alt" size={24} color="#20B2AA" />
+                <FontAwesome name="arrows-alt" size={24} color={ACCESSIBLE_COLORS.primary} />
                 <Text style={styles.infoTitle}>Tamanho do Bebê</Text>
                 <Text style={styles.infoValue}>{babySize}</Text>
               </View>
@@ -136,11 +137,11 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   title: {
     fontSize: width * 0.07,
     fontWeight: 'bold',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
   },
   subtitle: {
     fontSize: width * 0.045,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginTop: 5,
   },
   signOutButton: {
@@ -152,7 +153,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     paddingVertical: 8,
   },
   signOutText: {
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     fontWeight: '600',
   },
   infoContainer: {
@@ -178,13 +179,13 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   infoTitle: {
     fontSize: width * 0.035,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginTop: 10,
     textAlign: 'center',
   },
   infoValue: {
     fontSize: width * 0.04,
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     fontWeight: 'bold',
     marginTop: 5,
     textAlign: 'center',
@@ -206,12 +207,12 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   descriptionTitle: {
     fontSize: width * 0.05,
     fontWeight: 'bold',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     marginBottom: 10,
   },
   descriptionText: {
     fontSize: width * 0.035,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     lineHeight: 20,
   },
   imageContainer: {

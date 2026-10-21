@@ -5,7 +5,6 @@ import {
   FlatList,
   Platform,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -14,6 +13,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { api } from '../../utils/apiClient';
 import { useSession } from '@/contexts/SessionContext';
 import { downloadDocument } from '@/utils/downloadDocument';
+import { AccessibleText as Text } from '../../components/AccessibleText';
+import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 
 type PregnantDocument = {
   id: number;
@@ -204,7 +205,7 @@ export default function ExamesTabScreen() {
         <ActivityIndicator
           accessibilityLabel="Carregando exames"
           size="large"
-          color="#20B2AA"
+          color={ACCESSIBLE_COLORS.primary}
           style={{ marginTop: 40 }}
         />
       </SafeAreaView>
@@ -320,12 +321,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
   },
   subtitle: {
     marginTop: 6,
     fontSize: 14,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
   },
   requestsBox: {
     marginTop: 12,
@@ -351,7 +352,7 @@ const styles = StyleSheet.create({
   },
   requestCardSelected: {
     borderWidth: 2,
-    borderColor: '#20B2AA',
+    borderColor: ACCESSIBLE_COLORS.primary,
   },
   requestName: {
     color: '#202020',
@@ -382,7 +383,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginTop: 14,
-    backgroundColor: '#20B2AA',
+    backgroundColor: ACCESSIBLE_COLORS.primary,
     paddingVertical: 12,
     borderRadius: 24,
     alignItems: 'center',
@@ -397,7 +398,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginTop: 24,
   },
   card: {
@@ -448,13 +449,13 @@ const styles = StyleSheet.create({
   secondaryButton: {
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#20B2AA',
+    borderColor: ACCESSIBLE_COLORS.primary,
     paddingVertical: 10,
     borderRadius: 24,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     fontWeight: '700',
   },
 });

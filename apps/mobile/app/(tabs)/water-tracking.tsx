@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Platform,
@@ -13,6 +12,8 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useSession } from '@/contexts/SessionContext';
 import { getScopedItem, setScopedItem } from '@/utils/scopedStorage';
 import { localDateKey } from '@/utils/gestationDate';
+import { AccessibleText as Text } from '../../components/AccessibleText';
+import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 import {
   getWaterAmountForDate,
   parseWaterHistory,
@@ -91,9 +92,9 @@ export default function WaterTrackingScreen() {
 
   const getProgressColor = (amount: number) => {
     const percentage = (amount / dailyGoal) * 100;
-    if (percentage < 50) return '#FF6B6B';
-    if (percentage < 80) return '#FFD93D';
-    return '#4CAF50';
+    if (percentage < 50) return ACCESSIBLE_COLORS.danger;
+    if (percentage < 80) return ACCESSIBLE_COLORS.warning;
+    return ACCESSIBLE_COLORS.success;
   };
 
   return (
@@ -139,7 +140,7 @@ export default function WaterTrackingScreen() {
               accessibilityLabel={`Adicionar ${COPO_ML} mililitros de água`}
               accessibilityHint="Atualiza o total consumido hoje"
             >
-              <FontAwesome name="glass" size={24} color="#20B2AA" />
+              <FontAwesome name="glass" size={24} color={ACCESSIBLE_COLORS.primary} />
               <Text style={styles.buttonText}>1 Copo</Text>
               <Text style={styles.buttonSubtext}>{COPO_ML}ml</Text>
             </TouchableOpacity>
@@ -151,7 +152,7 @@ export default function WaterTrackingScreen() {
               accessibilityLabel={`Adicionar ${GARRAFA_ML} mililitros de água`}
               accessibilityHint="Atualiza o total consumido hoje"
             >
-              <FontAwesome name="tint" size={24} color="#20B2AA" />
+              <FontAwesome name="tint" size={24} color={ACCESSIBLE_COLORS.primary} />
               <Text style={styles.buttonText}>1 Garrafa</Text>
               <Text style={styles.buttonSubtext}>{GARRAFA_ML}ml</Text>
             </TouchableOpacity>
@@ -163,7 +164,7 @@ export default function WaterTrackingScreen() {
               accessibilityLabel={`Adicionar ${GARRAFAO_ML} mililitros de água`}
               accessibilityHint="Atualiza o total consumido hoje"
             >
-              <FontAwesome name="tint" size={24} color="#20B2AA" />
+              <FontAwesome name="tint" size={24} color={ACCESSIBLE_COLORS.primary} />
               <Text style={styles.buttonText}>1 Garrafão</Text>
               <Text style={styles.buttonSubtext}>{GARRAFAO_ML}ml</Text>
             </TouchableOpacity>
@@ -223,11 +224,11 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   title: {
     fontSize: width * 0.07,
     fontWeight: 'bold',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
   },
   subtitle: {
     fontSize: width * 0.045,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginTop: 5,
   },
   progressContainer: {
@@ -248,7 +249,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   progressText: {
     marginTop: 10,
     fontSize: width * 0.04,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
   },
   buttonsContainer: {
     flexDirection: 'row',
@@ -273,13 +274,13 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   buttonText: {
     marginTop: 5,
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     fontSize: width * 0.035,
     fontWeight: '500',
   },
   buttonSubtext: {
     fontSize: width * 0.03,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginTop: 2,
   },
   historyContainer: {
@@ -299,7 +300,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   historyTitle: {
     fontSize: width * 0.05,
     fontWeight: 'bold',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     marginBottom: 15,
   },
   historyItem: {
@@ -307,7 +308,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   historyDate: {
     fontSize: width * 0.035,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginBottom: 5,
   },
   historyProgress: {
@@ -323,12 +324,12 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   historyAmount: {
     fontSize: width * 0.035,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     textAlign: 'right',
   },
   noHistoryText: {
     fontSize: width * 0.035,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     textAlign: 'center',
     fontStyle: 'italic',
   },

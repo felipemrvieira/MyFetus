@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -25,8 +26,8 @@ export default function TabsLayout() {
             style={{ flex: 1 }}
           />
         ),
-        tabBarActiveTintColor: '#20B2AA',
-        tabBarInactiveTintColor: '#f9a9a7',
+        tabBarActiveTintColor: ACCESSIBLE_COLORS.primary,
+        tabBarInactiveTintColor: ACCESSIBLE_COLORS.secondary,
         headerShown: false,
         tabBarHideOnKeyboard: true,
         tabBarLabelStyle: {
