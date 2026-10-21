@@ -1987,6 +1987,7 @@ components:
       properties:
         id: { type: integer }
         pregnant_id: { type: integer }
+        exam_request_id: { type: [integer, 'null'] }
         document_name: { type: string }
         document_type: { type: string }
         status: { type: string }
@@ -1997,7 +1998,7 @@ components:
         uploaded_at: { type: string, format: date-time }
     UploadDocumentRequest:
       type: object
-      required: [pregnant_id, document_name]
+      required: [document_name]
       properties:
         file:
           type: string
@@ -2007,6 +2008,10 @@ components:
           type: string
           format: binary
         pregnant_id: { type: integer }
+        exam_request_id:
+          type: integer
+          minimum: 1
+          description: Solicitação pendente à qual o documento será vinculado. Obrigatório para gestante.
         document_name: { type: string }
         document_type: { type: string, description: 'Padrao: mimetype do arquivo.' }
     UpdateDocumentRequest:

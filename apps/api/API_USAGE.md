@@ -169,11 +169,13 @@ curl -X POST http://localhost:3000/api/pregnancyEvents \
 
 ### Documents (documentos da gestante)
 
-Todas as rotas exigem `Authorization: Bearer <token>` de usuário `medico` ou `admin`.
-Médicos só acessam documentos de gestantes vinculadas em `doctor_patient_links`.
+Todas as rotas exigem `Authorization: Bearer <token>`. Gestantes acessam apenas os
+próprios documentos; médicos só acessam documentos de gestantes vinculadas em
+`doctor_patient_links`; alterações e reprocessamento ficam restritos a médicos e admins.
 
 - Upload (multipart): POST `/api/documents`
-  - Form fields: `pregnant_id` (number), `document_name` (string), `document_type` (string), `file` ou `document` (arquivo)
+  - Form fields: `pregnant_id` (number), `exam_request_id` (number), `document_name` (string), `document_type` (string), `file` ou `document` (arquivo)
+  - Para gestante, `exam_request_id` é obrigatório e deve estar pendente para a própria gestação.
 
 Exemplo:
 

@@ -94,9 +94,9 @@ router.post(
 );
 router.get('/', requireDocumentReadAccess, getDocuments);
 router.get('/:id/download', requireDocumentReadAccess, downloadDocument);
-router.get('/:id/text', requireDocumentReadAccess, getDocumentExtractedText);
+router.get('/:id/text', requireDocumentManagement, getDocumentExtractedText);
 router.post('/:id/extract', requireDocumentManagement, retryDocumentTextExtraction);
-router.get('/:id', requireDocumentReadAccess, getDocumentById);
+router.get('/:id', requireDocumentManagement, getDocumentById);
 router.put('/:id/report', requireDocumentManagement, updateDocumentReport);
 router.delete('/:id', requireDocumentManagement, deleteDocument);
 router.put('/:id', requireDocumentManagement, updateDocument);
