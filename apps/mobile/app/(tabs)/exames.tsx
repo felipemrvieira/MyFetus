@@ -4,12 +4,12 @@ import {
   Alert,
   FlatList,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { api } from '../../utils/apiClient';
 import { useSession } from '@/contexts/SessionContext';
@@ -199,11 +199,20 @@ export default function ExamesTabScreen() {
   }, [pregnantId]);
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#20B2AA" style={{ marginTop: 40 }} />;
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ActivityIndicator
+          accessibilityLabel="Carregando exames"
+          size="large"
+          color="#20B2AA"
+          style={{ marginTop: 40 }}
+        />
+      </SafeAreaView>
+    );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <FlatList
         data={docs}
         keyExtractor={(item) => String(item.id)}
@@ -223,6 +232,13 @@ export default function ExamesTabScreen() {
                   style={[styles.requestCard, selectedExamRequestId === request.id && styles.requestCardSelected]}
                   onPress={() => request.status === 'pending' && setSelectedExamRequestId(request.id)}
                   disabled={request.status !== 'pending'}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${request.exam_name}, status ${request.status === 'pending' ? 'pendente' : request.status === 'cancelled' ? 'cancelada' : request.status === 'reviewed' ? 'revisada' : 'enviada'}`}
+                  accessibilityHint={request.status === 'pending' ? 'Seleciona esta solicitação para enviar o resultado' : 'Solicitação indisponível para envio'}
+                  accessibilityState={{
+                    disabled: request.status !== 'pending',
+                    selected: selectedExamRequestId === request.id,
+                  }}
                 >
                   <View style={styles.rowBetween}>
                     <Text style={styles.requestName}>{request.exam_name}</Text>
@@ -241,6 +257,10 @@ export default function ExamesTabScreen() {
               style={[styles.primaryButton, uploading && styles.primaryButtonDisabled]}
               onPress={handlePickAndUpload}
               disabled={uploading}
+              accessibilityRole="button"
+              accessibilityLabel={uploading ? 'Enviando exame' : 'Enviar exame solicitado'}
+              accessibilityHint="Abre o seletor de arquivos para enviar o resultado da solicitação selecionada"
+              accessibilityState={{ disabled: uploading, busy: uploading }}
             >
               <Text style={styles.primaryButtonText}>{uploading ? 'Enviando...' : 'Enviar exame solicitado'}</Text>
             </TouchableOpacity>
@@ -266,7 +286,13 @@ export default function ExamesTabScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => openDownload(item)}>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => openDownload(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Abrir exame ${item.document_name}`}
+              accessibilityHint="Abre o arquivo do exame"
+            >
               <Text style={styles.secondaryButtonText}>Abrir exame</Text>
             </TouchableOpacity>
           </View>

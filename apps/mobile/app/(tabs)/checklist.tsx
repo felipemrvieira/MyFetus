@@ -134,18 +134,27 @@ export default function ChecklistScreen() {
             <TouchableOpacity
               style={[styles.trimesterButton, currentTrimester === 1 && styles.activeTrimester]}
               onPress={() => changeTrimester(1)}
+              accessibilityRole="tab"
+              accessibilityLabel="Primeiro trimestre"
+              accessibilityState={{ selected: currentTrimester === 1 }}
             >
               <Text style={[styles.trimesterButtonText, currentTrimester === 1 && styles.activeTrimesterText]}>1º</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.trimesterButton, currentTrimester === 2 && styles.activeTrimester]}
               onPress={() => changeTrimester(2)}
+              accessibilityRole="tab"
+              accessibilityLabel="Segundo trimestre"
+              accessibilityState={{ selected: currentTrimester === 2 }}
             >
               <Text style={[styles.trimesterButtonText, currentTrimester === 2 && styles.activeTrimesterText]}>2º</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.trimesterButton, currentTrimester === 3 && styles.activeTrimester]}
               onPress={() => changeTrimester(3)}
+              accessibilityRole="tab"
+              accessibilityLabel="Terceiro trimestre"
+              accessibilityState={{ selected: currentTrimester === 3 }}
             >
               <Text style={[styles.trimesterButtonText, currentTrimester === 3 && styles.activeTrimesterText]}>3º</Text>
             </TouchableOpacity>
@@ -158,6 +167,9 @@ export default function ChecklistScreen() {
               key={item.id}
               style={styles.itemContainer}
               onPress={() => toggleItem(item.id)}
+              accessibilityRole="checkbox"
+              accessibilityLabel={`${item.title}${item.description ? `. ${item.description}` : ''}`}
+              accessibilityState={{ checked: item.completed }}
             >
               <View style={[styles.checkbox, item.completed && styles.checkboxCompleted]}>
                 {item.completed && (
@@ -192,7 +204,13 @@ export default function ChecklistScreen() {
           <Text style={styles.progressText}>
             {completedCount} de {checklistItems.length} tarefas concluídas
           </Text>
-          <View style={styles.progressBar}>
+          <View
+            style={styles.progressBar}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Progresso do checklist"
+            accessibilityValue={{ min: 0, max: checklistItems.length, now: completedCount }}
+          >
             <View
               style={[
                 styles.progress,

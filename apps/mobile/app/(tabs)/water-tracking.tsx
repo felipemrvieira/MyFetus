@@ -109,7 +109,13 @@ export default function WaterTrackingScreen() {
           </View>
 
           <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
+            <View
+              style={styles.progressBar}
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel="Progresso da meta diária de água"
+              accessibilityValue={{ min: 0, max: dailyGoal, now: waterAmount }}
+            >
               <View 
                 style={[
                   styles.progressFill, 
@@ -129,6 +135,9 @@ export default function WaterTrackingScreen() {
             <TouchableOpacity 
               style={styles.waterButton}
               onPress={() => addWater(COPO_ML)}
+              accessibilityRole="button"
+              accessibilityLabel={`Adicionar ${COPO_ML} mililitros de água`}
+              accessibilityHint="Atualiza o total consumido hoje"
             >
               <FontAwesome name="glass" size={24} color="#20B2AA" />
               <Text style={styles.buttonText}>1 Copo</Text>
@@ -138,6 +147,9 @@ export default function WaterTrackingScreen() {
             <TouchableOpacity 
               style={styles.waterButton}
               onPress={() => addWater(GARRAFA_ML)}
+              accessibilityRole="button"
+              accessibilityLabel={`Adicionar ${GARRAFA_ML} mililitros de água`}
+              accessibilityHint="Atualiza o total consumido hoje"
             >
               <FontAwesome name="tint" size={24} color="#20B2AA" />
               <Text style={styles.buttonText}>1 Garrafa</Text>
@@ -147,6 +159,9 @@ export default function WaterTrackingScreen() {
             <TouchableOpacity 
               style={styles.waterButton}
               onPress={() => addWater(GARRAFAO_ML)}
+              accessibilityRole="button"
+              accessibilityLabel={`Adicionar ${GARRAFAO_ML} mililitros de água`}
+              accessibilityHint="Atualiza o total consumido hoje"
             >
               <FontAwesome name="tint" size={24} color="#20B2AA" />
               <Text style={styles.buttonText}>1 Garrafão</Text>
