@@ -230,6 +230,7 @@ export default function ExamesTabScreen() {
               ) : examRequests.map((request) => (
                 <TouchableOpacity
                   key={request.id}
+                  testID={`e2e-exam-request-${request.id}`}
                   style={[styles.requestCard, selectedExamRequestId === request.id && styles.requestCardSelected]}
                   onPress={() => request.status === 'pending' && setSelectedExamRequestId(request.id)}
                   disabled={request.status !== 'pending'}
@@ -255,6 +256,7 @@ export default function ExamesTabScreen() {
             </View>
 
             <TouchableOpacity
+              testID="e2e-upload-exam"
               style={[styles.primaryButton, uploading && styles.primaryButtonDisabled]}
               onPress={handlePickAndUpload}
               disabled={uploading}

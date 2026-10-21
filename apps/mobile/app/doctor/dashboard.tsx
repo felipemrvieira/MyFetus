@@ -177,6 +177,7 @@ export default function DashboardScreen() {
               <Ionicons name="filter-outline" size={28} color="#555" />
             </TouchableOpacity>
             <TouchableOpacity
+              testID="e2e-doctor-sign-out"
               accessibilityLabel="Sair da conta"
               accessibilityRole="button"
               onPress={handleSignOut}

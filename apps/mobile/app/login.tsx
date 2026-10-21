@@ -105,6 +105,7 @@ export default function LoginScreen() {
                 resizeMode="contain"
               />
               <TextInput
+                testID="e2e-login-email"
                 placeholder="E-mail"
                 value={email}
                 onChangeText={setEmail}
@@ -118,6 +119,7 @@ export default function LoginScreen() {
                 accessibilityHint="Digite o e-mail usado no cadastro"
               />
               <TextInput
+                testID="e2e-login-password"
                 placeholder="Senha"
                 value={senha}
                 onChangeText={setSenha}
@@ -132,6 +134,7 @@ export default function LoginScreen() {
               />
 
               <TouchableOpacity
+                testID="e2e-login-submit"
                 style={[styles.loginButton, loading && styles.loginButtonDisabled]}
                 onPress={handleLogin}
                 disabled={loading}
