@@ -112,9 +112,11 @@ jobs:
         working-directory: apps/mobile
         env:
           EXPO_PUBLIC_API_URL: http://10.0.2.2:3000
+          CI: '1'
         run: |
-          npx expo prebuild --platform android --no-install --non-interactive
-          ./android/gradlew assembleRelease --no-daemon
+          npx expo prebuild --platform android --no-install
+          cd android
+          ./gradlew assembleRelease --no-daemon
 
       - name: Install Maestro CLI
         run: |
