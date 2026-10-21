@@ -137,6 +137,7 @@ const CLEAR_FIELDS = Object.freeze({
   ]),
   pregnant_documents: Object.freeze([
     'pregnant_id',
+    'exam_request_id',
     'file_path',
     'file_encryption_version',
     'extraction_status',
