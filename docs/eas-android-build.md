@@ -87,6 +87,12 @@ acompanhado com:
 npx eas-cli@latest build:list --platform android --limit 5
 ```
 
+Quando o build é executado pela workflow manual `Mobile EAS preview`, o APK
+também é baixado pelo runner e publicado como artefato da execução no GitHub
+Actions. Para baixar, abra a execução concluída em `Actions`, localize a seção
+`Artifacts` e baixe `myfetus-preview-apk-*`. O artefato fica disponível por 14
+dias e essa etapa não cria uma nova build EAS.
+
 Para produção, gere o AAB com:
 
 ```bash

@@ -3,8 +3,15 @@ const client = require('../backend');
 const cryptoService = require('../services/cryptoService');
 const { hashEmail, normalizeEmail } = require('../services/emailLookupService');
 const logger = require('../utils/logger');
+const { audit, buildAuditEntry } = require('../services/auditService');
+const {
+  ConsentValidationError,
+  recordDecision,
+  validateSignupConsents,
+} = require('../services/consentService');
 
 const SALT_ROUNDS = 10;
+const DOCTOR_ROLE = 'medico';
 
 function sanitizeUser(user) {
   if (!user) return null;
@@ -23,7 +30,7 @@ function sanitizeDoctor(doctor) {
  * `doctors`. Cadastro público — qualquer pessoa pode chamar, sem login.
  */
 const createDoctor = async (req, res) => {
-  const { name, email, password, birthdate, crm, crm_estado, especialidade, telefone } = req.body || {};
+  const { name, email, password, birthdate, crm, crm_estado, especialidade, telefone, consents } = req.body || {};
 
   if (
     typeof name !== 'string' || !name.trim() ||
@@ -36,6 +43,16 @@ const createDoctor = async (req, res) => {
     return res.status(400).json({
       error: 'Nome, email, senha (8+ caracteres), data de nascimento, CRM e UF do CRM (2 letras) são obrigatórios',
     });
+  }
+
+  // E7-01.1: médico aceita os termos do próprio perfil e declara ciência da política.
+  let acceptedConsents;
+  try {
+    acceptedConsents = validateSignupConsents(consents, DOCTOR_ROLE);
+  } catch (error) {
+    if (!(error instanceof ConsentValidationError)) throw error;
+    const { status, code, message } = error;
+    return res.status(status).json({ error: message, code });
   }
 
   let dbClient;
@@ -71,7 +88,7 @@ const createDoctor = async (req, res) => {
         hashedPassword,
         encryptedUser.birthdate,
         true,
-        'medico',
+        DOCTOR_ROLE,
         hashEmail(normalizedEmail),
         cryptoService.getCurrentVersion(),
       ]
@@ -92,7 +109,29 @@ const createDoctor = async (req, res) => {
       ]
     );
 
+    const { ip_address: ipAddress, user_agent: userAgent } = buildAuditEntry(req, {});
+    for (const { purpose, version } of acceptedConsents) {
+      await recordDecision(dbClient, {
+        userId: user.id,
+        purpose,
+        version,
+        decision: 'accepted',
+        ipAddress,
+        userAgent,
+      });
+    }
+
     await dbClient.query('COMMIT');
+
+    audit(req, {
+      action: 'CONSENT_ACCEPTED',
+      resource: 'consents',
+      resource_id: user.id,
+      actor_id: user.id,
+      actor_role: DOCTOR_ROLE,
+      outcome: 'SUCCESS',
+      detail: { consents: acceptedConsents },
+    });
 
     return res.status(201).json({
       user: sanitizeUser(cryptoService.decryptRecord(user, 'users')),
