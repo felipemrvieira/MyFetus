@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TextInput,
@@ -14,6 +13,8 @@ import {
 import { FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { askClinicalChat } from '../../utils/chatApi';
+import { AccessibleText as Text } from '../../components/AccessibleText';
+import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 
 interface Message {
   id: string;
@@ -136,7 +137,7 @@ export default function ChatScreen() {
           ))}
           {loading && (
             <View style={styles.loadingWrapper}>
-              <ActivityIndicator size="small" color="#20B2AA" />
+              <ActivityIndicator size="small" color={ACCESSIBLE_COLORS.primary} />
             </View>
           )}
         </ScrollView>
@@ -146,7 +147,7 @@ export default function ChatScreen() {
           <TextInput
             style={styles.input}
             placeholder="Digite sua pergunta..."
-            placeholderTextColor="#999"
+            placeholderTextColor={ACCESSIBLE_COLORS.muted}
             value={inputText}
             onChangeText={setInputText}
             multiline
@@ -231,7 +232,7 @@ const createStyles = (width: number) =>
       borderRadius: 16,
     },
     userMessage: {
-      backgroundColor: '#20B2AA',
+      backgroundColor: ACCESSIBLE_COLORS.primary,
     },
     botMessage: {
       backgroundColor: '#fff',
@@ -276,7 +277,7 @@ const createStyles = (width: number) =>
       borderColor: '#e0e0e0',
     },
     sendButton: {
-      backgroundColor: '#20B2AA',
+      backgroundColor: ACCESSIBLE_COLORS.primary,
       width: 40,
       height: 40,
       borderRadius: 20,

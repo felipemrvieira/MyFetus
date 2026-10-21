@@ -1,7 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -14,6 +13,8 @@ import { ChecklistItem, checklistData } from '../data/checklistData';
 import { getLastPeriod, calculateGestationWeek } from '../../utils/gestationUtils';
 import { useSession } from '@/contexts/SessionContext';
 import { getScopedItem, setScopedItem } from '@/utils/scopedStorage';
+import { AccessibleText as Text } from '../../components/AccessibleText';
+import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 
 const WEB_MAX_WIDTH = 430;
 
@@ -242,7 +243,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   title: {
     fontSize: width * 0.05,
     fontWeight: 'bold',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     marginBottom: 10,
   },
   trimesterNavigation: {
@@ -257,14 +258,14 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#20B2AA',
+    borderColor: ACCESSIBLE_COLORS.primary,
   },
   activeTrimester: {
-    backgroundColor: '#20B2AA',
+    backgroundColor: ACCESSIBLE_COLORS.primary,
   },
   trimesterButtonText: {
     fontSize: width * 0.04,
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     fontWeight: '600',
   },
   activeTrimesterText: {
@@ -298,13 +299,13 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 2,
-    borderColor: '#20B2AA',
+    borderColor: ACCESSIBLE_COLORS.primary,
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxCompleted: {
-    backgroundColor: '#20B2AA',
+    backgroundColor: ACCESSIBLE_COLORS.primary,
   },
   itemContent: {
     flex: 1,
@@ -317,12 +318,12 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   itemDescription: {
     fontSize: width * 0.03,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     lineHeight: 18,
   },
   completedText: {
     textDecorationLine: 'line-through',
-    color: '#999',
+    color: ACCESSIBLE_COLORS.muted,
   },
   progressContainer: {
     padding: 15,
@@ -332,7 +333,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   progressText: {
     fontSize: width * 0.035,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -344,7 +345,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   progress: {
     height: '100%',
-    backgroundColor: '#20B2AA',
+    backgroundColor: ACCESSIBLE_COLORS.primary,
     borderRadius: 4,
   },
 });

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Platform,
   useWindowDimensions,
@@ -14,6 +13,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import { calculateGestationWeek } from '../utils/gestationUtils';
 import { FetusWeekImage } from '../components/FetusWeekImage';
+import { AccessibleText as Text } from '../components/AccessibleText';
+import { ACCESSIBLE_COLORS } from '../theme/accessibility';
 
 const WEB_MAX_WIDTH = 430;
 
@@ -248,13 +249,13 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   title: {
     fontSize: width * 0.08,
     fontWeight: 'bold',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     textAlign: 'center',
     marginBottom: height * 0.02,
   },
   weeksText: {
     fontSize: width * 0.06,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     textAlign: 'center',
     marginBottom: height * 0.04,
     fontWeight: '500',
@@ -296,12 +297,12 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   description: {
     fontSize: width * 0.045,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     textAlign: 'center',
     marginBottom: height * 0.04,
   },
   continueButton: {
-    backgroundColor: '#20B2AA',
+    backgroundColor: ACCESSIBLE_COLORS.primary,
     paddingHorizontal: 40,
     paddingVertical: 15,
     borderRadius: 25,

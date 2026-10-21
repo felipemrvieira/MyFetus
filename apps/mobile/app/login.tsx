@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -18,6 +17,8 @@ import { api } from '../utils/apiClient';
 import { useSession } from '@/contexts/SessionContext';
 import { parseSessionUser } from '@/types/session';
 import { getLastPeriod } from '../utils/gestationUtils';
+import { AccessibleText as Text } from '../components/AccessibleText';
+import { ACCESSIBLE_COLORS } from '../theme/accessibility';
 
 
 export default function LoginScreen() {
@@ -111,7 +112,7 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholderTextColor="#f9a9a7"
+                placeholderTextColor={ACCESSIBLE_COLORS.secondary}
                 editable={!loading}
                 accessibilityLabel="E-mail"
                 accessibilityHint="Digite o e-mail usado no cadastro"
@@ -124,7 +125,7 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 style={styles.input}
-                placeholderTextColor="#f9a9a7"
+                placeholderTextColor={ACCESSIBLE_COLORS.secondary}
                 editable={!loading}
                 accessibilityLabel="Senha"
                 accessibilityHint="Digite sua senha"
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   loginButton: {
-    backgroundColor: "#f9a9a7",
+    backgroundColor: ACCESSIBLE_COLORS.secondary,
     paddingVertical: 12,
     borderRadius: 25,
     width: "100%",
@@ -269,12 +270,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   createAccountText: {
-    color: "#20B2AA",
+    color: ACCESSIBLE_COLORS.primary,
     fontWeight: "bold",
     fontSize: 14,
   },
   doctorAccountText: {
-    color: "#b34d7a",
+    color: ACCESSIBLE_COLORS.secondary,
     fontWeight: "bold",
     fontSize: 14,
   },
