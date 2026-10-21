@@ -111,6 +111,7 @@ jobs:
       - name: Build Android APK
         working-directory: apps/mobile
         env:
+          NODE_ENV: production
           EXPO_PUBLIC_API_URL: http://10.0.2.2:3000
           EXPO_ROUTER_APP_ROOT: ./app
           CI: '1'
