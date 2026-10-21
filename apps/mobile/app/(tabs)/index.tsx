@@ -7,10 +7,14 @@ import {
   Platform,
   useWindowDimensions,
   Image,
+  TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLastPeriod, calculateGestationWeek, getBabySize, getBabyDescription, calculateDPP } from '../../utils/gestationUtils';
+import { useRouter } from 'expo-router';
+import { useSession } from '@/contexts/SessionContext';
 
 const WEB_MAX_WIDTH = 430;
 
@@ -65,6 +69,8 @@ export default function HomeScreen() {
   const { width: windowWidth, height } = useWindowDimensions();
   const width = Platform.OS === 'web' ? Math.min(windowWidth, WEB_MAX_WIDTH) : windowWidth;
   const styles = React.useMemo(() => createStyles(width, height), [width, height]);
+  const router = useRouter();
+  const { user, signOut } = useSession();
 
   const [gestationWeek, setGestationWeek] = useState(0);
   const [babySize, setBabySize] = useState('');
@@ -73,11 +79,10 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const loadGestationData = async () => {
-      const lastPeriod = await getLastPeriod();
+      if (!user) return;
+      const lastPeriod = await getLastPeriod(user.id);
       if (lastPeriod) {
-        console.log('Index - Data última menstruação:', lastPeriod);
         const result = calculateGestationWeek(lastPeriod);
-        console.log('Index - Semana calculada:', result.weeks);
         setGestationWeek(result.weeks);
         setBabySize(getBabySize(result.weeks));
         setBabyDescription(getBabyDescription(result.weeks));
@@ -86,56 +91,75 @@ export default function HomeScreen() {
     };
 
     loadGestationData();
-  }, []);
+  }, [user]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/login');
+  };
 
   return (
     <LinearGradient
       colors={['#cce5f6', '#f8cde9']}
       style={styles.container}
     >
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.page}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Meu Bebê</Text>
-            <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
-          </View>
-
-          <View style={styles.imageContainer}>
-            <View style={styles.imageWrapper}>
-              <Image
-                source={getFetusImage(gestationWeek)}
-                style={styles.fetusImage}
-                resizeMode="cover"
-              />
-            </View>
-          </View>
-
-          <View style={styles.infoContainer}>
-            <View style={styles.infoCard}>
-              <FontAwesome name="calendar" size={24} color="#20B2AA" />
-              <Text style={styles.infoTitle}>Data Prevista do Parto</Text>
-              <Text style={styles.infoValue}>{dpp}</Text>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.page}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Meu Bebê</Text>
+              <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
+              <TouchableOpacity
+                accessibilityLabel="Sair da conta"
+                accessibilityRole="button"
+                onPress={handleSignOut}
+                style={styles.signOutButton}
+              >
+                <FontAwesome name="sign-out" size={18} color="#20B2AA" />
+                <Text style={styles.signOutText}>Sair</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.infoCard}>
-              <FontAwesome name="arrows-alt" size={24} color="#20B2AA" />
-              <Text style={styles.infoTitle}>Tamanho do Bebê</Text>
-              <Text style={styles.infoValue}>{babySize}</Text>
+            <View style={styles.imageContainer}>
+              <View style={styles.imageWrapper}>
+                <Image
+                  source={getFetusImage(gestationWeek)}
+                  style={styles.fetusImage}
+                  resizeMode="cover"
+                />
+              </View>
+            </View>
+
+            <View style={styles.infoContainer}>
+              <View style={styles.infoCard}>
+                <FontAwesome name="calendar" size={24} color="#20B2AA" />
+                <Text style={styles.infoTitle}>Data Prevista do Parto</Text>
+                <Text style={styles.infoValue}>{dpp}</Text>
+              </View>
+
+              <View style={styles.infoCard}>
+                <FontAwesome name="arrows-alt" size={24} color="#20B2AA" />
+                <Text style={styles.infoTitle}>Tamanho do Bebê</Text>
+                <Text style={styles.infoValue}>{babySize}</Text>
+              </View>
+            </View>
+
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.descriptionTitle}>Desenvolvimento</Text>
+              <Text style={styles.descriptionText}>{babyDescription}</Text>
             </View>
           </View>
-
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionTitle}>Desenvolvimento</Text>
-            <Text style={styles.descriptionText}>{babyDescription}</Text>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
 const createStyles = (width: number, height: number) => StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  safeArea: {
     flex: 1,
   },
   scrollView: {
@@ -164,6 +188,18 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     fontSize: width * 0.045,
     color: '#666',
     marginTop: 5,
+  },
+  signOutButton: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  signOutText: {
+    color: '#20B2AA',
+    fontWeight: '600',
   },
   infoContainer: {
     flexDirection: 'row',

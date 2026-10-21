@@ -10,18 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
-import * as WebBrowser from 'expo-web-browser';
-import { apiUrl, fetchWithAuth } from '../../utils/api';
-
-type StoredUser = {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  pregnant_id?: number | null;
-};
+import { api } from '../../utils/apiClient';
+import { useSession } from '@/contexts/SessionContext';
+import { downloadDocument } from '@/utils/downloadDocument';
 
 type PregnantDocument = {
   id: number;
@@ -46,26 +38,13 @@ type ExamRequest = {
 };
 
 export default function ExamesTabScreen() {
+  const { user } = useSession();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [user, setUser] = useState<StoredUser | null>(null);
   const [docs, setDocs] = useState<PregnantDocument[]>([]);
   const [examRequests, setExamRequests] = useState<ExamRequest[]>([]);
 
   const pregnantId = user?.pregnant_id ?? null;
-
-  const loadUser = useCallback(async () => {
-    try {
-      const raw = await AsyncStorage.getItem('userData');
-      if (!raw) {
-        setUser(null);
-        return;
-      }
-      setUser(JSON.parse(raw));
-    } catch {
-      setUser(null);
-    }
-  }, []);
 
   const fetchDocs = useCallback(async () => {
     if (!pregnantId) {
@@ -73,12 +52,8 @@ export default function ExamesTabScreen() {
       return;
     }
 
-    const res = await fetchWithAuth(apiUrl(`/api/documents/documents?pregnant_id=${pregnantId}`));
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data?.error || 'Não foi possível carregar os exames');
-    }
+    const response = await api.get(`/documents/?pregnant_id=${pregnantId}`);
+    const data = response.data;
 
     setDocs(Array.isArray(data) ? data : []);
   }, [pregnantId]);
@@ -88,22 +63,10 @@ export default function ExamesTabScreen() {
       setExamRequests([]);
       return;
     }
-    const res = await fetchWithAuth(apiUrl(`/api/exam-requests/pregnant/${pregnantId}`));
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || 'Não foi possível carregar as solicitações');
+    const res = await api.get(`/exam-requests/pregnant/${pregnantId}`);
+    const data = res.data;
     setExamRequests(Array.isArray(data) ? data : []);
   }, [pregnantId]);
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        await loadUser();
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [loadUser]);
 
   useEffect(() => {
     if (!user) return;
@@ -186,23 +149,10 @@ export default function ExamesTabScreen() {
         );
       }
 
-      const res = await fetchWithAuth(apiUrl('/api/documents/documents'), {
-        method: 'POST',
-        body: form,
-      });
-
-      const raw = await res.text();
-      let data: any = {};
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        data = {};
-      }
-
-      if (!res.ok) {
-        throw new Error(data?.error || data?.message || raw || 'Falha ao enviar exame');
-      }
-
+     const response = await api.post('/documents/', form, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+  });
+const data = response.data;
       const created: PregnantDocument | undefined = data?.document;
       if (created) {
         setDocs((prev) => [created, ...prev]);
@@ -218,12 +168,11 @@ export default function ExamesTabScreen() {
     }
   }, [pregnantId, uploading, fetchDocs]);
 
-  const openDownload = useCallback(async (docId: number) => {
-    const url = apiUrl(`/api/documents/documents/${docId}/download`);
+  const openDownload = useCallback(async (doc: PregnantDocument) => {
     try {
-      await WebBrowser.openBrowserAsync(url);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível abrir o exame');
+      await downloadDocument(doc.id, doc.document_name, doc.document_type);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível abrir o exame');
     }
   }, []);
 
@@ -303,7 +252,7 @@ export default function ExamesTabScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => openDownload(item.id)}>
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => openDownload(item)}>
               <Text style={styles.secondaryButtonText}>Abrir exame</Text>
             </TouchableOpacity>
           </View>

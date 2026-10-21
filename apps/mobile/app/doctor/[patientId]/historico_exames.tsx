@@ -10,15 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { apiUrl, fetchWithAuth } from '../../../utils/api';
-
-type StoredUser = {
-  id: number;
-  role: string;
-};
+import { api } from '../../../utils/apiClient';
+import { useSession } from '@/contexts/SessionContext';
+import { downloadDocument } from '@/utils/downloadDocument';
 
 type PregnantDocument = {
   id: number;
@@ -44,13 +39,14 @@ type ExamRequest = {
 
 export default function ExamesScreen() {
   const router = useRouter();
-  const { patientId } = useLocalSearchParams();
+  const { patientId } = useLocalSearchParams<{ patientId: string }>();
+  const { user } = useSession();
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [docs, setDocs] = useState<PregnantDocument[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [reportText, setReportText] = useState('');
-  const [doctorUserId, setDoctorUserId] = useState<number | null>(null);
+  const doctorUserId = user?.id ?? null;
   const [examRequests, setExamRequests] = useState<ExamRequest[]>([]);
   const [examName, setExamName] = useState('');
   const [examInstructions, setExamInstructions] = useState('');
@@ -61,36 +57,16 @@ export default function ExamesScreen() {
     [docs, selectedDocId]
   );
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem('userData');
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as StoredUser;
-        if (parsed?.id) setDoctorUserId(parsed.id);
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
-
   const fetchDocs = useCallback(async () => {
-    if (!patientId) return;
-    const res = await fetchWithAuth(apiUrl(`/api/documents/documents?pregnant_id=${patientId}`));
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data?.error || 'Não foi possível buscar os exames enviados');
-    }
+   const res = await api.get(`/documents/?pregnant_id=${patientId}`);
+    const data = res.data;
     setDocs(Array.isArray(data) ? data : []);
   }, [patientId]);
 
   const fetchExamRequests = useCallback(async () => {
     if (!patientId) return;
-    const res = await fetchWithAuth(apiUrl(`/api/exam-requests/pregnant/${patientId}`));
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data?.error || 'Não foi possível buscar as solicitações');
-    }
+    const res = await api.get(`/exam-requests/pregnant/${patientId}`);
+    const data = res.data;
     setExamRequests(Array.isArray(data) ? data : []);
   }, [patientId]);
 
@@ -131,18 +107,11 @@ export default function ExamesScreen() {
 
     setIsSaving(true);
     try {
-      const res = await fetchWithAuth(apiUrl(`/api/documents/documents/${selectedDocId}/report`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          report_comment: reportText.trim(),
-          doctor_user_id: doctorUserId,
-        }),
+      const res = await api.put(`/documents/${selectedDocId}/report`, {
+        report_comment: reportText.trim(),
+        doctor_user_id: doctorUserId,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'Falha ao salvar relatório');
-      }
+      const data = res.data;
 
       const updated = data?.document;
       if (updated?.id) {
@@ -167,17 +136,12 @@ export default function ExamesScreen() {
 
     setIsRequesting(true);
     try {
-      const res = await fetchWithAuth(apiUrl('/api/exam-requests'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const res = await api.post('/exam-requests', {
           pregnant_id: Number(patientId),
           exam_name: examName.trim(),
           instructions: examInstructions.trim() || undefined,
-        }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Falha ao criar solicitação');
+      const data = res.data;
       setExamRequests((prev) => [data, ...prev]);
       setExamName('');
       setExamInstructions('');
@@ -191,23 +155,19 @@ export default function ExamesScreen() {
 
   const handleCancelRequest = useCallback(async (requestId: number) => {
     try {
-      const res = await fetchWithAuth(apiUrl(`/api/exam-requests/${requestId}`), {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Falha ao cancelar solicitação');
+      const res = await api.delete(`/exam-requests/${requestId}`);
+      const data = res.data;
       setExamRequests((prev) => prev.map((item) => item.id === requestId ? data : item));
     } catch (err) {
       Alert.alert('Erro', err instanceof Error ? err.message : 'Erro de rede');
     }
   }, []);
 
-  const openDownload = useCallback(async (docId: number) => {
-    const url = apiUrl(`/api/documents/documents/${docId}/download`);
+  const openDownload = useCallback(async (doc: PregnantDocument) => {
     try {
-      await WebBrowser.openBrowserAsync(url);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível abrir o exame');
+      await downloadDocument(doc.id, doc.document_name, doc.document_type);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível abrir o exame');
     }
   }, []);
 
@@ -275,7 +235,7 @@ export default function ExamesScreen() {
               <View style={styles.reportEditor}>
                 <Text style={styles.selectedTitle}>{selectedDoc.document_name}</Text>
                 <Text style={styles.meta}>Enviado em: {formatDate(selectedDoc.uploaded_at)}</Text>
-                <TouchableOpacity style={styles.openButton} onPress={() => openDownload(selectedDoc.id)}>
+                <TouchableOpacity style={styles.openButton} onPress={() => openDownload(selectedDoc)}>
                   <Text style={styles.openButtonText}>Abrir exame</Text>
                 </TouchableOpacity>
 

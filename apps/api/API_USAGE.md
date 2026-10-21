@@ -76,20 +76,25 @@ Authorization: Bearer <token-gerado>
 
 ## Endpoints principais
 
+> O contrato completo e atualizado (todas as rotas, papéis, corpos, respostas e erros) está em
+> [`openapi.yaml`](openapi.yaml) e pode ser navegado em `http://localhost:3000/docs/` com a API rodando.
+> Os exemplos abaixo são atalhos práticos; em caso de divergência, vale o `openapi.yaml`.
+
 Todos os exemplos usam `curl`. Substitua `localhost:3000` se necessário.
 
 ### Users
 
 - Criar usuário
-  - POST `/api/users`
-  - JSON: `name`, `email`, `password`, `birthdate` (YYYY-MM-DD), `is_active` (boolean), `role` (`gestante|medico|admin`)
+  - POST `/api/users` (cadastro público; cria conta com papel `gestante`)
+  - JSON: `name`, `email`, `password` (8+ caracteres), `birthdate` (YYYY-MM-DD) e `consents`
+    com o aceite da versão vigente de `GET /api/consents/policy` (E7-01.1)
 
 Exemplo:
 
 ```bash
 curl -X POST http://localhost:3000/api/users \
   -H "Content-Type: application/json" \
-  -d '{"name":"João","email":"joao@example.com","password":"senha123","birthdate":"1990-05-15","role":"gestante"}'
+  -d '{"name":"João","email":"joao@example.com","password":"senha-sintetica-123","birthdate":"1990-05-15","consents":[{"purpose":"termos_de_uso_gestante","version":"0.1-rascunho"},{"purpose":"politica_de_privacidade","version":"0.1-rascunho"},{"purpose":"tratamento_dados_saude","version":"0.1-rascunho"}]}'
 ```
 
 - Listar usuários: GET `/api/users`
@@ -198,7 +203,7 @@ Para habilitar as colunas de extração em um banco existente, aplique:
 psql -U myuser -d mydatabase -f apps/api/db/migration_extracted_text.sql
 ```
 
-O backend também inicia um worker periódico a cada 30 segundos, processando até 5 documentos `pending` por ciclo. No upload, a API dispara uma tentativa assíncrona imediata sem bloquear a resposta HTTP.
+O backend inicia o worker assíncrono no boot: executa um ciclo imediatamente e repete a cada 30 segundos, processando até 5 documentos `pending` por ciclo. No upload, a API dispara uma tentativa assíncrona imediata sem bloquear a resposta HTTP. Ajuste `DOCUMENT_EXTRACTION_INTERVAL_MS` e `DOCUMENT_EXTRACTION_BATCH_SIZE` quando necessário; falhas de um ciclo são registradas e não impedem os ciclos seguintes.
 
 ### Solicitações de exames
 

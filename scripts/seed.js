@@ -236,6 +236,26 @@ async function ensureHistory(client, pregnancyId, doctorId, index, today, crypto
   }
 }
 
+// E7-01.1: contas sintéticas já entram com os aceites obrigatórios do perfil (idempotente).
+async function ensureConsents(client, userId, role) {
+  const { getRequiredPurposes } = require('../apps/api/config/consentPolicy');
+  for (const { purpose, version } of getRequiredPurposes(role)) {
+    const latest = await client.query(
+      `SELECT version, decision FROM consents
+        WHERE user_id = $1 AND purpose = $2
+        ORDER BY created_at DESC, id DESC LIMIT 1`,
+      [userId, purpose]
+    );
+    const current = latest.rows[0];
+    if (current && current.decision === 'accepted' && current.version === version) continue;
+    await client.query(
+      `INSERT INTO consents (user_id, purpose, version, decision, user_agent)
+       VALUES ($1, $2, $3, 'accepted', 'seed-sintetico')`,
+      [userId, purpose, version]
+    );
+  }
+}
+
 async function runSeed() {
   const { Pool } = apiDependency('pg');
   const bcrypt = apiDependency('bcrypt');
@@ -269,11 +289,13 @@ async function runSeed() {
       const id = await ensureUser(client, doctor, passwordHash, emailLookup,
         cryptoService, counts);
       await ensureDoctor(client, id, doctor, cryptoService);
+      await ensureConsents(client, id, 'medico');
       doctorIds.push(id);
     }
     for (const [index, pregnant] of PREGNANTS.entries()) {
       const userId = await ensureUser(client, pregnant, passwordHash,
         emailLookup, cryptoService, counts);
+      await ensureConsents(client, userId, 'gestante');
       const pregnantId = await ensurePregnant(client, userId, index, cryptoService);
       const doctorId = doctorIds[index % doctorIds.length];
       await client.query(
