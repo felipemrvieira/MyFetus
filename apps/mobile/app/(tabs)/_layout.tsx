@@ -40,6 +40,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Início',
+          tabBarAccessibilityLabel: 'Início, página principal',
           tabBarIcon: ({ color }) => (
             <FontAwesome name="home" size={24} color={color} />
           ),
@@ -49,6 +50,7 @@ export default function TabsLayout() {
         name="water-tracking"
         options={{
           title: 'Água',
+          tabBarAccessibilityLabel: 'Água, controle de hidratação',
           tabBarIcon: ({ color }) => (
             <FontAwesome name="tint" size={24} color={color} />
           ),
@@ -58,6 +60,7 @@ export default function TabsLayout() {
         name="checklist"
         options={{
           title: 'Checklist',
+          tabBarAccessibilityLabel: 'Checklist da gestação',
           tabBarIcon: ({ color }) => (
             <FontAwesome name="list" size={24} color={color} />
           ),
@@ -68,6 +71,7 @@ export default function TabsLayout() {
         name="exames"
         options={{
           title: 'Exames',
+          tabBarAccessibilityLabel: 'Exames e solicitações médicas',
           tabBarIcon: ({ color }) => (
             <FontAwesome name="file-text" size={24} color={color} />
           ),
@@ -78,6 +82,7 @@ export default function TabsLayout() {
         name="chat"
         options={{
           title: 'Chat',
+          tabBarAccessibilityLabel: 'Chat com assistente médico',
           tabBarIcon: ({ color }) => (
             <FontAwesome name="comments" size={24} color={color} />
           ),

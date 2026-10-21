@@ -152,6 +152,9 @@ export default function ChatScreen() {
             multiline
             maxLength={500}
             editable={!loading}
+            accessibilityLabel="Pergunta para o assistente médico"
+            accessibilityHint="Digite uma pergunta sobre sua jornada de gravidez"
+            accessibilityState={{ disabled: loading }}
           />
           <TouchableOpacity
             style={[
@@ -160,6 +163,12 @@ export default function ChatScreen() {
             ]}
             onPress={handleSendMessage}
             disabled={loading || !inputText.trim()}
+            accessibilityRole="button"
+            accessibilityLabel="Enviar pergunta"
+            accessibilityState={{
+              disabled: loading || !inputText.trim(),
+              busy: loading,
+            }}
           >
             <FontAwesome
               name="send"

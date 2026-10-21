@@ -92,6 +92,7 @@ export default function LoginScreen() {
               source={require("../assets/images/myfetus-logo.png")}
               style={styles.logoMain}
               resizeMode="contain"
+                accessibilityLabel="Logo MyFetus"
             />
           </View>
 
@@ -112,6 +113,8 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 placeholderTextColor="#f9a9a7"
                 editable={!loading}
+                accessibilityLabel="E-mail"
+                accessibilityHint="Digite o e-mail usado no cadastro"
               />
               <TextInput
                 placeholder="Senha"
@@ -123,12 +126,17 @@ export default function LoginScreen() {
                 style={styles.input}
                 placeholderTextColor="#f9a9a7"
                 editable={!loading}
+                accessibilityLabel="Senha"
+                accessibilityHint="Digite sua senha"
               />
 
               <TouchableOpacity
                 style={[styles.loginButton, loading && styles.loginButtonDisabled]}
                 onPress={handleLogin}
                 disabled={loading}
+                accessibilityLabel="Entrar"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: loading, busy: loading }}
               >
                 {loading ? (
                   <ActivityIndicator color="#fff" />
@@ -137,7 +145,13 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={handleCreateAccount} disabled={loading}>
+              <TouchableOpacity
+                onPress={handleCreateAccount}
+                disabled={loading}
+                accessibilityLabel="Criar conta de paciente"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: loading }}
+              >
                 <Text style={styles.createAccountText}>Crie uma conta (Paciente)</Text>
               </TouchableOpacity>
 
@@ -145,6 +159,9 @@ export default function LoginScreen() {
                 onPress={handleCreateDoctorAccount}
                 disabled={loading}
                 style={{ marginTop: 10 }}
+                accessibilityLabel="Criar conta de médico"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: loading }}
               >
                 <Text style={styles.doctorAccountText}>Sou médico. Cadastrar</Text>
               </TouchableOpacity>
