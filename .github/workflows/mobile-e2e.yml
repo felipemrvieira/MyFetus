@@ -73,6 +73,16 @@ jobs:
           sed -i 's/^DOCUMENT_EXTRACTION_INTERVAL_MS=.*/DOCUMENT_EXTRACTION_INTERVAL_MS=1000/' .env
           sed -i 's/^ENABLE_DOCUMENT_OCR=.*/ENABLE_DOCUMENT_OCR=false/' .env
           docker compose up -d db
+          for attempt in $(seq 1 30); do
+            if [ "$(docker inspect --format='{{.State.Health.Status}}' myfetus-db 2>/dev/null)" = "healthy" ]; then
+              break
+            fi
+            if [ "$attempt" = 30 ]; then
+              docker logs myfetus-db
+              exit 1
+            fi
+            sleep 2
+          done
           npm run db:migrate
           nohup env PG_HOST=127.0.0.1 PG_PORT=5434 node apps/api/server.js > "$RUNNER_TEMP/myfetus-api.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/myfetus-api.pid"
