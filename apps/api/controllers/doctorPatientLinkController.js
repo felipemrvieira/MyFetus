@@ -7,6 +7,7 @@
 const client = require('../backend');
 const cryptoService = require('../services/cryptoService');
 const { findUserByEmail } = require('./userController');
+const { audit } = require('../services/auditService');
 const { sendInternalError } = require('../utils/httpErrors');
 
 /**

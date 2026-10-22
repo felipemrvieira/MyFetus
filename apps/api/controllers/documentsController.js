@@ -531,6 +531,9 @@ async function ensureCanAccessOwnOrLinkedPregnant(req, res, pregnantId) {
 }
 
 const updateDocumentReport = async (req, res) => {
+  let dbClient;
+  let committed = false;
+
   try {
     const comment =
       typeof req.body?.report_comment === 'string' ? req.body.report_comment.trim() : '';
@@ -551,7 +554,10 @@ const updateDocumentReport = async (req, res) => {
       { report_comment: comment },
       'pregnant_documents'
     );
-    const result = await client.query(
+
+    dbClient = await client.connect();
+    await dbClient.query('BEGIN');
+    const result = await dbClient.query(
       `UPDATE pregnant_documents
           SET report_comment = $1,
               status = 'reviewed',
@@ -562,6 +568,22 @@ const updateDocumentReport = async (req, res) => {
         RETURNING *`,
       [encrypted.report_comment, req.user.id, req.params.id]
     );
+    if (!result.rows[0]) {
+      await dbClient.query('ROLLBACK');
+      return res.status(404).json({ error: 'Documento nao encontrado' });
+    }
+
+    if (document.exam_request_id) {
+      await dbClient.query(
+        `UPDATE exam_requests
+            SET status = 'reviewed', updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND status IN ('submitted', 'reviewed')`,
+        [document.exam_request_id]
+      );
+    }
+
+    await dbClient.query('COMMIT');
+    committed = true;
     audit(req, {
       action: 'DOCUMENT_REPORT_SAVED',
       resource: 'pregnant_documents',
@@ -574,8 +596,17 @@ const updateDocumentReport = async (req, res) => {
       document: sanitizeDocument(result.rows[0]),
     });
   } catch (error) {
+    if (dbClient && !committed) {
+      try {
+        await dbClient.query('ROLLBACK');
+      } catch (_) {
+        // Preserve the original error.
+      }
+    }
     logger.error('Erro ao salvar relatorio do documento', { details: error.message });
     return res.status(500).json({ error: 'Erro ao salvar relatorio' });
+  } finally {
+    if (dbClient) dbClient.release();
   }
 };
 

@@ -190,12 +190,14 @@ export default function ExamesScreen() {
             <Text style={styles.addTitle}>Solicitar exame</Text>
             <Text style={styles.helperText}>A solicitação ficará pendente para a gestante enviar o arquivo.</Text>
             <TextInput
+              testID="e2e-doctor-exam-name"
               style={styles.input}
               placeholder="Nome do exame"
               value={examName}
               onChangeText={setExamName}
             />
             <TextInput
+              testID="e2e-doctor-exam-instructions"
               style={styles.input}
               placeholder="Orientações (opcional)"
               value={examInstructions}
@@ -203,6 +205,7 @@ export default function ExamesScreen() {
               multiline
             />
             <TouchableOpacity
+              testID="e2e-create-exam-request"
               style={[styles.addButton, isRequesting && styles.addButtonDisabled]}
               onPress={handleCreateRequest}
               disabled={isRequesting}
@@ -240,6 +243,7 @@ export default function ExamesScreen() {
                 </TouchableOpacity>
 
                 <TextInput
+                  testID="e2e-doctor-report"
                   style={styles.input}
                   placeholder="Escreva o relatório/comentário para a paciente"
                   value={reportText}
@@ -247,6 +251,7 @@ export default function ExamesScreen() {
                   multiline
                 />
                 <TouchableOpacity
+                  testID="e2e-save-doctor-report"
                   style={[styles.addButton, isSaving && styles.addButtonDisabled]}
                   onPress={handleSaveReport}
                   disabled={isSaving}
@@ -261,7 +266,7 @@ export default function ExamesScreen() {
         )}
         ListEmptyComponent={<Text style={styles.emptyText}>Nenhum exame enviado ainda.</Text>}
         renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => handleSelect(item)}>
+          <TouchableOpacity testID={`e2e-document-${item.id}`} onPress={() => handleSelect(item)}>
             <View style={styles.card}>
               <View style={styles.rowBetween}>
                 <Text style={styles.cardTitle}>{item.document_name}</Text>

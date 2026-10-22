@@ -64,6 +64,7 @@ export default function HomeScreen() {
               <Text style={styles.title}>Meu Bebê</Text>
               <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
               <TouchableOpacity
+                testID="e2e-patient-sign-out"
                 accessibilityLabel="Sair da conta"
                 accessibilityRole="button"
                 accessibilityHint="Encerra a sessão atual"
