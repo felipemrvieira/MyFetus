@@ -642,6 +642,20 @@ O módulo de documentos permite:
 - reprocessamento manual da extração;
 - geração de relatórios de acurácia em fixtures sintéticas.
 
+### Dataset sintético de extração
+
+O benchmark E2-09 usa somente dados fictícios e determinísticos: 50 PDFs nativos
+(10 por tipo, distribuídos entre três laboratórios fictícios) e 25 documentos
+escaneados renderizados como fotos sintéticas. Cada ground truth registra o tipo,
+laboratório, layout, dificuldade e método esperado. Os casos escaneados não são
+versionados como binários: são gerados no CI para manter o repositório leve.
+
+O limiar técnico do benchmark é sobreposição de tokens extraídos, não acurácia
+clínica: 90% para PDF.js e 70% para OCR. O job `pdf-dataset` executa os dois
+métodos, gera o relatório e falha se a cobertura mínima ou algum caso ficar
+abaixo do limiar. Casos reais, metadados pessoais e decisões clínicas não fazem
+parte deste dataset.
+
 Fluxo resumido:
 
 ```text
@@ -756,6 +770,13 @@ Recomendações para continuidade:
 | `npm run generate:dataset:ocr` | Gera fixtures escaneadas para validar OCR. |
 | `npm run test:pdf-extractor` | Testa extração de texto em documentos PDF. |
 | `npm run accuracy:pdf` | Gera relatorio de acurácia da extração. |
+
+Para exigir também a cobertura OCR no relatório local, gere os fixtures e rode:
+
+```bash
+npm run generate:dataset:ocr
+REQUIRE_OCR=true npm run accuracy:pdf
+```
 
 ### Testes da API
 
