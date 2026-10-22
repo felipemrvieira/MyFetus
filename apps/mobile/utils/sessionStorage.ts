@@ -1,12 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { parseSessionUser, SessionUser } from '@/types/session';
+import {
+  clearStoredSessionMetadata,
+  LEGACY_TOKEN_KEY,
+  LEGACY_USER_KEY,
+  SESSION_USER_KEY,
+} from './sessionStorageCore';
 
 // SecureStore keys on Android only support alphanumeric characters, '.', '-' and '_'.
 const TOKEN_KEY = 'myfetus.session-token';
-const USER_KEY = '@myFetus:sessionUser';
-const LEGACY_TOKEN_KEY = 'authToken';
-const LEGACY_USER_KEY = 'userData';
 
 function getWebSessionStorage(): Storage | null {
   return typeof window !== 'undefined' ? window.sessionStorage : null;
@@ -57,7 +60,7 @@ export async function getStoredToken(): Promise<string | null> {
 }
 
 export async function getStoredUser(): Promise<SessionUser | null> {
-  const stored = await AsyncStorage.getItem(USER_KEY);
+  const stored = await AsyncStorage.getItem(SESSION_USER_KEY);
   const legacy = stored ? null : await AsyncStorage.getItem(LEGACY_USER_KEY);
   const raw = stored ?? legacy;
   if (!raw) return null;
@@ -67,7 +70,7 @@ export async function getStoredUser(): Promise<SessionUser | null> {
     if (!user) return null;
 
     if (legacy) {
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+      await AsyncStorage.setItem(SESSION_USER_KEY, JSON.stringify(user));
       await AsyncStorage.removeItem(LEGACY_USER_KEY);
     }
     return user;
@@ -78,13 +81,13 @@ export async function getStoredUser(): Promise<SessionUser | null> {
 
 export async function persistSession(token: string, user: SessionUser): Promise<void> {
   await writeSecureToken(token);
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+  await AsyncStorage.setItem(SESSION_USER_KEY, JSON.stringify(user));
   await AsyncStorage.multiRemove([LEGACY_TOKEN_KEY, LEGACY_USER_KEY]);
 }
 
 export async function clearStoredSession(): Promise<void> {
   await Promise.all([
     deleteSecureToken(),
-    AsyncStorage.multiRemove([USER_KEY, LEGACY_TOKEN_KEY, LEGACY_USER_KEY]),
+    clearStoredSessionMetadata(keys => AsyncStorage.multiRemove([...keys])),
   ]);
 }
