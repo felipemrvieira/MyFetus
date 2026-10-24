@@ -25,6 +25,7 @@ tags:
   - name: Sistema
   - name: Usuarios
   - name: Consentimento
+  - name: Privacidade
   - name: Medicos
   - name: Gestantes
   - name: Gestacoes
@@ -352,6 +353,54 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ConsentError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ------------------------------------------------------------ Privacidade
+  /api/privacy/export:
+    post:
+      tags: [Privacidade]
+      summary: Exporta em JSON os dados do titular autenticado (LGPD art. 18)
+      operationId: exportMyData
+      security: [{ bearerAuth: [] }]
+      description: |
+        Direito de acesso e portabilidade (E7-02.1). O titular e sempre o usuario do token; nao ha ID
+        no corpo nem na URL. Exige a confirmacao da senha. A gestante recebe conta, consentimentos,
+        prontuario, gestacoes, eventos, historicos, pedidos de exame, documentos (metadados e texto
+        extraido) e vinculos; o medico recebe conta, consentimentos e o proprio perfil profissional,
+        nunca dados de pacientes. Nao inclui senhas, chaves, caminhos de arquivo, registros internos
+        de seguranca nem dados de terceiros. Fica fora do bloqueio por consentimento. Cada pedido,
+        aceito ou recusado, gera registro em audit_logs (acao DATA_EXPORT) apenas com contagens.
+        Limite padrao de 5 pedidos a cada 15 minutos (DATA_EXPORT_RATE_LIMIT_MAX).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, description: Senha atual do titular. }
+            example:
+              password: senha-sintetica-123
+      responses:
+        '200':
+          description: Arquivo JSON enviado como anexo (Content-Disposition), com Cache-Control no-store.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExport' }
+        '400':
+          description: Senha nao informada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Confirme sua senha para exportar os dados, code: PASSWORD_REQUIRED }
+        '401':
+          description: Token invalido, senha incorreta ou conta inativa (mesma resposta nos dois ultimos casos).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Senha incorreta, code: INVALID_PASSWORD }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
@@ -1726,6 +1775,47 @@ components:
           example: { error: Erro interno }
 
   schemas:
+    DataExport:
+      type: object
+      description: Exportacao do titular. As secoes de gestante so aparecem para o papel gestante.
+      required: [formato, gerado_em, titular, consentimentos]
+      properties:
+        formato:
+          type: object
+          properties:
+            nome: { type: string, example: myfetus-exportacao-titular }
+            versao: { type: string, example: '1.0' }
+        gerado_em: { type: string, format: date-time }
+        titular:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            email: { type: string }
+            birthdate: { type: string }
+            role: { type: string, enum: [gestante, medico, admin] }
+            is_active: { type: boolean }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+        consentimentos:
+          type: array
+          items:
+            type: object
+            properties:
+              purpose: { type: string }
+              version: { type: string }
+              decision: { type: string, enum: [accepted, refused, revoked] }
+              created_at: { type: string, format: date-time }
+        prontuario: { type: [object, 'null'] }
+        gestacoes: { type: array, items: { type: object } }
+        eventos: { type: array, items: { type: object } }
+        biometria_fetal: { type: array, items: { type: object } }
+        peso_materno: { type: array, items: { type: object } }
+        pedidos_de_exame: { type: array, items: { type: object } }
+        documentos: { type: array, items: { type: object } }
+        vinculos_medicos: { type: array, items: { type: object } }
+        perfil_profissional: { type: [object, 'null'], description: Somente para o papel medico. }
+        observacoes: { type: array, items: { type: string } }
     Error:
       type: object
       required: [error]
