@@ -209,6 +209,7 @@ test.describe('Exportação dos dados do titular (E7-02.1)', () => {
     assert.equal(body.perfil_profissional.telefone, '81900000000');
     assert.equal(body.prontuario, undefined);
     assert.equal(body.gestacoes, undefined);
+    assert.equal(body.observacoes.some((note) => /exames/.test(note)), false);
     for (const patientData of ['Maria', 'Joana', 'Hemograma', 'Consulta de rotina']) {
       assert.equal(raw.includes(patientData), false, `vazou dado de paciente: ${patientData}`);
     }
@@ -262,6 +263,7 @@ test.describe('Exportação dos dados do titular (E7-02.1)', () => {
     assert.equal(event.outcome, 'SUCCESS');
     assert.equal(event.resource_id, 1);
     assert.equal(event.detail.sections.eventos, 1);
+    assert.equal(event.detail.sections.observacoes, undefined);
     assert.doesNotMatch(JSON.stringify(event), /Maria|maria@example\.com|Hemograma/);
   });
 

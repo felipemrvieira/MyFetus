@@ -173,7 +173,9 @@ function createDataExportService({ crypto, now = () => new Date() }) {
       ...dados,
       observacoes: [
         'Contém somente dados do próprio titular. Não inclui senhas, chaves, registros internos de segurança nem dados de terceiros.',
-        'Os arquivos originais dos exames não vão neste JSON; documentos trazem metadados e o texto extraído.',
+        ...(user.role === 'gestante'
+          ? ['Os arquivos originais dos exames não vão neste JSON; documentos trazem metadados e o texto extraído.']
+          : []),
       ],
     };
   }
@@ -184,7 +186,7 @@ function createDataExportService({ crypto, now = () => new Date() }) {
 function summarize(exportData) {
   return Object.fromEntries(
     Object.entries(exportData)
-      .filter(([, value]) => Array.isArray(value))
+      .filter(([key, value]) => Array.isArray(value) && key !== 'observacoes')
       .map(([key, value]) => [key, value.length])
   );
 }
