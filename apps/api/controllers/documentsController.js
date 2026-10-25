@@ -15,7 +15,7 @@ const ALLOWED_DOCUMENT_UPDATE_FIELDS = ['document_name', 'document_type'];
 const ENCRYPTED_STORAGE_DIR = path.resolve(
   process.env.DOCUMENT_STORAGE_DIR || 'uploads/encrypted'
 );
-const UPLOAD_CLEANUP_ROOT = path.resolve(process.env.DOCUMENT_STORAGE_DIR || 'uploads');
+const UPLOAD_CLEANUP_ROOT = path.resolve('uploads');
 
 function getUploadedFile(req) {
   return req.files?.file?.[0] || req.files?.document?.[0] || req.file || null;
