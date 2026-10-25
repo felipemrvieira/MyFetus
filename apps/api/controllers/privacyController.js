@@ -22,6 +22,7 @@ function auditExport(req, outcome, detail) {
 }
 
 // Confirma a senha do próprio titular antes de liberar a exportação.
+// Senha errada responde 403, não 401: o app trata 401 como sessão expirada e desloga.
 async function passwordMatches(dbClient, userId, password) {
   const result = await dbClient.query(
     'SELECT password, is_active FROM users WHERE id = $1',
@@ -45,7 +46,7 @@ const exportMyData = async (req, res) => {
 
     if (!(await passwordMatches(dbClient, req.user.id, password))) {
       auditExport(req, 'FAILURE', { reason: 'invalid_password' });
-      return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_PASSWORD' });
+      return res.status(403).json({ error: 'Senha incorreta', code: 'INVALID_PASSWORD' });
     }
 
     // Leitura num único snapshot, para as seções do arquivo serem coerentes entre si.
@@ -55,7 +56,7 @@ const exportMyData = async (req, res) => {
 
     if (!exportData) {
       auditExport(req, 'FAILURE', { reason: 'user_not_found' });
-      return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_PASSWORD' });
+      return res.status(403).json({ error: 'Senha incorreta', code: 'INVALID_PASSWORD' });
     }
 
     auditExport(req, 'SUCCESS', { format: 'json', sections: summarize(exportData) });

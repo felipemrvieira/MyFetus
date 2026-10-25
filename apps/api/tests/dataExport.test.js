@@ -222,13 +222,13 @@ test.describe('Exportação dos dados do titular (E7-02.1)', () => {
     assert.equal(body.titular.name, 'Maria Sintetica');
   });
 
-  test('exige a senha: ausente é 400 e incorreta é 401, sem dados e com auditoria', async () => {
+  test('exige a senha: ausente é 400 e incorreta é 403 (não 401, que desloga o app), sem dados e com auditoria', async () => {
     const missing = await exportAs(MARIA, {});
     assert.equal(missing.status, 400);
     assert.equal(missing.body.code, 'PASSWORD_REQUIRED');
 
     const wrong = await exportAs(MARIA, { password: 'senha-errada' });
-    assert.equal(wrong.status, 401);
+    assert.equal(wrong.status, 403);
     assert.equal(wrong.body.code, 'INVALID_PASSWORD');
     assert.equal(wrong.body.titular, undefined);
     assert.equal(db.log.some((sql) => /FROM pregnants/.test(sql)), false);
@@ -243,7 +243,7 @@ test.describe('Exportação dos dados do titular (E7-02.1)', () => {
     const ghost = await exportAs(tokenFor({ id: 999, role: 'gestante' }));
 
     for (const res of [inactive, ghost]) {
-      assert.equal(res.status, 401);
+      assert.equal(res.status, 403);
       assert.deepEqual(res.body, { error: 'Senha incorreta', code: 'INVALID_PASSWORD' });
     }
   });

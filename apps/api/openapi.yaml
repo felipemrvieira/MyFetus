@@ -395,8 +395,11 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
               example: { error: Confirme sua senha para exportar os dados, code: PASSWORD_REQUIRED }
-        '401':
-          description: Token invalido, senha incorreta ou conta inativa (mesma resposta nos dois ultimos casos).
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: |
+            Senha incorreta, conta inativa ou usuario inexistente (mesma resposta). E 403, e nao 401, para o
+            app nao tratar a senha errada como sessao expirada.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }

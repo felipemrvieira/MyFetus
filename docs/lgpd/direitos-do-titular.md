@@ -23,7 +23,8 @@ próximas entregas (ver "Próximas etapas").
 
 - O titular é sempre o usuário do token. Não existe ID no corpo nem na URL; um `user_id` enviado é ignorado.
 - Senha ausente: `400 PASSWORD_REQUIRED`. Senha incorreta, conta inativa ou usuário inexistente:
-  a mesma resposta `401 INVALID_PASSWORD`, para não revelar o estado da conta.
+  a mesma resposta `403 INVALID_PASSWORD`, para não revelar o estado da conta. É 403, e não 401, porque
+  o app trata qualquer 401 como sessão expirada e desloga; token ausente ou inválido continua 401.
 - Resposta `200` em JSON, como anexo (`myfetus-meus-dados-AAAA-MM-DD.json`) e com `Cache-Control: no-store`.
 - Limite próprio: 5 pedidos a cada 15 minutos (`DATA_EXPORT_RATE_LIMIT_MAX`).
 - Fica fora do bloqueio por consentimento (`middlewares/consent.js`): quem revogou o consentimento
