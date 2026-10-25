@@ -1,10 +1,12 @@
-# Direitos do titular: exportação dos dados (E7-02.1)
+# Direitos do titular: exportação e exclusão dos dados (E7-02)
 
 Issue: #145 (subtask da #69). Decisões do P.O. (Dr. Rui) registradas em 23/10/2026 no comentário da #69.
-Prazo do marco: M2 (19/11/2026), junto com a exclusão.
+Prazo do marco: M2 (19/11/2026).
 
-Etapas entregues: exportação em JSON pela API e tela "Meus dados" no app. A exclusão/anonimização entra
-nas próximas entregas (ver "Próximas etapas").
+Etapas entregues:
+- exportação em JSON pela API (#210);
+- tela "Meus dados" no app (#212);
+- exclusão/anonimização da conta, na API e na mesma tela.
 
 ## Decisões do P.O.
 
@@ -76,12 +78,60 @@ segredo/ciphertext/caminho/ID de terceiro, médico sem dados de pacientes, ID no
 ausente e incorreta, conta inativa, sem token, auditoria só com contagens, snapshot somente leitura,
 erro 500 genérico e isenção do bloqueio por consentimento.
 
+## Exclusão da conta
+
+`POST /api/privacy/delete` com `{ "password": "<senha atual>", "confirmation": "EXCLUIR" }` e
+`Authorization: Bearer <JWT>`. No app, fica no cartão "Excluir minha conta" da tela "Meus dados".
+
+- O titular é sempre o usuário do token, como na exportação. A rota também fica fora do bloqueio por
+  consentimento e tem limite próprio: 5 pedidos a cada 15 minutos (`ACCOUNT_DELETION_RATE_LIMIT_MAX`).
+- Senha ausente: `400 PASSWORD_REQUIRED`. Confirmação diferente de `EXCLUIR`: `400 CONFIRMATION_REQUIRED`.
+  Senha incorreta, conta inativa ou inexistente: `403 INVALID_PASSWORD`, sem tocar no banco.
+- A operação roda numa transação, com a linha do usuário travada (`FOR UPDATE`).
+
+| Perfil | O que acontece |
+|---|---|
+| Gestante | A linha de `users` é apagada, e o banco remove em cascata o prontuário, as gestações, os eventos, os históricos, os pedidos de exame, os documentos e os vínculos. Os arquivos `.mfe` dos exames são renomeados antes do `DELETE` e apagados depois do `COMMIT`. Se a transação falhar, voltam para o lugar. Isso fecha o R13 da DPIA para a exclusão pelo titular. |
+| Médico | A conta é **anonimizada**, não apagada: nome "Conta excluída", e-mail `conta-excluida-<id>@removido.invalid`, nascimento `1900-01-01`, senha aleatória descartada, `email_lookup_hash` nulo e `is_active = false`. No perfil profissional, o CRM vira "removido", a UF vira "XX", e telefone e especialidade ficam nulos. Os vínculos com pacientes são apagados, então o acesso às pacientes acaba na hora, mesmo com o token ainda válido. Pedidos de exame e laudos continuam no prontuário das pacientes (`exam_requests.doctor_id` é `RESTRICT`). |
+| Admin | `403 ACCOUNT_DELETION_NOT_SELF_SERVICE`. A exclusão é feita por procedimento operacional (decisão 6). |
+
+**Interpretação a confirmar com o P.O.:** anonimizar o médico, em vez de apagar, segue a decisão 4
+("anonimizar o que precisa ficar"), porque os pedidos e laudos dele fazem parte do prontuário das pacientes.
+
+**O que fica guardado:**
+- consentimentos e `audit_logs`, até o fim do projeto (resposta 4 da DPIA). As duas tabelas não têm chave
+  estrangeira para `users`, e o banco protege os dois contra exclusão;
+- backups, até expirarem (resposta 5 da DPIA). O app avisa isso no cartão de exclusão.
+
+**No aparelho:** depois da exclusão, o app apaga as chaves locais do usuário (`clearScopedItems`), encerra a
+sessão e volta para o login.
+
+**Auditoria:** cada pedido gera `ACCOUNT_DELETED`. No sucesso, o `detail` traz o papel, o modo (`deleted` ou
+`anonymized`), as contagens e quantos arquivos foram removidos ou falharam. Na falha, traz o motivo
+(`invalid_password`, `ACCOUNT_DELETION_NOT_SELF_SERVICE` ou `internal_error`). O excesso de pedidos gera
+`ACCOUNT_DELETION_BLOCKED`.
+
+**Testes:**
+- `apps/api/tests/accountDeletion.test.js` (no `test:ci`) usa a cifragem real e arquivos de verdade numa
+  pasta temporária. Cobre:
+  - gestante apagada em cascata, com o arquivo removido;
+  - usuária A sem tocar em B;
+  - consentimentos mantidos;
+  - médico anonimizado, sem vínculos e com as pacientes intactas;
+  - admin bloqueado;
+  - senha errada e confirmação ausente ou em minúsculas;
+  - rollback que devolve o arquivo ao lugar;
+  - token reutilizado após a exclusão;
+  - auditoria sem dado pessoal;
+  - isenção do consentimento.
+- `apps/mobile/tests/accountDeletion.test.ts` cobre as regras puras do cartão.
+- Validado também no Postgres local e no Expo Web com as contas do seed:
+  - gestante com exame enviado: linhas e arquivo removidos, consentimentos mantidos;
+  - médica com pedido de exame: anonimizada, sem vínculos e com o pedido mantido.
+
 ## Próximas etapas
 
-1. ~~**Tela no app**~~: feita. Rota `/meus-dados` (botão "Meus dados" na tela inicial da gestante e no painel do
-   médico), com confirmação da senha, compartilhamento do arquivo e remoção da cópia temporária.
-2. **Exclusão/anonimização (#69):** excluir os dados pessoais, anonimizar consentimentos e auditoria (ficam até o
-   fim do projeto, resposta 4 da DPIA), remover os arquivos cifrados de `uploads/` e avisar que o backup só é
-   limpo quando expira (resposta 5 da DPIA).
-3. **Prazo operacional:** registrar no fluxo de atendimento o prazo de até 7 dias com o Dr. Rui como responsável.
-4. **PDF:** só se sobrar tempo (decisão 2).
+1. **Prazo operacional:** registrar no fluxo de atendimento o prazo de até 7 dias com o Dr. Rui como responsável.
+2. **PDF da exportação:** só se sobrar tempo (decisão 2).
+3. **Fora do escopo:** o `DELETE /api/users/:id` do admin continua sem remover arquivos nem auditar. O R13
+   segue aberto para esse caminho.
