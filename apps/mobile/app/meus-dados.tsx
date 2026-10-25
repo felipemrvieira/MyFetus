@@ -98,7 +98,8 @@ export default function MeusDadosScreen() {
                 : 'Sua conta, seus consentimentos e o seu perfil profissional. Dados de pacientes não fazem parte da sua exportação.'}
             </Text>
             <Text style={styles.cardText}>
-              Não vêm senhas, registros internos de segurança nem dados de outras pessoas. Os arquivos originais dos exames continuam disponíveis na tela de exames.
+              Não vêm senhas, registros internos de segurança nem dados de outras pessoas.
+              {user.role === 'gestante' ? ' Os arquivos originais dos exames continuam disponíveis na tela de exames.' : ''}
             </Text>
           </View>
 
