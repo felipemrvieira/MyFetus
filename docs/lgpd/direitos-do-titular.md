@@ -3,8 +3,8 @@
 Issue: #145 (subtask da #69). Decisões do P.O. (Dr. Rui) registradas em 23/10/2026 no comentário da #69.
 Prazo do marco: M2 (19/11/2026), junto com a exclusão.
 
-Esta é a **etapa 1**: exportação em JSON pela API. A tela no app e a exclusão/anonimização entram nas
-próximas entregas (ver "Próximas etapas").
+Etapas entregues: exportação em JSON pela API e tela "Meus dados" no app. A exclusão/anonimização entra
+nas próximas entregas (ver "Próximas etapas").
 
 ## Decisões do P.O.
 
@@ -78,7 +78,8 @@ erro 500 genérico e isenção do bloqueio por consentimento.
 
 ## Próximas etapas
 
-1. **Tela no app:** "Meus dados" no perfil, com confirmação da senha e compartilhamento do arquivo.
+1. ~~**Tela no app**~~: feita. Rota `/meus-dados` (botão "Meus dados" na tela inicial da gestante e no painel do
+   médico), com confirmação da senha, compartilhamento do arquivo e remoção da cópia temporária.
 2. **Exclusão/anonimização (#69):** excluir os dados pessoais, anonimizar consentimentos e auditoria (ficam até o
    fim do projeto, resposta 4 da DPIA), remover os arquivos cifrados de `uploads/` e avisar que o backup só é
    limpo quando expira (resposta 5 da DPIA).
