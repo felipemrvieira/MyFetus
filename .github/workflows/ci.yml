@@ -87,6 +87,30 @@ jobs:
       - run: npm ci --prefix apps/api
       - run: npm run test:pdf-extractor
 
+  pdf-dataset:
+    name: Synthetic PDF/OCR dataset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/api/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix apps/api
+      - run: npm run generate:dataset:ocr
+      - run: npm run test:pdf-extractor
+      - run: REQUIRE_OCR=true npm run accuracy:pdf
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-pdf-accuracy-report
+          path: reports/accuracy_*.txt
+          if-no-files-found: error
+
   docker-build:
     name: Docker build
     runs-on: ubuntu-latest

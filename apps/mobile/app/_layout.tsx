@@ -75,6 +75,10 @@ function RootNavigator() {
         <Stack.Protected guard={isClinician}>
           <Stack.Screen name="doctor" options={{ headerShown: false }} />
         </Stack.Protected>
+
+        {/* Tela Sobre (E7-09): fora dos guards, acessível com e sem login.
+            Fica por último para nunca virar a tela inicial de quem está logado. */}
+        <Stack.Screen name="sobre" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

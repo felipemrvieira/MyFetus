@@ -65,6 +65,15 @@ export default function HomeScreen() {
               <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
               <View style={styles.headerActions}>
                 <TouchableOpacity
+                  accessibilityLabel="Sobre o MyFetus"
+                  accessibilityRole="link"
+                  onPress={() => router.push('/sobre')}
+                  style={styles.signOutButton}
+                >
+                  <FontAwesome name="info-circle" size={18} color={ACCESSIBLE_COLORS.primary} />
+                  <Text style={styles.signOutText}>Sobre</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                   testID="e2e-patient-sign-out"
                   accessibilityLabel="Sair da conta"
                   accessibilityRole="button"
@@ -162,12 +171,14 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
+    gap: 8,
   },
   signOutButton: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 6,
     marginTop: 12,
+    minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },

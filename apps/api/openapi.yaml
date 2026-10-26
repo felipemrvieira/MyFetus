@@ -509,6 +509,108 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [Medicos]
+      summary: Lista médicos para decisão de aprovação
+      operationId: listDoctors
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin]
+      parameters:
+        - name: approval_status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected, revoked]
+      responses:
+        '200':
+          description: Lista de perfis médicos com estado de aprovação.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DoctorApprovalRecord' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/doctors/me/approval:
+    get:
+      tags: [Medicos]
+      summary: Consulta o estado de aprovação do próprio cadastro
+      operationId: getMyDoctorApproval
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      responses:
+        '200':
+          description: Estado atual da aprovação.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DoctorApprovalStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/doctors/me:
+    put:
+      tags: [Medicos]
+      summary: Reenvia dados profissionais após rejeição ou revogação
+      operationId: resubmitDoctorApproval
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DoctorResubmissionRequest' }
+      responses:
+        '200':
+          description: Dados reenviados para análise.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  doctor: { $ref: '#/components/schemas/DoctorApprovalStatus' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/doctors/{id}/approval:
+    post:
+      tags: [Medicos]
+      summary: Decide aprovação de um médico
+      operationId: decideDoctorApproval
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DoctorApprovalDecision' }
+      responses:
+        '200':
+          description: Decisão registrada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doctor: { $ref: '#/components/schemas/DoctorApprovalStatus' }
+                  approval_status: { type: string, enum: [approved, rejected, revoked] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
 
   # --------------------------------------------------------------- Gestantes
   /api/pregnants:
@@ -1942,6 +2044,8 @@ components:
             email: { type: string }
             role: { $ref: '#/components/schemas/Role' }
             pregnant_id: { type: [integer, 'null'] }
+            doctor_approval_status: { type: string, enum: [pending, approved, rejected, revoked] }
+            doctor_approval_reason: { type: [string, 'null'] }
         consent:
           description: 'Termos pendentes de aceite (ex.: nova versao). `null` se o status estiver indisponivel.'
           oneOf:
@@ -2021,6 +2125,42 @@ components:
         crm_estado: { type: string, minLength: 2, maxLength: 2, description: UF do CRM. }
         especialidade: { type: string }
         telefone: { type: string }
+
+    DoctorApprovalStatus:
+      type: object
+      required: [approval_status]
+      properties:
+        approval_status: { type: string, enum: [pending, approved, rejected, revoked] }
+        approval_reason: { type: [string, 'null'] }
+    DoctorApprovalDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approve, reject, revoke] }
+        reason: { type: string, maxLength: 500 }
+    DoctorResubmissionRequest:
+      type: object
+      required: [crm, crm_estado]
+      properties:
+        crm: { type: string, minLength: 1, maxLength: 20 }
+        crm_estado: { type: string, minLength: 2, maxLength: 2 }
+        especialidade: { type: [string, 'null'] }
+        telefone: { type: [string, 'null'] }
+    DoctorApprovalRecord:
+      allOf:
+        - $ref: '#/components/schemas/DoctorApprovalStatus'
+        - type: object
+          properties:
+            id: { type: integer }
+            user_id: { type: integer }
+            name: { type: string }
+            email: { type: string, format: email }
+            birthdate: { type: string, format: date }
+            crm: { type: string }
+            crm_estado: { type: string }
+            especialidade: { type: [string, 'null'] }
+            telefone: { type: [string, 'null'] }
+            is_active: { type: boolean }
 
     PregnantRecord:
       type: object

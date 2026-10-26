@@ -264,7 +264,7 @@ versão e licença indicados pelo P.O./revisão clínica.
 | Documento | Motivo |
 | --- | --- |
 | SOMANZ — Hypertension in Pregnancy Guideline 2023. Já mapeado no código | Não consta do planejamento; diretriz australiana/neozelandesa; não é fonte brasileira priorizada |
-| Qualquer PDF em `apps/api/data/guidelines/` sem entrada neste manifesto | Hoje `ragIngestionService.js` aceita qualquer PDF da pasta com metadados `unknown`. E4-02 deve trocar isso pela leitura deste manifesto |
+| Qualquer PDF em `apps/api/data/guidelines/` sem entrada neste manifesto | Bloqueado pelo gate da ingestão (E4-02.1): o `ragIngestionService.js` não aceita mais PDFs fora do manifesto |
 | Protocolos municipais/estaduais, blogs, cursos, resumos e cópias de terceiros (incluindo a "versão preliminar" do Manual de Alto Risco hospedada pelo MPMG) | Não são a fonte oficial; podem estar desatualizados ou alterados |
 
 ---
@@ -303,9 +303,11 @@ Enquanto todos os itens estiverem `proposta`, **nenhum** tema tem fonte aprovada
   ingere.
 - O bucket contém apenas publicações oficiais públicas. **Proibido** guardar
   prontuários, exames, laudos ou qualquer dado real de paciente.
-- Para E4-02, recomenda-se extrair a tabela de fontes para um arquivo legível por
-  máquina (ex.: `docs/rag/manifesto.yaml`) mantido em sincronia com este documento.
-  Até lá, este Markdown é a referência.
+- A versão legível por máquina deste manifesto é
+  [`apps/api/data/rag-manifest.json`](../../apps/api/data/rag-manifest.json), lida pelo
+  gate da ingestão (E4-02.1). Toda mudança de estado, hash ou versão precisa ser feita
+  nos dois arquivos; o teste `tests/ragManifestGate.test.js` falha se eles divergirem.
+  Funcionamento do gate e decisão de armazenamento: [`gate-do-manifesto.md`](gate-do-manifesto.md).
 
 ### Metadados mínimos que cada chunk deve carregar (para E4-02)
 

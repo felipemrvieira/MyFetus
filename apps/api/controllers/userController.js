@@ -80,8 +80,11 @@ async function findUserByEmail(email) {
   try {
     const indexed = await dbClient.query(
       `SELECT u.*, p.id AS pregnant_id
+              , d.approval_status AS doctor_approval_status
+              , d.approval_reason AS doctor_approval_reason
          FROM users u
          LEFT JOIN pregnants p ON p.user_id = u.id
+         LEFT JOIN doctors d ON d.user_id = u.id
         WHERE u.email_lookup_hash = $1
         LIMIT 1`,
       [lookupHash]
@@ -90,8 +93,11 @@ async function findUserByEmail(email) {
 
     const legacy = await dbClient.query(
       `SELECT u.*, p.id AS pregnant_id
+              , d.approval_status AS doctor_approval_status
+              , d.approval_reason AS doctor_approval_reason
          FROM users u
          LEFT JOIN pregnants p ON p.user_id = u.id
+         LEFT JOIN doctors d ON d.user_id = u.id
         WHERE u.email_lookup_hash IS NULL`
     );
     const matched = legacy.rows.find((row) => {
@@ -405,6 +411,10 @@ const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         pregnant_id: user.pregnant_id || null,
+        ...(user.role === 'medico' ? {
+          doctor_approval_status: storedUser.doctor_approval_status || 'pending',
+          doctor_approval_reason: storedUser.doctor_approval_reason || null,
+        } : {}),
       },
       consent,
     });

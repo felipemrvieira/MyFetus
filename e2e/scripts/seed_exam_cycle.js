@@ -14,6 +14,8 @@ const runId = (process.env.E2E_RUN_ID || `local-${Date.now()}`)
   .replace(/[^a-zA-Z0-9]/g, '')
   .slice(-24);
 const password = process.env.E2E_PASSWORD || 'E2eExamCycle123!';
+const adminEmail = process.env.E2E_ADMIN_EMAIL || 'admin_teste@myfetus.com';
+const adminPassword = process.env.E2E_ADMIN_PASSWORD || 'SenhaTeste123!';
 const examName = 'Hemograma sintetico E2E';
 const reportText = 'Resultado sintetico revisado: hemoglobina 12.5 g/dL.';
 
@@ -52,17 +54,17 @@ async function request(path, options = {}) {
   return body;
 }
 
-async function login(email) {
+async function login(email, loginPassword = password) {
   return request('/api/users/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password: loginPassword }),
   });
 }
 
 async function main() {
   await request('/ping');
 
-  await request('/api/doctors', {
+  const doctorRegistration = await request('/api/doctors', {
     method: 'POST',
     body: JSON.stringify({
       name: 'Médico E2E Sintético',
@@ -75,6 +77,15 @@ async function main() {
       telefone: '81999999999',
       consents: doctorConsents,
     }),
+  });
+
+  // A fixture sintética segue o mesmo fluxo do produto: um admin aprovado
+  // explicitamente libera o médico antes do acesso às rotas clínicas.
+  const adminSession = await login(adminEmail, adminPassword);
+  await request(`/api/doctors/${doctorRegistration.doctor.id}/approval`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${adminSession.token}` },
+    body: JSON.stringify({ decision: 'approve' }),
   });
 
   await request('/api/users', {
