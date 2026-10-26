@@ -19,3 +19,14 @@ _Avoid_: Indisponibilidade total
 **Registro Estruturado**:
 Emissão de linhas de log exclusivamente no formato JSON padronizado (NDJSON), contendo nível, carimbo de tempo, mensagem e metadados sanitizados.
 _Avoid_: Log textual puro, console.log livre
+
+## Apoio à Decisão Clínica e Risco
+
+**Alerta de Triagem Obstétrica**:
+Sinalização automatizada de estratificação de risco (verde, amarelo ou vermelho) baseada em parâmetros clínicos e limiares normativos, destinada a chamar a atenção do profissional de saúde e orientar a gestante.
+_Avoid_: Diagnóstico, Laudo automatizado, Parecer definitivo
+
+**Diagnóstico Clínico**:
+Ato médico privativo de identificação de patologias e definição de condutas terapêuticas, baseado na anamnese, exame físico e julgamento profissional.
+_Avoid_: Classificação automática de doença, Veredito do sistema
+
