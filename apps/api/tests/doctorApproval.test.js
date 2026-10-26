@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const Module = require('node:module');
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const { rateLimit } = require('express-rate-limit');
 
 process.env.JWT_SECRET = 'doctor-approval-test-secret';
 
@@ -71,7 +72,6 @@ Module._load = function (request) {
 };
 
 const { authenticateToken, requireRole } = require('../middlewares/auth');
-const { clinicalLimiter } = require('../middlewares/authRateLimit');
 const doctorRoutes = require('../routes/doctors');
 Module._load = originalLoad;
 
@@ -83,7 +83,13 @@ function createApp() {
   const app = express();
   app.use(express.json());
   app.use('/api/doctors', doctorRoutes);
-  app.get('/clinical', clinicalLimiter, authenticateToken, requireRole('medico'), (_req, res) => res.json({ ok: true }));
+  app.get(
+    '/clinical',
+    rateLimit({ windowMs: 60_000, limit: 100, standardHeaders: false, legacyHeaders: false }),
+    authenticateToken,
+    requireRole('medico'),
+    (_req, res) => res.json({ ok: true })
+  );
   return app;
 }
 
