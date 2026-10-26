@@ -71,6 +71,7 @@ Module._load = function (request) {
 };
 
 const { authenticateToken, requireRole } = require('../middlewares/auth');
+const { clinicalLimiter } = require('../middlewares/authRateLimit');
 const doctorRoutes = require('../routes/doctors');
 Module._load = originalLoad;
 
@@ -82,7 +83,7 @@ function createApp() {
   const app = express();
   app.use(express.json());
   app.use('/api/doctors', doctorRoutes);
-  app.get('/clinical', authenticateToken, requireRole('medico'), (_req, res) => res.json({ ok: true }));
+  app.get('/clinical', clinicalLimiter, authenticateToken, requireRole('medico'), (_req, res) => res.json({ ok: true }));
   return app;
 }
 

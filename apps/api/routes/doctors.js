@@ -34,12 +34,14 @@ router.get(
 );
 router.get(
   '/me/approval',
+  adminReadLimiter,
   authenticateToken,
   requireRoleWithoutDoctorApproval('medico'),
   doctorController.getMyApproval
 );
 router.put(
   '/me',
+  adminReadLimiter,
   authenticateToken,
   requireRoleWithoutDoctorApproval('medico'),
   doctorController.resubmitDoctorApproval
