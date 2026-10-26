@@ -104,9 +104,10 @@ npm run build:android:preview
 ```
 
 O perfil está definido em [`eas.json`](eas.json) e usa distribuição interna
-com `buildType: apk`. O primeiro uso requer `npx eas-cli@latest login` e
-`npx eas-cli@latest init`. Configure `EXPO_PUBLIC_API_URL` no ambiente EAS
-antes do build; um APK instalado sem Expo Go não consegue acessar a API por
+com `buildType: apk`. O perfil `preview` já aponta para a API de homologação
+HTTPS do Cloud Run. Para gerar um APK com outra API, substitua
+`EXPO_PUBLIC_API_URL` no perfil ou configure a variável no ambiente EAS antes
+do build. Um APK instalado sem Expo Go não consegue acessar a API por
 `localhost`. Consulte o [guia completo](../../docs/eas-android-build.md) para
 configuração, acompanhamento e critérios de aceite.
 
@@ -142,6 +143,29 @@ Acesse o projeto através do localhost (web) ou escaneie o QR Code com o Expo Go
 ## ⚠️ Observações Importantes
 
 ### Ambiente de Execução
-O aplicativo está configurado para se comunicar com o Backend via `localhost:3000`.
-* **Recomendado:** Rodar em **Emulador Android/iOS** ou **Navegador Web** no mesmo computador onde o Docker está rodando.
-* **Dispositivos Físicos:** Para rodar no smartphone (via Wi-Fi), é necessário alterar manualmente as chamadas de API no código (`fetch`) para o IP da sua máquina local.
+Todas as chamadas passam por `utils/api.ts`, que lê `EXPO_PUBLIC_API_URL` e
+remove a necessidade de editar telas individualmente:
+
+* **APK EAS `preview`:** usa a API de homologação configurada em `eas.json`.
+* **Expo Go/desenvolvimento local:** sem variável, usa o host do Metro na rede
+  local e a porta `3000`; no emulador Android usa `10.0.2.2` como fallback.
+* **Web:** sem variável, usa `http://localhost:3000`.
+* **Outro provedor:** defina `EXPO_PUBLIC_API_URL` com a URL HTTPS do provedor
+  e gere um novo build. O código das telas não precisa ser alterado.
+
+Para fixar a API local durante um teste, copie [`.env.example`](.env.example)
+para `.env` e preencha `EXPO_PUBLIC_API_URL` com o endereço que o aparelho
+consegue alcançar. O backend deve estar disponível na porta `3000`:
+
+```bash
+cp .env.example .env
+# exemplo para um celular na mesma rede Wi-Fi:
+# EXPO_PUBLIC_API_URL=http://192.168.0.10:3000
+npm start -- --clear
+```
+
+O arquivo `.env` é ignorado pelo Git. Depois de alterar a variável, reinicie o
+Metro para que o Expo recompile o bundle.
+
+Nunca coloque tokens ou outras credenciais nessa variável; ela é incorporada ao
+bundle do aplicativo e contém somente a URL pública da API.

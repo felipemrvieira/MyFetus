@@ -24,11 +24,14 @@ servers:
 tags:
   - name: Sistema
   - name: Usuarios
+  - name: Consentimento
+  - name: Privacidade
   - name: Medicos
   - name: Gestantes
   - name: Gestacoes
   - name: Eventos
   - name: Documentos
+  - name: Exames
   - name: Medicoes
   - name: Vinculos
   - name: Sincronizacao
@@ -83,7 +86,11 @@ paths:
       summary: Cadastra uma gestante (usuario com papel gestante)
       operationId: createUser
       security: []
-      description: Rota publica com rate limit de cadastro (`REGISTER_RATE_LIMIT_MAX`).
+      description: |
+        Rota publica com rate limit de cadastro (`REGISTER_RATE_LIMIT_MAX`).
+        Exige o aceite (`consents`) de todas as finalidades obrigatorias na versao vigente
+        de `GET /api/consents/policy` (E7-01.1). Usuario e consentimento sao gravados na
+        mesma transacao.
       requestBody:
         required: true
         content:
@@ -94,14 +101,30 @@ paths:
               email: maria.exemplo@example.com
               password: senha-sintetica-123
               birthdate: '1995-04-12'
+              consents:
+                - { purpose: termos_de_uso_gestante, version: 0.1-rascunho }
+                - { purpose: politica_de_privacidade, version: 0.1-rascunho }
+                - { purpose: tratamento_dados_saude, version: 0.1-rascunho }
+                - { purpose: uso_ia, version: 0.1-rascunho }
       responses:
         '201':
           description: Usuario criado (sem senha nem hashes).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/User' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '400':
+          description: Dados invalidos ou aceite obrigatorio ausente (`code` = `CONSENT_REQUIRED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
+              example:
+                error: Aceite do termo de uso e da política de privacidade é obrigatório
+                code: CONSENT_REQUIRED
+        '409':
+          description: E-mail ja cadastrado, ou aceite de versao desatualizada (`code` = `CONSENT_VERSION_OUTDATED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
     get:
@@ -153,6 +176,9 @@ paths:
                   email: maria.exemplo@example.com
                   role: gestante
                   pregnant_id: 1
+                consent:
+                  required: false
+                  pending: []
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
@@ -227,6 +253,160 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  # ----------------------------------------------------------- Consentimento
+  /api/consents/policy:
+    get:
+      tags: [Consentimento]
+      summary: Finalidades, versoes vigentes e textos dos documentos
+      operationId: getConsentPolicy
+      security: []
+      description: |
+        Publico; usado nas telas de cadastro. Cada finalidade tem um tipo: `acceptance` (aceite dos
+        Termos de Uso), `acknowledgment` (ciencia da Politica de Privacidade) ou `consent`
+        (consentimento; `highlighted` = destacado). Finalidades com `required: false` sao opcionais.
+      parameters:
+        - name: role
+          in: query
+          required: false
+          schema: { type: string, enum: [gestante, medico] }
+          description: Filtra as finalidades do perfil.
+      responses:
+        '200':
+          description: Politica de consentimento vigente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentPolicy' }
+        '400':
+          description: Perfil invalido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
+
+  /api/consents/me:
+    get:
+      tags: [Consentimento]
+      summary: Status de consentimento do usuario autenticado
+      operationId: getMyConsents
+      security: [{ bearerAuth: [] }]
+      description: O titular e sempre o usuario do token.
+      responses:
+        '200':
+          description: Status por finalidade (o registro mais recente vale).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/consents:
+    post:
+      tags: [Consentimento]
+      summary: Registra aceite, recusa ou revogacao do usuario autenticado
+      operationId: recordMyConsent
+      security: [{ bearerAuth: [] }]
+      description: |
+        Cada decisao gera um novo registro; revogar nao altera o aceite anterior (registros protegidos
+        durante o periodo de retencao). Aceite e recusa exigem a versao vigente; a revogacao vale para
+        a finalidade. Decisoes por tipo: `acceptance` aceita/recusa, `acknowledgment` so aceita,
+        `consent` aceita/recusa/revoga. So e possivel decidir finalidades do proprio perfil.
+        O titular e sempre o usuario do token (nao ha ID de usuario no corpo).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose, decision]
+              properties:
+                purpose: { type: string }
+                decision: { type: string, enum: [accepted, refused, revoked] }
+                version: { type: string, description: Obrigatoria para accepted e refused. }
+            example:
+              purpose: uso_ia
+              decision: revoked
+      responses:
+        '201':
+          description: Decisao registrada; devolve o registro e o status atualizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consent:
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      purpose: { type: string }
+                      version: { type: string }
+                      decision: { type: string }
+                      created_at: { type: string, format: date-time }
+                  status: { $ref: '#/components/schemas/ConsentStatus' }
+        '400':
+          description: Finalidade desconhecida ou decisao invalida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Versao do termo desatualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ------------------------------------------------------------ Privacidade
+  /api/privacy/export:
+    post:
+      tags: [Privacidade]
+      summary: Exporta em JSON os dados do titular autenticado (LGPD art. 18)
+      operationId: exportMyData
+      security: [{ bearerAuth: [] }]
+      description: |
+        Direito de acesso e portabilidade (E7-02.1). O titular e sempre o usuario do token; nao ha ID
+        no corpo nem na URL. Exige a confirmacao da senha. A gestante recebe conta, consentimentos,
+        prontuario, gestacoes, eventos, historicos, pedidos de exame, documentos (metadados e texto
+        extraido) e vinculos; o medico recebe conta, consentimentos e o proprio perfil profissional,
+        nunca dados de pacientes. Nao inclui senhas, chaves, caminhos de arquivo, registros internos
+        de seguranca nem dados de terceiros. Fica fora do bloqueio por consentimento. Cada pedido,
+        aceito ou recusado, gera registro em audit_logs (acao DATA_EXPORT) apenas com contagens.
+        Limite padrao de 5 pedidos a cada 15 minutos (DATA_EXPORT_RATE_LIMIT_MAX).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, description: Senha atual do titular. }
+            example:
+              password: senha-sintetica-123
+      responses:
+        '200':
+          description: Arquivo JSON enviado como anexo (Content-Disposition), com Cache-Control no-store.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExport' }
+        '400':
+          description: Senha nao informada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Confirme sua senha para exportar os dados, code: PASSWORD_REQUIRED }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: |
+            Senha incorreta, conta inativa ou usuario inexistente (mesma resposta). E 403, e nao 401, para o
+            app nao tratar a senha errada como sessao expirada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Senha incorreta, code: INVALID_PASSWORD }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   # ----------------------------------------------------------------- Medicos
   /api/doctors:
     post:
@@ -234,7 +414,10 @@ paths:
       summary: Cadastra um medico (CRM/UF)
       operationId: createDoctor
       security: []
-      description: Rota publica com rate limit de cadastro (`REGISTER_RATE_LIMIT_MAX`).
+      description: |
+        Rota publica com rate limit de cadastro (`REGISTER_RATE_LIMIT_MAX`). Exige o aceite dos Termos
+        de Uso do perfil medico e a ciencia da Politica de Privacidade (`consents`), gravados na mesma
+        transacao. O aceite do medico nao substitui a autorizacao da gestante sobre os dados dela.
       requestBody:
         required: true
         content:
@@ -248,6 +431,9 @@ paths:
               crm: '000000'
               crm_estado: PE
               especialidade: Obstetricia
+              consents:
+                - { purpose: termos_de_uso_medico, version: 0.1-rascunho }
+                - { purpose: politica_de_privacidade, version: 0.1-rascunho }
       responses:
         '201':
           description: Medico criado.
@@ -263,6 +449,108 @@ paths:
                     description: Dados profissionais (CRM, UF, especialidade).
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [Medicos]
+      summary: Lista médicos para decisão de aprovação
+      operationId: listDoctors
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin]
+      parameters:
+        - name: approval_status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected, revoked]
+      responses:
+        '200':
+          description: Lista de perfis médicos com estado de aprovação.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DoctorApprovalRecord' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/doctors/me/approval:
+    get:
+      tags: [Medicos]
+      summary: Consulta o estado de aprovação do próprio cadastro
+      operationId: getMyDoctorApproval
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      responses:
+        '200':
+          description: Estado atual da aprovação.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DoctorApprovalStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/doctors/me:
+    put:
+      tags: [Medicos]
+      summary: Reenvia dados profissionais após rejeição ou revogação
+      operationId: resubmitDoctorApproval
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DoctorResubmissionRequest' }
+      responses:
+        '200':
+          description: Dados reenviados para análise.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  doctor: { $ref: '#/components/schemas/DoctorApprovalStatus' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/doctors/{id}/approval:
+    post:
+      tags: [Medicos]
+      summary: Decide aprovação de um médico
+      operationId: decideDoctorApproval
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DoctorApprovalDecision' }
+      responses:
+        '200':
+          description: Decisão registrada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doctor: { $ref: '#/components/schemas/DoctorApprovalStatus' }
+                  approval_status: { type: string, enum: [approved, rejected, revoked] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
@@ -810,6 +1098,85 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ------------------------------------------------------------------ Exames
+  /api/exam-requests/pregnant/{pregnantId}:
+    parameters:
+      - name: pregnantId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Exames]
+      summary: Lista pedidos de exame de uma gestante
+      operationId: getExamRequests
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, gestante, medico]
+      responses:
+        '200':
+          description: Pedidos de exame, mais recentes primeiro.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ExamRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/exam-requests:
+    post:
+      tags: [Exames]
+      summary: Cria um pedido de exame para uma gestante vinculada
+      operationId: createExamRequest
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateExamRequest' }
+            example:
+              pregnant_id: 1
+              exam_name: Ultrassonografia morfológica
+              instructions: Levar resultado anterior.
+      responses:
+        '201':
+          description: Pedido criado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/exam-requests/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    delete:
+      tags: [Exames]
+      summary: Cancela um pedido de exame pendente
+      operationId: cancelExamRequest
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      responses:
+        '200':
+          description: Pedido cancelado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ---------------------------------------------------------------- Medicoes
@@ -1513,6 +1880,47 @@ components:
           example: { error: Erro interno }
 
   schemas:
+    DataExport:
+      type: object
+      description: Exportacao do titular. As secoes de gestante so aparecem para o papel gestante.
+      required: [formato, gerado_em, titular, consentimentos]
+      properties:
+        formato:
+          type: object
+          properties:
+            nome: { type: string, example: myfetus-exportacao-titular }
+            versao: { type: string, example: '1.0' }
+        gerado_em: { type: string, format: date-time }
+        titular:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            email: { type: string }
+            birthdate: { type: string }
+            role: { type: string, enum: [gestante, medico, admin] }
+            is_active: { type: boolean }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+        consentimentos:
+          type: array
+          items:
+            type: object
+            properties:
+              purpose: { type: string }
+              version: { type: string }
+              decision: { type: string, enum: [accepted, refused, revoked] }
+              created_at: { type: string, format: date-time }
+        prontuario: { type: [object, 'null'] }
+        gestacoes: { type: array, items: { type: object } }
+        eventos: { type: array, items: { type: object } }
+        biometria_fetal: { type: array, items: { type: object } }
+        peso_materno: { type: array, items: { type: object } }
+        pedidos_de_exame: { type: array, items: { type: object } }
+        documentos: { type: array, items: { type: object } }
+        vinculos_medicos: { type: array, items: { type: object } }
+        perfil_profissional: { type: [object, 'null'], description: Somente para o papel medico. }
+        observacoes: { type: array, items: { type: string } }
     Error:
       type: object
       required: [error]
@@ -1540,12 +1948,16 @@ components:
         created_at: { type: string, format: date-time }
     CreateUserRequest:
       type: object
-      required: [name, email, password, birthdate]
+      required: [name, email, password, birthdate, consents]
       properties:
         name: { type: string, minLength: 1 }
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
         birthdate: { type: string, format: date }
+        consents:
+          type: array
+          description: Aceite das finalidades obrigatorias, na versao vigente.
+          items: { $ref: '#/components/schemas/ConsentReference' }
     UpdateUserRequest:
       type: object
       minProperties: 1
@@ -1574,10 +1986,79 @@ components:
             email: { type: string }
             role: { $ref: '#/components/schemas/Role' }
             pregnant_id: { type: [integer, 'null'] }
+            doctor_approval_status: { type: string, enum: [pending, approved, rejected, revoked] }
+            doctor_approval_reason: { type: [string, 'null'] }
+        consent:
+          description: 'Termos pendentes de aceite (ex.: nova versao). `null` se o status estiver indisponivel.'
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                required: { type: boolean }
+                pending:
+                  type: array
+                  items: { $ref: '#/components/schemas/ConsentReference' }
+
+    ConsentReference:
+      type: object
+      required: [purpose, version]
+      properties:
+        purpose:
+          type: string
+          enum: [termos_de_uso_gestante, termos_de_uso_medico, politica_de_privacidade, tratamento_dados_saude, uso_ia, pesquisa_usabilidade]
+        version: { type: string, examples: [0.1-rascunho] }
+    ConsentError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        code: { type: string, enum: [CONSENT_REQUIRED, CONSENT_VERSION_OUTDATED, CONSENT_INVALID] }
+    ConsentPolicy:
+      type: object
+      properties:
+        purposes:
+          type: array
+          items:
+            type: object
+            properties:
+              purpose: { type: string }
+              title: { type: string }
+              kind: { type: string, enum: [acceptance, acknowledgment, consent] }
+              roles: { type: array, items: { type: string, enum: [gestante, medico] } }
+              required: { type: boolean }
+              highlighted: { type: boolean }
+              version: { type: string }
+              document_date: { type: string, format: date }
+              text: { type: string, description: Texto do documento (rascunho ate a aprovacao da gestao). }
+    ConsentStatus:
+      type: object
+      properties:
+        required:
+          type: boolean
+          description: true se o papel exige consentimento e ha finalidade obrigatoria pendente.
+        pending:
+          type: array
+          items: { $ref: '#/components/schemas/ConsentReference' }
+        purposes:
+          type: array
+          items:
+            type: object
+            properties:
+              purpose: { type: string }
+              kind: { type: string, enum: [acceptance, acknowledgment, consent] }
+              current_version: { type: string }
+              required: { type: boolean }
+              status: { type: string, enum: [pending, accepted, outdated, refused, revoked] }
+              decided_version: { type: [string, 'null'] }
+              decided_at: { type: [string, 'null'], format: date-time }
     CreateDoctorRequest:
       type: object
-      required: [name, email, password, birthdate, crm, crm_estado]
+      required: [name, email, password, birthdate, crm, crm_estado, consents]
       properties:
+        consents:
+          type: array
+          description: Termos de Uso do medico e ciencia da Politica de Privacidade, na versao vigente.
+          items: { $ref: '#/components/schemas/ConsentReference' }
         name: { type: string }
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
@@ -1586,6 +2067,42 @@ components:
         crm_estado: { type: string, minLength: 2, maxLength: 2, description: UF do CRM. }
         especialidade: { type: string }
         telefone: { type: string }
+
+    DoctorApprovalStatus:
+      type: object
+      required: [approval_status]
+      properties:
+        approval_status: { type: string, enum: [pending, approved, rejected, revoked] }
+        approval_reason: { type: [string, 'null'] }
+    DoctorApprovalDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approve, reject, revoke] }
+        reason: { type: string, maxLength: 500 }
+    DoctorResubmissionRequest:
+      type: object
+      required: [crm, crm_estado]
+      properties:
+        crm: { type: string, minLength: 1, maxLength: 20 }
+        crm_estado: { type: string, minLength: 2, maxLength: 2 }
+        especialidade: { type: [string, 'null'] }
+        telefone: { type: [string, 'null'] }
+    DoctorApprovalRecord:
+      allOf:
+        - $ref: '#/components/schemas/DoctorApprovalStatus'
+        - type: object
+          properties:
+            id: { type: integer }
+            user_id: { type: integer }
+            name: { type: string }
+            email: { type: string, format: email }
+            birthdate: { type: string, format: date }
+            crm: { type: string }
+            crm_estado: { type: string }
+            especialidade: { type: [string, 'null'] }
+            telefone: { type: [string, 'null'] }
+            is_active: { type: boolean }
 
     PregnantRecord:
       type: object
@@ -1703,6 +2220,7 @@ components:
       properties:
         id: { type: integer }
         pregnant_id: { type: integer }
+        exam_request_id: { type: [integer, 'null'] }
         document_name: { type: string }
         document_type: { type: string }
         status: { type: string }
@@ -1713,7 +2231,7 @@ components:
         uploaded_at: { type: string, format: date-time }
     UploadDocumentRequest:
       type: object
-      required: [pregnant_id, document_name]
+      required: [document_name]
       properties:
         file:
           type: string
@@ -1723,6 +2241,10 @@ components:
           type: string
           format: binary
         pregnant_id: { type: integer }
+        exam_request_id:
+          type: integer
+          minimum: 1
+          description: Solicitação pendente à qual o documento será vinculado. Obrigatório para gestante.
         document_name: { type: string }
         document_type: { type: string, description: 'Padrao: mimetype do arquivo.' }
     UpdateDocumentRequest:
@@ -1731,6 +2253,24 @@ components:
       properties:
         document_name: { type: string }
         document_type: { type: string }
+    ExamRequest:
+      type: object
+      properties:
+        id: { type: integer }
+        pregnant_id: { type: integer }
+        doctor_id: { type: integer }
+        exam_name: { type: string }
+        instructions: { type: [string, 'null'] }
+        status: { type: string, enum: [pending, submitted, reviewed, cancelled] }
+        requested_at: { type: string, format: date-time }
+        cancelled_at: { type: [string, 'null'], format: date-time }
+    CreateExamRequest:
+      type: object
+      required: [pregnant_id, exam_name]
+      properties:
+        pregnant_id: { type: integer, minimum: 1 }
+        exam_name: { type: string, minLength: 1, maxLength: 255 }
+        instructions: { type: [string, 'null'], maxLength: 2000 }
     DocumentText:
       type: object
       properties:

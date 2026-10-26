@@ -145,8 +145,7 @@ const searchKnowledgeBase = async (req, res) => {
     const logger = require('../utils/logger');
     logger.error('RAG_SEARCH_FAILED');
     return res.status(500).json({
-      error: 'Falha ao buscar no knowledge base',
-      details: error.message
+    error: 'Falha ao buscar no knowledge base'
     });
   }
 };
@@ -206,8 +205,7 @@ const askClinicalChat = async (req, res) => {
       detail: { reason: error.message },
     });
     return res.status(500).json({
-      error: 'Falha ao gerar resposta do chat clínico',
-      details: error.message
+    error: 'Falha ao gerar resposta do chat clínico'
     });
   }
 };
@@ -277,9 +275,8 @@ const askClinicalAgentsChat = async (req, res) => {
       detail: { mode: 'agents', reason: error.message },
     });
     return res.status(500).json({
-      error: 'Falha ao gerar resposta multiagente',
-      details: error.message,
-    });
+  error: 'Falha ao gerar resposta multiagente',
+  });
   }
 };
 
@@ -300,9 +297,8 @@ const getRAGStats = async (req, res) => {
     const logger = require('../utils/logger');
     logger.error('RAG_STATS_FAILED');
     return res.status(500).json({
-      error: 'Falha ao obter estatísticas',
-      details: error.message
-    });
+  error: 'Falha ao obter estatísticas'
+  });
   }
 };
 

@@ -274,6 +274,7 @@ As rotas públicas intencionais são:
 - `GET /ping`;
 - `POST /api/users`;
 - `POST /api/users/login`;
+- `GET /api/consents/policy` (termo vigente exibido no cadastro, E7-01.1);
 - `POST /api/doctors`;
 - `GET /api/growth/chart`;
 - `POST /api/growth/percentile`.
