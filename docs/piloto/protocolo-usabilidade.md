@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Issue | E8-01 — Protocolo do piloto de usabilidade e questionário SUS |
-| Versão do protocolo | 0.1.0 (rascunho da equipe) |
-| Estado | **Rascunho — aguardando aprovação do P.O./UPE.** Recrutamento e sessões **não** podem começar antes da aprovação |
+| Versão do protocolo | 0.2.0 (ajustado conforme decisões do P.O. em 23/10/2026) |
+| Estado | **Pronto para revisão final e execução controlada.** O P.O. aprovou o desenho; o recrutamento deve usar somente participantes e dados fictícios |
 | Elaborado em | 2026-10-18 |
 | Duração da sessão | 30–45 minutos por participante |
 | Formato | Teste moderado, presencial ou remoto, com aparelho preparado pela equipe |
@@ -39,20 +39,20 @@ ou desempenho/segurança da infraestrutura.
 
 | Perfil | Quem | Quantidade proposta |
 | --- | --- | --- |
-| Gestante | Mulheres adultas, gestantes ou não, que representem o público do app (ver 2.2) | 5 a 8 participantes |
-| Médico | Médicos(as) ou residentes de ginecologia/obstetrícia | 3 a 5 participantes |
+| Gestante | Mulheres adultas, gestantes ou não, que representem o público do app (ver 2.2) | **5 participantes, por conveniência** |
+| Médico | Perfil demonstrativo preparado pelo P.O.; não haverá recrutamento de médicos neste piloto | **1 perfil controlado pelo P.O.** |
 
-A quantidade segue a prática de testes de usabilidade qualitativos (cerca de 5
-participantes por perfil já revela a maior parte dos problemas). **Perfil e quantidade
-finais: decisão do P.O.** (seção 11).
+A quantidade segue a prática de testes de usabilidade qualitativos. O desenho aprovado
+é de cinco gestantes por conveniência; o perfil médico será demonstrado pelo P.O., sem
+recrutamento de médicos.
 
 ### 2.2 Critérios de inclusão
 
 - 18 anos ou mais.
 - Usa smartphone no dia a dia.
 - Lê português.
-- Gestante: está gestante ou já teve gestação (a definir pelo P.O. — ver seção 11).
-- Médico: atua ou se forma em ginecologia/obstetrícia, ou em atenção primária.
+- Gestante: está gestante ou já teve gestação.
+- Médico: o fluxo será demonstrado com o perfil controlado pelo P.O.; não haverá recrutamento de médicos.
 - Assinou o termo de participação (seção 7).
 
 ### 2.3 Critérios de exclusão
@@ -74,9 +74,9 @@ finais: decisão do P.O.** (seção 11).
 | Moderador(a) | Conduz a sessão, lê as instruções exatamente como escritas, não ajuda nas tarefas (salvo nas regras da seção 5.3), aplica o SUS e as perguntas abertas |
 | Observador(a) | Preenche a ficha de observação (anexo C): tempo, sucesso, erros, pedidos de ajuda e falas relevantes. Não fala com a participante |
 | Responsável técnico | Prepara aparelho, contas e dados sintéticos antes da sessão; registra ambiente, versão e build (seção 4.3) |
-| P.O./UPE | Aprova o protocolo e o termo, recruta participantes e decide sobre incidentes graves |
+| P.O./UPE | Recruta as cinco participantes gestantes, aprova o protocolo e o termo e decide sobre incidentes graves |
 
-Quem recruta e quem conduz: **decisão do P.O.** (seção 11).
+O P.O. recruta as participantes gestantes. A equipe fornece moderador, observador e suporte técnico; o perfil médico fica sob responsabilidade do P.O.
 
 ---
 
@@ -183,9 +183,9 @@ o observador registra. O caminho esperado serve **só** para o observador.
 | G5 — Devolutiva (opcional) | "Uma semana depois, o médico respondeu outro exame seu. Encontre o que ele escreveu." | Aba Exames → item "Respondido" → ler o comentário | Lê o comentário do médico | 3 min |
 
 Observações:
-- **"Diário" (G3):** o app não tem uma tela chamada "diário". A proposta usa o
+- **"Diário" (G3):** o app não tem uma tela chamada "diário". O roteiro usa o
   **Controle de Água** como registro diário; o **Checklist** semanal pode ser uma
-  tarefa extra. **A confirmar pelo P.O.** (seção 11).
+  tarefa extra.
 - G5 exige um exame já respondido. Como a conta da Ana é criada na hora (G1), a
   proposta é fazer G5 numa conta do seed (ex.: `gestante_03@myfetus.com`) em que a
   equipe enviou um exame e respondeu como médico antes da sessão. Alternativa: pular G5.
@@ -205,15 +205,14 @@ Observações:
   conversar na próxima consulta"). **Nenhuma conduta clínica real** deve ser escrita.
 - Em M4, a pergunta é sobre **encontrar** o alerta, não sobre concordar com a regra.
   As regras de risco ainda não foram validadas clinicamente (E3-01/E3-02).
-- **"Devolutiva":** a proposta é que a devolutiva seja o relatório do exame (M3). Se o
-  P.O. entender devolutiva como outra coisa (ex.: retorno sobre o alerta), a tarefa
-  muda. **A confirmar** (seção 11).
+- **"Devolutiva":** a devolutiva é o relatório do médico sobre o exame (M3), visto pela
+  gestante em G5.
 
-### 6.3 Tarefas bloqueadoras (proposta)
+### 6.3 Tarefas bloqueadoras
 
 Se a maioria das participantes de um perfil não concluir uma destas tarefas, o problema
 é tratado como **bloqueador** antes de uma próxima rodada: G1, G2, G4, M1, M2, M3.
-**Lista final: decisão do P.O.**
+**Lista aprovada pelo P.O.:** G1, G2, G4, M1, M2 e M3.
 
 ### 6.4 Fora do roteiro
 
@@ -226,16 +225,15 @@ Se a maioria das participantes de um perfil não concluir uma destas tarefas, o 
 
 ---
 
-## 7. Termo de participação (rascunho)
+## 7. Termo de participação (versão curta aprovada para ajuste final)
 
-> **Rascunho.** Texto sujeito a revisão do P.O./UPE e, se necessário, do Comitê de
-> Ética em Pesquisa (CEP). Não usar antes da aprovação.
+> **Uso controlado.** O termo foi ajustado conforme orientação do P.O. para um teste de
+> usabilidade com dados fictícios. Não mencionar pesquisa, publicação ou usar dados reais.
 
 **Termo de participação — teste de usabilidade do aplicativo MyFetus**
 
-Você está sendo convidado(a) a participar de um teste do aplicativo MyFetus, um projeto
-acadêmico de acompanhamento pré-natal em desenvolvimento por [instituição/equipe — a
-preencher pelo P.O.].
+Você está sendo convidado(a) a participar de um teste de usabilidade do aplicativo MyFetus,
+conduzido pela Equipe MyFetus — ciclo 2026.2.
 
 1. **Objetivo.** Avaliar se o aplicativo é fácil de usar. Não estamos avaliando você
    nem seus conhecimentos.
@@ -245,24 +243,22 @@ preencher pelo P.O.].
    informe nenhum dado de saúde, documento, endereço ou informação pessoal real** no
    aplicativo ou durante a conversa.
 4. **O que registramos.** Anotações sobre as tarefas (tempo, conclusão, dificuldades),
-   suas respostas ao questionário e comentários. [Gravação de tela/áudio: sim/não — a
-   definir pelo P.O.; se sim, só com sua autorização marcada abaixo.]
+   suas respostas ao questionário e comentários. **Não haverá gravação de tela, áudio ou vídeo.**
 5. **Anonimização.** Você será identificado(a) apenas por um código (ex.: G-03).
    Seu nome fica só neste termo, guardado separadamente dos resultados.
-6. **Uso dos resultados.** Os resultados agregados podem ser usados em relatórios e
-   trabalhos acadêmicos, sem identificar você.
+6. **Uso dos registros.** As anotações serão usadas somente para identificar melhorias
+   de usabilidade do produto, sem associá-las ao seu nome.
 7. **Voluntário.** A participação é voluntária e sem remuneração. Você pode parar a
    qualquer momento, sem precisar explicar o motivo e sem nenhum prejuízo.
 8. **Não é atendimento médico.** O aplicativo e a sessão não substituem consulta,
    diagnóstico ou atendimento de emergência. Se você tiver qualquer preocupação com a
    sua saúde ou a do bebê, procure sua equipe de saúde ou, em emergência, o SAMU (192).
-9. **Descarte.** Os registros serão excluídos em [prazo — a definir pelo P.O.] após a
-   conclusão do piloto (seção 9).
-10. **Contato.** [Nome e contato do responsável — a preencher pelo P.O.]
+9. **Descarte.** A conta, os exames e os demais dados sintéticos usados na sessão serão
+   excluídos ou resetados ao final do ciclo do piloto. As anotações ficam identificadas
+   somente pelo código da sessão.
+10. **Contato.** O contato operacional será informado pelo P.O. antes do recrutamento.
 
 [ ] Li e concordo em participar.
-[ ] Autorizo a gravação de tela/áudio (somente se o P.O. aprovar gravação).
-
 Código do participante: ______  Data: ___/___/______
 
 Nome: ______________________________  Assinatura: ______________________
@@ -285,7 +281,8 @@ Nome: ______________________________  Assinatura: ______________________
 - O moderador e o observador **não** dão orientação clínica, mesmo que sejam da área da saúde.
 - O registro do incidente usa só o código do participante e o tipo do incidente; **não**
   copiar o relato clínico.
-- Procedimento final de incidentes e quem é avisado: **decisão do P.O.** (seção 11).
+- Procedimento final de incidentes: interromper a sessão quando necessário, registrar
+  somente o código e o tipo e avisar o P.O. no mesmo dia.
 
 ---
 
@@ -296,10 +293,10 @@ Nome: ______________________________  Assinatura: ______________________
 | Identificação | Cada pessoa recebe um código (G-01, G-02… para gestantes; M-01… para médicos). Nomes ficam só nos termos |
 | Termos assinados | Guardados separados dos resultados, com acesso restrito ao P.O./UPE |
 | Fichas de observação, SUS e respostas abertas | Só com o código. Planilha em pasta restrita da equipe (local a definir) |
-| Gravações (se aprovadas) | Sem rosto; só tela e áudio. Acesso restrito. Transcrever falas relevantes e apagar a gravação após a análise |
+| Gravações | Não haverá gravação de tela, áudio ou vídeo |
 | Contas das personas | Excluir ou desativar ao fim de cada sessão (ou resetar a homologação ao fim do piloto) |
 | Exames sintéticos enviados | Excluir da homologação ao fim do piloto |
-| Prazo de descarte | Proposta: gravações em até 30 dias após a análise; fichas anonimizadas mantidas até o fim do projeto acadêmico. **Prazo final: decisão do P.O.** |
+| Prazo de descarte | Não há gravações. Contas, exames e dados sintéticos são excluídos ou resetados ao fim do ciclo do piloto; fichas permanecem sem identificação nominal |
 | Proibido | Guardar dado de saúde real, foto/documento da participante ou qualquer dado de paciente real |
 
 ---
@@ -317,10 +314,10 @@ Nome: ______________________________  Assinatura: ______________________
 | Problemas de usabilidade | Lista consolidada com gravidade: **crítico** (impede a tarefa), **grave** (atrasa muito ou causa erro), **leve** (incômodo) |
 | Incidentes | Contagem por tipo (seção 8) |
 
-### 10.2 Metas propostas (a aprovar pelo P.O.)
+### 10.2 Metas aprovadas pelo P.O.
 
 - Taxa de conclusão sem ajuda ≥ 80% em cada tarefa bloqueadora.
-- SUS médio ≥ 68 por perfil (68 é a média de referência da escala).
+- SUS médio ≥ 70 por perfil.
 - Nenhum incidente de dado real não tratado.
 
 ### 10.3 Quando o piloto está concluído
@@ -338,20 +335,20 @@ Nome: ______________________________  Assinatura: ______________________
 
 ---
 
-## 11. Decisões do P.O. (pendentes)
+## 11. Decisões do P.O. (registradas em 23/10/2026)
 
 | # | Decisão | Proposta da equipe |
 | --- | --- | --- |
-| 1 | Quem recruta e conduz as sessões | P.O./UPE recruta; equipe fornece moderador e observador |
-| 2 | Perfil e quantidade de participantes | 5–8 gestantes e 3–5 médicos (seção 2) |
-| 3 | Versão do SUS e meta | Versão brasileira validada de Lourenço, Carmona e Lopes (2022), já no anexo A; meta ≥ 68 |
-| 4 | Gravação de tela/áudio | Só tela e áudio, com autorização marcada no termo; ou sem gravação |
-| 5 | CEP ou autorização institucional | Consultar a UPE. Se os resultados forem publicados como pesquisa, provavelmente será necessário submeter ao CEP (Resoluções CNS nº 466/2012 e nº 510/2016) |
-| 6 | Tarefas bloqueadoras | G1, G2, G4, M1, M2, M3 (seção 6.3) |
-| 7 | Procedimento de incidentes e urgência clínica | Seção 8, com o P.O. avisado no mesmo dia |
-| 8 | Aprovação do roteiro e do termo antes do recrutamento | Aprovar este documento (versão 1.0.0) antes de qualquer contato com participantes |
-| 9 | O que é "diário" | Controle de Água (G3); Checklist como extra |
-| 10 | O que é "devolutiva" | Relatório do médico sobre o exame (M3), visto pela gestante (G5) |
+| 1 | Recrutamento e condução | P.O. recruta cinco gestantes; equipe fornece moderador, observador e suporte técnico; não recrutar médicos |
+| 2 | Perfil e quantidade | Cinco gestantes por conveniência; o perfil médico é demonstrado pelo P.O. |
+| 3 | SUS e meta | Versão brasileira validada; meta SUS ≥ 68 |
+| 4 | Gravação | Não haverá gravação de tela, áudio ou vídeo |
+| 5 | CEP | Não é necessário neste teste de usabilidade, sem pesquisa, publicação ou dados reais |
+| 6 | Tarefas bloqueadoras | G1, G2, G4, M1, M2 e M3 |
+| 7 | Incidentes e urgência | Interromper a sessão, não orientar clinicamente, registrar sem PII e avisar o P.O. no mesmo dia |
+| 8 | Roteiro e termo | Ajustar este protocolo e o termo curto antes do recrutamento |
+| 9 | “Diário” | Controle de Água (G3); Checklist como extra |
+| 10 | “Devolutiva” | Relatório do médico sobre o exame (M3), visto pela gestante (G5) |
 | 11 | Perfil de gestante | Gestantes atuais ou mulheres que já tiveram gestação |
 
 ---
