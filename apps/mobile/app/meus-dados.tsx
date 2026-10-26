@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AccountDeletionCard from '../components/AccountDeletionCard';
 import { AccessibleText as Text } from '../components/AccessibleText';
 import { useSession } from '../contexts/SessionContext';
 import { ACCESSIBLE_COLORS } from '../theme/accessibility';
@@ -25,7 +26,7 @@ import {
 } from '../utils/dataExport';
 import { saveDataExport } from '../utils/saveDataExport';
 
-// Direitos do titular (E7-02.1): exportação dos próprios dados em JSON.
+// Direitos do titular (E7-02): exportação dos próprios dados em JSON e exclusão da conta.
 export default function MeusDadosScreen() {
   const router = useRouter();
   const { user } = useSession();
@@ -87,7 +88,7 @@ export default function MeusDadosScreen() {
 
           <Text style={styles.title} accessibilityRole="header">Meus dados</Text>
           <Text style={styles.subtitle}>
-            Você pode baixar uma cópia dos seus dados guardados no MyFetus, conforme a LGPD.
+            Você pode baixar uma cópia dos seus dados guardados no MyFetus ou excluir sua conta, conforme a LGPD.
           </Text>
 
           <View style={styles.card}>
@@ -147,6 +148,8 @@ export default function MeusDadosScreen() {
               </Text>
             </View>
           )}
+
+          <AccountDeletionCard />
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
