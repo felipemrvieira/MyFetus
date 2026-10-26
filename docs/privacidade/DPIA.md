@@ -1,15 +1,15 @@
 # DPIA simplificada e registro de riscos de privacidade — MyFetus
 
 > **Task:** E7-04.1 (subtask de #69) · **Dependências:** #50, #56, #114
-> **Status:** RASCUNHO v0.8 — não marcar como concluída antes da revisão e do aceite do P.O.
+> **Status:** v1.1 — decisões do P.O. registradas em 23/10/2026; manter em revisão até incorporar evidências e responsáveis
 
 | Campo | Valor |
 | --- | --- |
-| Versão | 1.0 |
+| Versão | 1.1 |
 | Data | 19/10/2026 |
 | Autor(es) | João Guilherme |
-| Revisor (P.O.) | |
-| Status da revisão | Pendente |
+| Revisor (P.O.) | Rui Pontes |
+| Status da revisão | Decisões registradas; pendências técnicas, jurídicas e de responsáveis permanecem explícitas |
 
 ## Legenda
 
@@ -32,6 +32,19 @@
 | `npm run aes:migrate:dry-run` | **Não concluiu** (código 1), mesmo após carregar o `.env` | Conectou ao banco e varreu 5 registros (2 usuários, 1 médico, 1 gestante com as colunas classificadas vazias [CONFIRMADO: consulta SQL], 1 documento), mas falhou em todos por `AES_ENCRYPTION_KEY_V1 nao configurada`; a variável `AES_ENCRYPTION_KEY_V1` existe, mas está **vazia** (0 caracteres) no `.env` e no contêiner da API (ver R06). A contagem de legados foi obtida por consulta SQL (ver R11) |
 
 ---
+
+## Decisões do P.O. registradas em 23/10/2026
+
+1. **Riscos críticos:** mitigar; nenhum risco alto residual é aceito sem mitigação.
+2. **Responsáveis:** titular e substituto por categoria. Clínica e privacidade: Rui Pontes. Segurança e infraestrutura: nomes da equipe devem ser registrados nesta documentação.
+3. **Prazo:** risco alto bloqueia o teste real; risco médio deve ser tratado antes dele; risco baixo entra no backlog.
+4. **Retenção:** contas de teste e dados sintéticos são apagados ao fim do ciclo, exceto seeds. Dados reais permanecem enquanto a conta existir e podem ser exportados ou excluídos pelo titular. Consentimentos e auditoria permanecem até o fim do projeto.
+5. **Backups:** seguem a mesma finalidade e expiram conforme a política de backup; a exclusão chega ao backup quando ele expirar.
+6. **IA e terceiros:** o chat Gemini fica desligado para contas reais até o primeiro contrato; permanece ativo somente para contas sintéticas. O Pinecone guarda apenas trechos das diretrizes aprovadas. Custo previsto: zero neste ciclo.
+7. **Menores:** não fazem parte do piloto; cadastro abaixo de 18 anos deve ser bloqueado no servidor.
+8. **Incidentes:** usar o canal “Fale com a equipe”; conter em até 24 horas, registrar sem PII e, se houver dado real, comunicar ANPD e titulares em até 3 dias úteis.
+
+Estas decisões substituem as sugestões conflitantes da matriz. Os pontos ainda não respondidos pelo P.O., como nomes de substitutos, base legal detalhada, cofre de chaves e política operacional de backups, continuam marcados como pendentes.
 
 ## 1. Escopo e contexto
 
@@ -225,36 +238,36 @@ Escala: Probabilidade (P) e Impacto (I) de 1 a 3; Nível = P × I (1–2 baixo, 
 | Base legal, consentimento, transferência internacional, vínculo | P.O. + jurídico | | Não |
 | Encarregado/DPO | A definir | | Não |
 
-## 7. Regras de retenção e descarte (proposta)
+## 7. Regras de retenção e descarte (decisão registrada; operacionalização pendente)
 
 | Dado | Prazo proposto | Forma de descarte | Status |
 | --- | --- | --- | --- |
-| Conta e dados cadastrais (D01–D03) | [SUPOSIÇÃO] enquanto a conta existir | Exclusão da conta (cascade) **e** dos arquivos; limpeza de backups | [PENDENTE-PO] |
-| Dados clínicos (D04–D14) | [SUPOSIÇÃO] | Exclusão/anonimização; purga de `deleted_at` | [PENDENTE-PO] |
-| Documentos e texto extraído (D15, D23) | [SUPOSIÇÃO] | Apagar arquivo e linha (já ocorre ao apagar o documento) | [PENDENTE-PO] |
-| Auditoria e logs (D19, D20) | [SUPOSIÇÃO] | Rotação; anonimizar IP após prazo | [PENDENTE-PO] |
+| Conta e dados cadastrais (D01–D03) | Enquanto a conta existir; contas de teste ao fim do ciclo | Exclusão pelo titular; cópias de backup expiram conforme a política | Decidido pelo P.O.; prazo operacional de backup pendente |
+| Dados clínicos (D04–D14) | Enquanto a conta real existir; dados sintéticos ao fim do ciclo | Exportação ou exclusão pelo titular; seeds são exceção operacional | Decidido pelo P.O.; evidência de execução pendente |
+| Documentos e texto extraído (D15, D23) | Enquanto a conta real existir; documentos sintéticos ao fim do ciclo | Remover arquivo e linha; backups seguem o prazo de expiração | Decidido pelo P.O.; rotina operacional pendente |
+| Auditoria e logs (D19, D20) | Até o fim do projeto para consentimentos e auditoria | Preservar o necessário; conter PII e aplicar descarte/anonimização conforme política | Decisão parcial; prazo jurídico e rotina técnica pendentes |
 
 ## 8. Suposições e decisões pendentes
 
 | ID | Suposição / decisão | Impacto | Quem decide | Status |
 | --- | --- | --- | --- | --- |
 | S01 | Base legal de cada tratamento (tutela da saúde, consentimento, execução de contrato) | R08 | P.O./jurídico | Pendente |
-| S02 | Prazos de retenção e descarte | R05, R13 | P.O. | Pendente |
+| S02 | Prazos de retenção e descarte | R05, R13 | P.O. | **Parcialmente decidido**: ciclo de teste, conta real e expiração de backup definidos; prazos operacionais ainda pendentes |
 | S03 | Existência e nome do DPO/encarregado | Governança | P.O. | Pendente |
 | S04 | Modelo e registro de consentimento da gestante | R08 | P.O./jurídico | Pendente |
-| S05 | Localização, plano e contrato com Google (Gemini) e Pinecone | R07 | P.O./jurídico | Pendente |
-| S06 | Uso de IA em contexto clínico real e responsabilidade pela revisão | R09 | P.O./clínico | Pendente |
+| S05 | Localização, plano e contrato com Google (Gemini) e Pinecone | R07 | P.O./jurídico | **Parcialmente decidido**: chat real desligado até contrato; Pinecone apenas com trechos de diretrizes |
+| S06 | Uso de IA em contexto clínico real e responsabilidade pela revisão | R09 | P.O./clínico | **Decidido para o piloto**: IA ativa somente para contas sintéticas |
 | S07 | Histórico fetal e peso materno devem ser criptografados? | R12 | P.O./Dev | Pendente |
-| S08 | O público inclui gestantes menores de 18 anos? | R14 | P.O./jurídico | Pendente |
+| S08 | O público inclui gestantes menores de 18 anos? | R14 | P.O./jurídico | **Resolvido**: não; cadastro abaixo de 18 anos deve ser bloqueado |
 | S09 | `medidas_fetais` guarda dados de pacientes? | D12 | Dev | **Resolvido**: não identifica paciente (sem chave de vínculo) |
 | S10 | Registros legados: haverá migração forçada para AES? | R11 | Dev/P.O. | Pendente |
 | S11 | O vínculo médico–paciente exige aprovação da gestante? | R03 | P.O./jurídico | Pendente |
 | S12 | Como validar o CRM e aprovar o cadastro de médicos? | R03 | P.O./Dev | Pendente (confirmado: hoje o cadastro é público e valida só o formato do CRM) |
 | S13 | O agente materno pode receber data de nascimento e texto livre dos eventos? | R01 | P.O./clínico | Pendente |
-| S14 | Como a gestante exerce acesso, correção, portabilidade e eliminação dos dados? | R18 | P.O./jurídico | Pendente |
+| S14 | Como a gestante exerce acesso, correção, portabilidade e eliminação dos dados? | R18 | P.O./jurídico | **Parcialmente resolvido**: exportação e exclusão aprovadas em #69; correção/portabilidade permanecem pendentes |
 | S15 | Onde ficam os arquivos e os backups em produção? | R10, R16 | DevOps | Pendente |
 | S16 | Política de acesso do admin (quem, escopo e auditoria de leitura). Parcial: admin altera role/e-mail/senha de qualquer conta (userPolicy); falta origem do primeiro admin e auditoria; inclui o POST /api/sync e o GET /pregnancies do admin | R20 | P.O. | Pendente |
-| S17 | Prazo e minimização de IP e user agent na auditoria | R05, R17 | P.O./jurídico | Pendente |
+| S17 | Prazo e minimização de IP e user agent na auditoria | R05, R17 | P.O./jurídico | **Parcialmente decidido**: registrar sem PII e preservar auditoria até o fim do projeto; prazo jurídico ainda pendente |
 | S18 | Onde as chaves AES, HMAC e JWT ficam guardadas, quem tem acesso e como são recuperadas ou rotacionadas | R06 | P.O./DevOps | Pendente |
 | S19 | O POST /api/sync será usado em produção, com quais tabelas e colunas, e com auditoria? | R20, R17 | P.O./DEV | Pendente |
 | S20 | A gestante pode informar valores clínicos ao criar a gestação? O que significa is_checked? | R18 | P.O./clínico | Pendente |
