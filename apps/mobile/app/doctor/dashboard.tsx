@@ -196,6 +196,14 @@ export default function DashboardScreen() {
               <Ionicons name="filter-outline" size={28} color="#555" />
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityLabel="Sobre o MyFetus"
+              accessibilityRole="link"
+              onPress={() => router.push('/sobre')}
+              style={styles.headerActionButton}
+            >
+              <Ionicons name="information-circle-outline" size={28} color="#555" />
+            </TouchableOpacity>
+            <TouchableOpacity
               testID="e2e-doctor-sign-out"
               accessibilityLabel="Sair da conta"
               accessibilityRole="button"
