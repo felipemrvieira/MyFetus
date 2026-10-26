@@ -55,7 +55,9 @@ export default function LoginScreen() {
         return;
       }
 
-      if (user.role === 'admin' || user.role === 'medico') {
+      if (user.role === 'medico' && user.doctor_approval_status !== 'approved') {
+        router.replace('/doctor/aguardando-aprovacao');
+      } else if (user.role === 'admin' || user.role === 'medico') {
         router.replace('/doctor/dashboard');
       } else {
         const lastPeriod = await getLastPeriod(user.id);

@@ -101,7 +101,9 @@ export default function ConsentimentoScreen() {
         return;
       }
 
-      if (role === 'medico') {
+      if (role === 'medico' && user.doctor_approval_status !== 'approved') {
+        router.replace('/doctor/aguardando-aprovacao');
+      } else if (role === 'medico') {
         router.replace('/doctor/dashboard');
       } else {
         const lastPeriod = await getLastPeriod(user.id);

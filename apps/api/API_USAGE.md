@@ -103,6 +103,24 @@ curl -X POST http://localhost:3000/api/users \
 - Deletar: DELETE `/api/users/:id`
 - Login: POST `/api/users/login` — body: `{ "email": "...", "password": "..." }`
 
+### Aprovação de médicos (E7-03)
+
+O cadastro público de médico cria o perfil com `approval_status: pending`. O
+login continua respondendo `200`, mas qualquer rota clínica que aceite o papel
+`medico` responde `403` com `code: DOCTOR_APPROVAL_REQUIRED` até a aprovação.
+
+- Listar médicos para decisão: `GET /api/doctors?approval_status=pending` (admin)
+- Aprovar: `POST /api/doctors/:id/approval` com `{ "decision": "approve" }` (admin)
+- Rejeitar: o mesmo endpoint com `{ "decision": "reject", "reason": "..." }` (admin)
+- Revogar: o mesmo endpoint com `{ "decision": "revoke", "reason": "..." }` (admin)
+- Consultar o próprio estado: `GET /api/doctors/me/approval` (médico)
+- Reenviar dados corrigidos: `PUT /api/doctors/me` com `crm`, `crm_estado` e campos profissionais (médico rejeitado/revogado)
+
+O CRM é armazenado cifrado e sua unicidade por CRM+UF é verificada por HMAC;
+o valor bruto não é usado para consulta. Todas as decisões administrativas
+geram auditoria. As contas sintéticas do `npm run seed` são marcadas como
+`is_synthetic` e aprovadas somente para desenvolvimento/testes locais.
+
 ---
 
 ### Pregnants (gestantes)

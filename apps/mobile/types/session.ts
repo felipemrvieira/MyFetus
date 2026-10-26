@@ -1,4 +1,5 @@
 export type UserRole = 'gestante' | 'medico' | 'admin' | 'user';
+export type DoctorApprovalStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
 
 export type SessionUser = {
   id: number;
@@ -6,6 +7,8 @@ export type SessionUser = {
   email?: string;
   role: UserRole;
   pregnant_id?: number | null;
+  doctor_approval_status?: DoctorApprovalStatus;
+  doctor_approval_reason?: string | null;
 };
 
 export function isPatientRole(role: UserRole): boolean {
@@ -33,7 +36,7 @@ export function parseSessionUser(value: unknown): SessionUser | null {
     return null;
   }
 
-  return {
+  const sessionUser: SessionUser = {
     id: candidate.id,
     name: candidate.name,
     email: typeof candidate.email === 'string' ? candidate.email : undefined,
@@ -41,4 +44,19 @@ export function parseSessionUser(value: unknown): SessionUser | null {
     pregnant_id:
       typeof candidate.pregnant_id === 'number' ? candidate.pregnant_id : null,
   };
+
+  if (
+    candidate.doctor_approval_status === 'pending' ||
+    candidate.doctor_approval_status === 'approved' ||
+    candidate.doctor_approval_status === 'rejected' ||
+    candidate.doctor_approval_status === 'revoked'
+  ) {
+    sessionUser.doctor_approval_status = candidate.doctor_approval_status;
+  }
+
+  if (typeof candidate.doctor_approval_reason === 'string') {
+    sessionUser.doctor_approval_reason = candidate.doctor_approval_reason;
+  }
+
+  return sessionUser;
 }
