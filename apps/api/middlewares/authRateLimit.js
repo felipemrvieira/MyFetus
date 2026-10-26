@@ -114,6 +114,19 @@ function createDataExportLimiterOptions(options = {}) {
   return createLimiterOptions(windowMs, exportMax, 'DATA_EXPORT_BLOCKED', 'users');
 }
 
+// Exclusão da conta confere senha e é irreversível: limite baixo por janela.
+function createAccountDeletionLimiterOptions(options = {}) {
+  const windowMs = positiveInteger(
+    options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  );
+  const deletionMax = positiveInteger(
+    options.deletionMax ?? process.env.ACCOUNT_DELETION_RATE_LIMIT_MAX,
+    5
+  );
+  return createLimiterOptions(windowMs, deletionMax, 'ACCOUNT_DELETION_BLOCKED', 'users');
+}
+
 function createAuthLimiters(options = {}) {
   return {
     loginLimiter: rateLimit(createLoginLimiterOptions(options)),
@@ -136,6 +149,7 @@ module.exports = {
   createApiLimiterOptions,
   createRagLimiterOptions,
   createDataExportLimiterOptions,
+  createAccountDeletionLimiterOptions,
   createAuthLimiters,
   positiveInteger,
   ...defaultLimiters,
