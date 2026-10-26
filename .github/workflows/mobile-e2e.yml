@@ -84,6 +84,7 @@ jobs:
             sleep 2
           done
           npm run db:migrate
+          PG_HOST=127.0.0.1 PG_PORT=5434 SEED_PASSWORD=SenhaTeste123! node scripts/seed.js
           nohup env PG_HOST=127.0.0.1 PG_PORT=5434 node apps/api/server.js > "$RUNNER_TEMP/myfetus-api.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/myfetus-api.pid"
           for attempt in $(seq 1 30); do

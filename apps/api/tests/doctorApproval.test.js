@@ -42,6 +42,14 @@ const mocks = {
     decryptRecord: (record) => record,
     getCurrentVersion: () => 1,
   },
+  '../services/doctorApprovalService': {
+    DOCTOR_APPROVAL_STATUSES: ['pending', 'approved', 'rejected', 'revoked'],
+    getDoctorApproval: async () => ({
+      approval_status: doctor.approval_status,
+      approval_reason: doctor.approval_reason,
+    }),
+    getDoctorApprovalStatus: async () => doctor.approval_status,
+  },
   '../services/emailLookupService': {
     hashDoctorCrm: (crm, state) => `hash:${crm}:${state}`,
     hashEmail: (email) => `email:${email}`,

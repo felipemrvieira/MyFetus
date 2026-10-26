@@ -1,5 +1,3 @@
-const client = require('../backend');
-
 const DOCTOR_APPROVAL_STATUSES = Object.freeze([
   'pending',
   'approved',
@@ -7,7 +5,11 @@ const DOCTOR_APPROVAL_STATUSES = Object.freeze([
   'revoked',
 ]);
 
-async function getDoctorApproval(userId, dbClient = client) {
+function getDefaultClient() {
+  return require('../backend');
+}
+
+async function getDoctorApproval(userId, dbClient = getDefaultClient()) {
   const result = await dbClient.query(
     `SELECT approval_status, approval_reason, is_synthetic
        FROM doctors
@@ -19,7 +21,7 @@ async function getDoctorApproval(userId, dbClient = client) {
   return result.rows[0] || null;
 }
 
-async function getDoctorApprovalStatus(userId, dbClient = client) {
+async function getDoctorApprovalStatus(userId, dbClient = getDefaultClient()) {
   const doctor = await getDoctorApproval(userId, dbClient);
   return doctor?.approval_status || 'pending';
 }
