@@ -62,6 +62,7 @@ function RootNavigator() {
 
         <Stack.Protected guard={Boolean(user)}>
           <Stack.Screen name="consentimento" options={{ headerShown: false }} />
+          <Stack.Screen name="meus-dados" options={{ headerShown: false }} />
         </Stack.Protected>
 
         <Stack.Protected guard={isPatient}>

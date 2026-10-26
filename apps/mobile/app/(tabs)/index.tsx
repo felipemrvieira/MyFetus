@@ -63,17 +63,30 @@ export default function HomeScreen() {
             <View style={styles.header}>
               <Text style={styles.title}>Meu Bebê</Text>
               <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
-              <TouchableOpacity
-                testID="e2e-patient-sign-out"
-                accessibilityLabel="Sair da conta"
-                accessibilityRole="button"
-                accessibilityHint="Encerra a sessão atual"
-                onPress={handleSignOut}
-                style={styles.signOutButton}
-              >
-                <FontAwesome name="sign-out" size={18} color={ACCESSIBLE_COLORS.primary} />
-                <Text style={styles.signOutText}>Sair</Text>
-              </TouchableOpacity>
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  testID="e2e-patient-sign-out"
+                  accessibilityLabel="Sair da conta"
+                  accessibilityRole="button"
+                  accessibilityHint="Encerra a sessão atual"
+                  onPress={handleSignOut}
+                  style={styles.signOutButton}
+                >
+                  <FontAwesome name="sign-out" size={18} color={ACCESSIBLE_COLORS.primary} />
+                  <Text style={styles.signOutText}>Sair</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID="e2e-patient-my-data"
+                  accessibilityLabel="Meus dados"
+                  accessibilityRole="button"
+                  accessibilityHint="Abre a exportação dos seus dados pessoais"
+                  onPress={() => router.push('/meus-dados' as never)}
+                  style={styles.signOutButton}
+                >
+                  <FontAwesome name="download" size={18} color={ACCESSIBLE_COLORS.primary} />
+                  <Text style={styles.signOutText}>Meus dados</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.imageContainer}>
@@ -144,6 +157,11 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     fontSize: width * 0.045,
     color: ACCESSIBLE_COLORS.muted,
     marginTop: 5,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   signOutButton: {
     alignItems: 'center',
