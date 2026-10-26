@@ -6,6 +6,7 @@
 
 // O ficheiro SQL define que o 'role' só pode ser um destes três
 export type Role = 'gestante' | 'medico' | 'admin';
+export type DoctorApprovalStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
 
 export interface User {
   id: number;
@@ -28,6 +29,8 @@ export interface AuthResponse {
     email: string;
     role: Role;
     pregnant_id: number | null;
+    doctor_approval_status?: DoctorApprovalStatus;
+    doctor_approval_reason?: string | null;
   };
 }
 
@@ -40,6 +43,15 @@ export interface Doctor {
   telefone?: string | null;
   created_at: string;
   updated_at: string;
+  approval_status?: DoctorApprovalStatus;
+  approval_reason?: string | null;
+}
+
+export interface DoctorApprovalRecord extends Doctor {
+  name: string;
+  email: string;
+  birthdate: string;
+  is_active: boolean;
 }
 
 export interface CreateDoctorRequest {

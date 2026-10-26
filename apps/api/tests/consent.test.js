@@ -107,6 +107,9 @@ const mocks = {
   },
   '../services/emailLookupService': {
     hashEmail: (email) => `hash:${email}`,
+    hashDoctorCrm: (crm, state) => `crm:${crm}:${state}`,
+    normalizeCrm: (crm) => String(crm).trim().toUpperCase().replace(/[^A-Z0-9]/g, ''),
+    normalizeCrmState: (state) => String(state).trim().toUpperCase(),
     normalizeEmail: (email) => String(email).trim().toLowerCase(),
   },
   '../services/auditService': {

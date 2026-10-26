@@ -117,6 +117,10 @@ app.use('/api/exam-requests', examRequestRoutes);
 const consentRoutes = require('./routes/consents');
 app.use('/api/consents', consentRoutes);
 
+// Direitos do titular LGPD (E7-02.1)
+const privacyRoutes = require('./routes/privacy');
+app.use('/api/privacy', privacyRoutes);
+
 // Documentacao OpenAPI/Swagger (E1-09): contrato em apps/api/openapi.yaml.
 const docsRoutes = require('./routes/docs');
 app.use('/docs', docsRoutes);
