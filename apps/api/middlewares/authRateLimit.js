@@ -101,6 +101,19 @@ function createRagLimiterOptions(options = {}) {
   return createLimiterOptions(windowMs, ragMax, 'RAG_RATE_LIMIT_BLOCKED', 'rag');
 }
 
+// Exportação confere senha e gera um arquivo grande: limite baixo por janela.
+function createDataExportLimiterOptions(options = {}) {
+  const windowMs = positiveInteger(
+    options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  );
+  const exportMax = positiveInteger(
+    options.exportMax ?? process.env.DATA_EXPORT_RATE_LIMIT_MAX,
+    5
+  );
+  return createLimiterOptions(windowMs, exportMax, 'DATA_EXPORT_BLOCKED', 'users');
+}
+
 function createAuthLimiters(options = {}) {
   return {
     loginLimiter: rateLimit(createLoginLimiterOptions(options)),
@@ -122,6 +135,7 @@ module.exports = {
   createClinicalLimiterOptions,
   createApiLimiterOptions,
   createRagLimiterOptions,
+  createDataExportLimiterOptions,
   createAuthLimiters,
   positiveInteger,
   ...defaultLimiters,

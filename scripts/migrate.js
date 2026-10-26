@@ -76,6 +76,7 @@ function runMigrations() {
     { id: '12_consents.sql', path: 'apps/api/db/migration_consents.sql' },
     { id: '13_exam_requests.sql', path: 'apps/api/db/migration_exam_requests.sql' },
     { id: '14_exam_request_documents.sql', path: 'apps/api/db/migration_exam_request_documents.sql' },
+    { id: '15_doctor_approval.sql', path: 'apps/api/db/migration_doctor_approval.sql' },
   ];
 
   // 4. Consulta quais migracoes ja constam como aplicadas

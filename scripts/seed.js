@@ -126,15 +126,27 @@ async function ensureDoctor(client, userId, spec, cryptoService) {
   const existing = await client.query(
     'SELECT id FROM doctors WHERE user_id = $1 LIMIT 1', [userId]
   );
-  if (existing.rows.length) return;
+  if (existing.rows.length) {
+    await client.query(
+      `UPDATE doctors
+          SET approval_status = 'approved',
+              is_synthetic = true,
+              updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1`,
+      [existing.rows[0].id]
+    );
+    return;
+  }
   const encrypted = cryptoService.encryptRecord({
     crm: spec.crm, crm_estado: spec.crmEstado, telefone: spec.telefone,
   }, 'doctors');
   await client.query(
     `INSERT INTO doctors (
-       user_id, crm, crm_estado, telefone, especialidade, encryption_key_version
-     ) VALUES ($1, $2, $3, $4, 'Obstetricia', $5)`,
+       user_id, crm, crm_estado, telefone, especialidade,
+       crm_lookup_hash, approval_status, is_synthetic, encryption_key_version
+     ) VALUES ($1, $2, $3, $4, 'Obstetricia', $5, 'approved', true, $6)`,
     [userId, encrypted.crm, encrypted.crm_estado, encrypted.telefone,
+      require('../apps/api/services/emailLookupService').hashDoctorCrm(spec.crm, spec.crmEstado),
       cryptoService.currentVersion]
   );
 }

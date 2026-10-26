@@ -90,6 +90,10 @@ export default function DashboardScreen() {
     router.push('/CadastroMedico');
   };
 
+  const handleDoctorApprovals = () => {
+    router.push('/doctor/aprovacao-medicos');
+  };
+
   const handleSignOut = async () => {
     await signOut();
     router.replace('/login');
@@ -166,15 +170,38 @@ export default function DashboardScreen() {
           <Text style={styles.headerTitle}>Olá {doctorName}!</Text>
           <View style={styles.headerActions}>
             {isAdmin && (
-              <TouchableOpacity onPress={handleAddDoctor} style={styles.headerActionButton}>
-                <Ionicons name="medkit-outline" size={26} color="#886aea" />
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  onPress={handleDoctorApprovals}
+                  style={styles.headerActionButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Aprovar médicos"
+                >
+                  <Ionicons name="shield-checkmark-outline" size={26} color="#886aea" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleAddDoctor}
+                  style={styles.headerActionButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cadastrar médico"
+                >
+                  <Ionicons name="medkit-outline" size={26} color="#886aea" />
+                </TouchableOpacity>
+              </>
             )}
             <TouchableOpacity onPress={handleAddPatient} style={styles.headerActionButton}>
               <Ionicons name="person-add-outline" size={26} color="#886aea" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerActionButton}>
               <Ionicons name="filter-outline" size={28} color="#555" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityLabel="Sobre o MyFetus"
+              accessibilityRole="link"
+              onPress={() => router.push('/sobre')}
+              style={styles.headerActionButton}
+            >
+              <Ionicons name="information-circle-outline" size={28} color="#555" />
             </TouchableOpacity>
             <TouchableOpacity
               testID="e2e-doctor-sign-out"
