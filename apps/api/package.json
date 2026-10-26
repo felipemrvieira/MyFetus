@@ -41,7 +41,7 @@
     "test:db": "docker compose run --rm backend node /app/tests/database.test.js",
     "test:loinc": "docker compose run --rm backend node /app/tests/loincMapper.test.js",
     "test:loinc:endpoint": "docker compose run --rm backend node /app/tests/internalLoinc.test.js",
-    "test:rag": "node ./tests/chunkingService.test.js tests/pdfTextExtractor.test.js tests/ragManifestGate.test.js tests/embeddingService.test.js tests/vectorStoreService.test.js tests/ragIngestionService.test.js && node ./tests/embeddingService.test.js && node ./tests/vectorStoreService.test.js && node ./tests/ragSearch.test.js",
+    "test:rag": "node --test tests/chunkingService.test.js tests/pdfTextExtractor.test.js tests/ragManifestGate.test.js tests/embeddingService.test.js tests/vectorStoreService.test.js tests/ragIngestionService.test.js",
     "test:stress-engine": "node ./tests/stressEngine.test.js",
     "test:stress": "node ./tests/stressTest.test.js",
     "test:stress:integration": "node ./tests/stressIntegration.test.js --integration",

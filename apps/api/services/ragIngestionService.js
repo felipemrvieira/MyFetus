@@ -187,7 +187,7 @@ async function ingestGuidelines(options = {}) {
   const guidelinesDir = options.guidelinesDir || GUIDELINES_DIR;
   const manifest = options.manifest || loadManifest();
   const checkpointPath = options.checkpointPath || DEFAULT_CHECKPOINT_PATH;
-  const force = Boolean(options.force);
+  const force = Boolean(options.force || process.env.RAG_FORCE_INGEST === 'true');
 
   // O gate roda antes de qualquer extração ou embedding: fonte não aprovada
   // ou com hash diferente do manifesto interrompe a ingestão inteira (fail-closed).

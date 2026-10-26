@@ -14,17 +14,18 @@ function getEmbeddingConfig() {
   return { model, dimension };
 }
 
-let extractorPromise = null;
+const extractorPromises = new Map();
 
 async function getExtractor(model) {
-  if (!extractorPromise) {
-    extractorPromise = import('@huggingface/transformers')
+  if (!extractorPromises.has(model)) {
+    const promise = import('@huggingface/transformers')
       .then(({ pipeline }) => {
         return pipeline('feature-extraction', model);
       });
+    extractorPromises.set(model, promise);
   }
 
-  return extractorPromise;
+  return extractorPromises.get(model);
 }
 
 function normalizeEmbeddingInput(text, inputType = 'passage') {

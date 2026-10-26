@@ -105,8 +105,23 @@ function validatePineconeRecord(record) {
   }
 }
 
+function isTransientError(err) {
+  if (!err) return false;
+  const code = err.code || err.status || (err.cause && err.cause.code);
+  if (['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED'].includes(code)) return true;
+  if ([429, 502, 503, 504].includes(code)) return true;
+  const msg = String(err.message || '').toLowerCase();
+  return (
+    msg.includes('timeout') ||
+    msg.includes('rate limit') ||
+    msg.includes('temporarily unavailable') ||
+    msg.includes('econnreset') ||
+    msg.includes('etimedout')
+  );
+}
+
 /**
- * Executa uma operação assíncrona com retry e exponential backoff com jitter.
+ * Executa uma operação assíncrona com retry e exponential backoff com jitter para falhas transitórias.
  */
 async function withRetry(operation, options = {}) {
   const maxRetries = Number(options.maxRetries || 3);
@@ -116,7 +131,7 @@ async function withRetry(operation, options = {}) {
     try {
       return await operation();
     } catch (err) {
-      if (attempt >= maxRetries) {
+      if (!isTransientError(err) || attempt >= maxRetries) {
         throw new Error(sanitizeErrorMessage(err.message));
       }
       const jitter = Math.random() * 40;
