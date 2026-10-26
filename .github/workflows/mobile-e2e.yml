@@ -170,6 +170,16 @@ jobs:
               --env="E2E_EXAM_NAME=${E2E_EXAM_NAME}" \
               --env="E2E_REPORT_TEXT=${E2E_REPORT_TEXT}" \
               e2e/maestro/exam-cycle.yaml
+            maestro --no-ansi test \
+              --format=JUNIT \
+              --output="$RUNNER_TEMP/maestro-smoke-results.xml" \
+              --env="E2E_DOCTOR_EMAIL=${E2E_DOCTOR_EMAIL}" \
+              --env="E2E_PATIENT_EMAIL=${E2E_PATIENT_EMAIL}" \
+              --env="E2E_PASSWORD=${E2E_PASSWORD}" \
+              --env="E2E_PREGNANT_ID=${E2E_PREGNANT_ID}" \
+              --env="E2E_EXAM_NAME=${E2E_EXAM_NAME}" \
+              --env="E2E_REPORT_TEXT=${E2E_REPORT_TEXT}" \
+              e2e/maestro/mobile-smoke.yaml
 
       - name: Verify persisted exam cycle
         if: ${{ success() }}
@@ -181,6 +191,7 @@ jobs:
         with:
           name: mobile-e2e-evidence-${{ github.run_id }}
           path: |
+            ${{ runner.temp }}/maestro-smoke-results.xml
             ${{ runner.temp }}/maestro-results.xml
             ${{ runner.temp }}/myfetus-api.log
             ~/.maestro
