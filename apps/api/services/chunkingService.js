@@ -13,10 +13,7 @@
 const DEFAULT_CHUNK_SIZE = Number(process.env.RAG_CHUNK_SIZE || 900);
 const DEFAULT_CHUNK_OVERLAP = Number(process.env.RAG_CHUNK_OVERLAP || 150);
 
-const SECTION_PATTERNS = [
-  /^(CAP[IÍ]TULO|SE[CÇ][AÃ]O|PARTE)\s+\d+[^:\n]*[:\.\-]?\s*.*/i,
-  /^\d+(\.\d+)*\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\w\s\-\.,]{3,}/,
-];
+const { SECTION_PATTERNS } = require('./pdfTextExtractor');
 
 function normalizeWhitespace(text) {
   return String(text || '')
@@ -147,6 +144,17 @@ function createChunks(input, metadata = {}, options = {}) {
   let previousChunkInSameSection = '';
 
   for (const page of pages) {
+    if (currentChunkText && currentChunkPage !== page.pageNumber) {
+      rawChunks.push({
+        text: currentChunkText,
+        page: currentChunkPage,
+        section: currentChunkSection,
+      });
+      currentChunkText = '';
+      previousChunkInSameSection = '';
+    }
+    currentChunkPage = page.pageNumber;
+
     const paragraphs = splitIntoParagraphs(page.text);
 
     for (const paragraph of paragraphs) {

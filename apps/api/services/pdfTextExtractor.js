@@ -314,6 +314,7 @@ async function extractDocumentText(document, options = {}) {
 
 module.exports = {
   PdfExtractionError,
+  SECTION_PATTERNS,
   detectSections,
   extractDocumentText,
   extractTextWithPdfJs,

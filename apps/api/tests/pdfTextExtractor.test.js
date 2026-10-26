@@ -97,6 +97,36 @@ test('extractDocumentText: falha com UNREADABLE_DOCUMENT quando texto for insufi
   );
 });
 
+test('extractDocumentText: fallback para OCR executa e retorna method ocr quando texto nativo for nulo', async () => {
+  const scannedPath = path.join(FIXTURES_DIR, 'synthetic-scanned.pdf');
+  let Tesseract;
+  try {
+    Tesseract = require('tesseract.js');
+  } catch (err) {
+    return; // Se tesseract não estiver instalado no ambiente
+  }
+
+  const originalRecognize = Tesseract.recognize;
+  Tesseract.recognize = async () => ({
+    data: {
+      text: 'DIRETRIZ CLINICA RECONHECIDA VIA OCR SINTETICO COM SUCESSO PARA TESTES',
+      confidence: 95.5,
+    },
+  });
+
+  try {
+    const result = await extractDocumentText(
+      { file_path: scannedPath, document_name: 'synthetic-scanned.pdf' },
+      { enableOcr: true }
+    );
+    assert.strictEqual(result.method, 'ocr');
+    assert.ok(result.text.includes('RECONHECIDA VIA OCR'));
+    assert.strictEqual(result.confidence, 95.5);
+  } finally {
+    Tesseract.recognize = originalRecognize;
+  }
+});
+
 test('extractDocumentText: extrai PDF sintético com páginas estruturadas, seções e des-hifenização', async () => {
   const guidelinePath = path.join(FIXTURES_DIR, 'synthetic-guideline.pdf');
   const result = await extractDocumentText({
