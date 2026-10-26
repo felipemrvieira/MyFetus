@@ -30,8 +30,19 @@ assinatura ficam fora do repositório.
 ## URL da API no APK
 
 Um APK instalado fora do Expo Go não consegue usar `localhost` ou o host do
-servidor Metro para acessar a API. Antes do build, cadastre a URL pública ou o
-endereço acessível pelos aparelhos de teste no ambiente EAS:
+servidor Metro para acessar a API. O perfil `preview` já define a API de
+homologação em [`apps/mobile/eas.json`](../apps/mobile/eas.json):
+
+```json
+{
+  "env": {
+    "EXPO_PUBLIC_API_URL": "https://myfetus-api-staging-3ajuqsazpa-rj.a.run.app"
+  }
+}
+```
+
+Para trocar de provedor ou usar outro ambiente, substitua esse valor no perfil
+correspondente ou cadastre uma variável no ambiente EAS antes do build:
 
 ```bash
 npx eas-cli@latest env:create \
@@ -44,6 +55,22 @@ npx eas-cli@latest env:create \
 Para o perfil de produção, repita o comando com `--environment production` e
 use a URL HTTPS de produção. O valor é incorporado ao bundle do app; não use
 segredos nessa variável.
+
+### Desenvolvimento local
+
+O mesmo código continua compatível com a API local. Em `apps/mobile`, copie
+`.env.example` para `.env` quando precisar fixar um endereço:
+
+```bash
+cp .env.example .env
+# Web: http://localhost:3000
+# Android Emulator: http://10.0.2.2:3000
+# Dispositivo físico: http://<IP-DA-MAQUINA>:3000
+```
+
+Sem `EXPO_PUBLIC_API_URL`, `utils/api.ts` tenta inferir o host anunciado pelo
+Metro. Isso permite usar Expo Go em um aparelho na mesma rede sem alterar as
+telas ou criar uma branch específica para cada ambiente.
 
 ## Gerar o APK de validação
 
@@ -60,6 +87,12 @@ acompanhado com:
 npx eas-cli@latest build:list --platform android --limit 5
 ```
 
+Quando o build é executado pela workflow manual `Mobile EAS preview`, o APK
+também é baixado pelo runner e publicado como artefato da execução no GitHub
+Actions. Para baixar, abra a execução concluída em `Actions`, localize a seção
+`Artifacts` e baixe `myfetus-preview-apk-*`. O artefato fica disponível por 14
+dias e essa etapa não cria uma nova build EAS.
+
 Para produção, gere o AAB com:
 
 ```bash
@@ -74,4 +107,3 @@ npm run build:android:production
   ambiente EAS;
 - o artefato e a URL de download são registrados na issue da tarefa;
 - o build de produção gera AAB quando essa distribuição for necessária.
-

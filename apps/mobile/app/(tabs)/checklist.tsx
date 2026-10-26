@@ -1,7 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -14,6 +13,8 @@ import { ChecklistItem, checklistData } from '../data/checklistData';
 import { getLastPeriod, calculateGestationWeek } from '../../utils/gestationUtils';
 import { useSession } from '@/contexts/SessionContext';
 import { getScopedItem, setScopedItem } from '@/utils/scopedStorage';
+import { AccessibleText as Text } from '../../components/AccessibleText';
+import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 
 const WEB_MAX_WIDTH = 430;
 
@@ -134,18 +135,27 @@ export default function ChecklistScreen() {
             <TouchableOpacity
               style={[styles.trimesterButton, currentTrimester === 1 && styles.activeTrimester]}
               onPress={() => changeTrimester(1)}
+              accessibilityRole="tab"
+              accessibilityLabel="Primeiro trimestre"
+              accessibilityState={{ selected: currentTrimester === 1 }}
             >
               <Text style={[styles.trimesterButtonText, currentTrimester === 1 && styles.activeTrimesterText]}>1º</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.trimesterButton, currentTrimester === 2 && styles.activeTrimester]}
               onPress={() => changeTrimester(2)}
+              accessibilityRole="tab"
+              accessibilityLabel="Segundo trimestre"
+              accessibilityState={{ selected: currentTrimester === 2 }}
             >
               <Text style={[styles.trimesterButtonText, currentTrimester === 2 && styles.activeTrimesterText]}>2º</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.trimesterButton, currentTrimester === 3 && styles.activeTrimester]}
               onPress={() => changeTrimester(3)}
+              accessibilityRole="tab"
+              accessibilityLabel="Terceiro trimestre"
+              accessibilityState={{ selected: currentTrimester === 3 }}
             >
               <Text style={[styles.trimesterButtonText, currentTrimester === 3 && styles.activeTrimesterText]}>3º</Text>
             </TouchableOpacity>
@@ -158,6 +168,9 @@ export default function ChecklistScreen() {
               key={item.id}
               style={styles.itemContainer}
               onPress={() => toggleItem(item.id)}
+              accessibilityRole="checkbox"
+              accessibilityLabel={`${item.title}${item.description ? `. ${item.description}` : ''}`}
+              accessibilityState={{ checked: item.completed }}
             >
               <View style={[styles.checkbox, item.completed && styles.checkboxCompleted]}>
                 {item.completed && (
@@ -192,7 +205,13 @@ export default function ChecklistScreen() {
           <Text style={styles.progressText}>
             {completedCount} de {checklistItems.length} tarefas concluídas
           </Text>
-          <View style={styles.progressBar}>
+          <View
+            style={styles.progressBar}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Progresso do checklist"
+            accessibilityValue={{ min: 0, max: checklistItems.length, now: completedCount }}
+          >
             <View
               style={[
                 styles.progress,
@@ -224,7 +243,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   title: {
     fontSize: width * 0.05,
     fontWeight: 'bold',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     marginBottom: 10,
   },
   trimesterNavigation: {
@@ -239,14 +258,14 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#20B2AA',
+    borderColor: ACCESSIBLE_COLORS.primary,
   },
   activeTrimester: {
-    backgroundColor: '#20B2AA',
+    backgroundColor: ACCESSIBLE_COLORS.primary,
   },
   trimesterButtonText: {
     fontSize: width * 0.04,
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     fontWeight: '600',
   },
   activeTrimesterText: {
@@ -280,13 +299,13 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 2,
-    borderColor: '#20B2AA',
+    borderColor: ACCESSIBLE_COLORS.primary,
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxCompleted: {
-    backgroundColor: '#20B2AA',
+    backgroundColor: ACCESSIBLE_COLORS.primary,
   },
   itemContent: {
     flex: 1,
@@ -299,12 +318,12 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   itemDescription: {
     fontSize: width * 0.03,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     lineHeight: 18,
   },
   completedText: {
     textDecorationLine: 'line-through',
-    color: '#999',
+    color: ACCESSIBLE_COLORS.muted,
   },
   progressContainer: {
     padding: 15,
@@ -314,7 +333,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   progressText: {
     fontSize: width * 0.035,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -326,7 +345,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   progress: {
     height: '100%',
-    backgroundColor: '#20B2AA',
+    backgroundColor: ACCESSIBLE_COLORS.primary,
     borderRadius: 4,
   },
 });

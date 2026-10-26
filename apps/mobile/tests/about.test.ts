@@ -77,26 +77,30 @@ describe('conteúdo da tela Sobre', () => {
     assert.match(allText, /destina-se a testes com dados fictícios/);
     assert.match(allText, /não substitui consultas, o acompanhamento pré-natal/);
     assert.match(allText, /A ausência de alertas não garante ausência de risco\./);
-    assert.match(allText, /ligue 192 — SAMU/);
+    assert.match(allText, /ligue 192 \(SAMU\)/);
+    assert.match(allText, /sangramento pela vagina/);
+    assert.match(allText, /perda de líquido/);
+    assert.match(allText, /convulsão/);
     assert.match(allText, /Não aguarde uma resposta do aplicativo/);
     assert.match(allText, /Equipe MyFetus — ciclo 2026\.2/);
+    assert.match(allText, /Universidade de Pernambuco \(UPE\)/);
   });
 
-  it('não publica lista de sinais de alarme sem revisão clínica', () => {
-    for (const sign of [/sangramento/i, /convuls/i, /perda de l[ií]quido/i, /vis[aã]o turva/i, /movimentos do beb/i]) {
-      assert.doesNotMatch(allText, sign);
+  it('publica somente a lista de sinais de alarme aprovada pelo PO', () => {
+    for (const sign of [/sangramento/i, /convuls/i, /perda de l[ií]quido/i, /vis[aã]o embaçada/i, /bebê mexendo|movimentos do beb/i]) {
+      assert.match(allText, sign);
     }
   });
 
-  it('não cita instituição nem pessoas sem confirmação', () => {
-    for (const name of [/POLI/, /UPE/, /Rui/, /N[óo]brega/]) {
+  it('não cita pessoas sem confirmação', () => {
+    for (const name of [/Rui/, /N[óo]brega/]) {
       assert.doesNotMatch(allText, name);
     }
   });
 
   it('mantém marcado o que ainda está em definição (contato e termos)', () => {
     assert.equal(ABOUT_IS_DRAFT, true);
-    assert.match(ABOUT_DRAFT_NOTICE, /contato oficial/);
+    assert.match(ABOUT_DRAFT_NOTICE, /Fale com a equipe/);
     assert.match(aboutScreenSource, /ABOUT_IS_DRAFT &&/);
   });
 
