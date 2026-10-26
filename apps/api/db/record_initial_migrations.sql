@@ -18,5 +18,6 @@ INSERT INTO schema_migrations (version) VALUES
   ('11_normalize_update_triggers.sql'),
   ('12_consents.sql'),
   ('13_exam_requests.sql'),
-  ('14_exam_request_documents.sql')
+  ('14_exam_request_documents.sql'),
+  ('15_doctor_approval.sql')
 ON CONFLICT DO NOTHING;
