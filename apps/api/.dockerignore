@@ -8,5 +8,6 @@ reports
 uploads
 *.log
 *.md
+!legal/*.md
 .git
 .gitignore

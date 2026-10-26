@@ -25,6 +25,10 @@ const migrations = [
   ['09_document_security.sql', 'migration_document_security.sql'],
   ['10_audit_trail.sql', 'migration_audit_trail.sql'],
   ['11_normalize_update_triggers.sql', 'migration_normalize_update_triggers.sql'],
+  ['12_consents.sql', 'migration_consents.sql'],
+  ['13_exam_requests.sql', 'migration_exam_requests.sql'],
+  ['14_exam_request_documents.sql', 'migration_exam_request_documents.sql'],
+  ['15_doctor_approval.sql', 'migration_doctor_approval.sql'],
 ];
 
 function required(name) {

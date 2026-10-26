@@ -26,6 +26,10 @@ const clientMock = {
       return { rows: LINKS.has(key) ? [{ '?column?': 1 }] : [] };
     }
 
+    if (sql.includes('FROM doctors')) {
+      return { rows: [{ approval_status: 'approved' }] };
+    }
+
     if (/SELECT id, user_id\s+FROM pregnants/.test(sql)) {
       const patient = PATIENTS[Number(params[0])];
       return { rows: patient ? [{ id: patient.id, user_id: patient.user_id }] : [] };
