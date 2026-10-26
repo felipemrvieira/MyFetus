@@ -17,7 +17,9 @@ function isConsentExempt(req) {
     (path === '/api/users/login') ||
     path === '/api/consents' ||
     path === '/api/consents/me' ||
-    (method === 'GET' && path === '/api/consents/policy')
+    (method === 'GET' && path === '/api/consents/policy') ||
+    // Direitos do titular (E7-02.1) valem mesmo sem consentimento vigente.
+    (method === 'POST' && path === '/api/privacy/export')
   );
 }
 
