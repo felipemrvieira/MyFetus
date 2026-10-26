@@ -27,6 +27,42 @@ function createLimiterOptions(windowMs, limit, action, resource) {
   };
 }
 
+function createLoginLimiterOptions(options = {}) {
+  const windowMs = positiveInteger(
+    options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  );
+  const loginMax = positiveInteger(
+    options.loginMax ?? process.env.AUTH_RATE_LIMIT_MAX,
+    10
+  );
+  return createLimiterOptions(windowMs, loginMax, 'USER_LOGIN_BLOCKED', 'users');
+}
+
+function createRegisterLimiterOptions(options = {}) {
+  const windowMs = positiveInteger(
+    options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  );
+  const registerMax = positiveInteger(
+    options.registerMax ?? process.env.REGISTER_RATE_LIMIT_MAX,
+    5
+  );
+  return createLimiterOptions(windowMs, registerMax, 'USER_REGISTER_BLOCKED', 'users');
+}
+
+function createAdminReadLimiterOptions(options = {}) {
+  const windowMs = positiveInteger(
+    options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  );
+  const adminReadMax = positiveInteger(
+    options.adminReadMax ?? process.env.ADMIN_READ_RATE_LIMIT_MAX,
+    100
+  );
+  return createLimiterOptions(windowMs, adminReadMax, 'ADMIN_READ_BLOCKED', 'users');
+}
+
 function createClinicalLimiterOptions(options = {}) {
   const windowMs = positiveInteger(
     options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
@@ -40,37 +76,67 @@ function createClinicalLimiterOptions(options = {}) {
   return createLimiterOptions(windowMs, clinicalMax, 'CLINICAL_READ_BLOCKED', 'clinical_data');
 }
 
-function createAuthLimiters(options = {}) {
+function createApiLimiterOptions(options = {}) {
   const windowMs = positiveInteger(
     options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
     15 * 60 * 1000
   );
-  const loginMax = positiveInteger(
-    options.loginMax ?? process.env.AUTH_RATE_LIMIT_MAX,
-    10
+  const apiMax = positiveInteger(
+    options.apiMax ?? process.env.API_RATE_LIMIT_MAX,
+    300
   );
-  const registerMax = positiveInteger(
-    options.registerMax ?? process.env.REGISTER_RATE_LIMIT_MAX,
+  return createLimiterOptions(windowMs, apiMax, 'API_RATE_LIMIT_BLOCKED', 'api');
+}
+
+function createRagLimiterOptions(options = {}) {
+  const windowMs = positiveInteger(
+    options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  );
+  const ragMax = positiveInteger(
+    options.ragMax ?? process.env.RAG_RATE_LIMIT_MAX,
+    20
+  );
+
+  return createLimiterOptions(windowMs, ragMax, 'RAG_RATE_LIMIT_BLOCKED', 'rag');
+}
+
+// Exportação confere senha e gera um arquivo grande: limite baixo por janela.
+function createDataExportLimiterOptions(options = {}) {
+  const windowMs = positiveInteger(
+    options.windowMs ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  );
+  const exportMax = positiveInteger(
+    options.exportMax ?? process.env.DATA_EXPORT_RATE_LIMIT_MAX,
     5
   );
-  const adminReadMax = positiveInteger(
-    options.adminReadMax ?? process.env.ADMIN_READ_RATE_LIMIT_MAX,
-    100
-  );
-  function createLimiter(limit, action, resource) {
-    return rateLimit(createLimiterOptions(windowMs, limit, action, resource));
-  }
+  return createLimiterOptions(windowMs, exportMax, 'DATA_EXPORT_BLOCKED', 'users');
+}
 
+function createAuthLimiters(options = {}) {
   return {
-    loginLimiter: createLimiter(loginMax, 'USER_LOGIN_BLOCKED', 'users'),
-    registerLimiter: createLimiter(registerMax, 'USER_REGISTER_BLOCKED', 'users'),
-    adminReadLimiter: createLimiter(adminReadMax, 'ADMIN_READ_BLOCKED', 'users'),
+    loginLimiter: rateLimit(createLoginLimiterOptions(options)),
+    registerLimiter: rateLimit(createRegisterLimiterOptions(options)),
+    adminReadLimiter: rateLimit(createAdminReadLimiterOptions(options)),
     clinicalLimiter: rateLimit(createClinicalLimiterOptions(options)),
+    apiLimiter: rateLimit(createApiLimiterOptions(options)),
+    ragLimiter: rateLimit(createRagLimiterOptions(options)),
   };
 }
 
+const defaultLimiters = createAuthLimiters();
+
 module.exports = {
+  createLimiterOptions,
+  createLoginLimiterOptions,
+  createRegisterLimiterOptions,
+  createAdminReadLimiterOptions,
   createClinicalLimiterOptions,
+  createApiLimiterOptions,
+  createRagLimiterOptions,
+  createDataExportLimiterOptions,
   createAuthLimiters,
   positiveInteger,
+  ...defaultLimiters,
 };

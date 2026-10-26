@@ -1,68 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Platform,
   useWindowDimensions,
-  Image,
   TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLastPeriod, calculateGestationWeek, getBabySize, getBabyDescription, calculateDPP } from '../../utils/gestationUtils';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/contexts/SessionContext';
+import { FetusWeekImage } from '../../components/FetusWeekImage';
+import { AccessibleText as Text } from '../../components/AccessibleText';
+import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 
 const WEB_MAX_WIDTH = 430;
-
-// Mapeamento das imagens das semanas
-const fetusImages: { [key: string]: any } = {
-  '04': require('../../assets/images/Fetus_weeks_img/04-fetaldev-E-deeptan_4x3.jpg'),
-  '05': require('../../assets/images/Fetus_weeks_img/05-fetaldev-E-deeptan_4x3.jpg'),
-  '06': require('../../assets/images/Fetus_weeks_img/06-fetaldev-E-deeptan_4x3.jpg'),
-  '07': require('../../assets/images/Fetus_weeks_img/07-fetaldev-E-deeptan_4x3.jpg'),
-  '08': require('../../assets/images/Fetus_weeks_img/08-fetaldev-E-deeptan_4x3.jpg'),
-  '09': require('../../assets/images/Fetus_weeks_img/09-fetaldev-E-deeptan_4x3.jpg'),
-  '10': require('../../assets/images/Fetus_weeks_img/10-fetaldev-E-deeptan_4x3.jpg'),
-  '11': require('../../assets/images/Fetus_weeks_img/11-fetaldev-E-deeptan_4x3.jpg'),
-  '12': require('../../assets/images/Fetus_weeks_img/12-fetaldev-E-deeptan_4x3.jpg'),
-  '13': require('../../assets/images/Fetus_weeks_img/13-fetaldev-E-deeptan_4x3.jpg'),
-  '14': require('../../assets/images/Fetus_weeks_img/14-fetaldev-E-deeptan_4x3.jpg'),
-  '15': require('../../assets/images/Fetus_weeks_img/15-fetaldev-E-deeptan_4x3.jpg'),
-  '16': require('../../assets/images/Fetus_weeks_img/16-fetaldev-E-deeptan_4x3.jpg'),
-  '17': require('../../assets/images/Fetus_weeks_img/17-fetaldev-E-deeptan_4x3.jpg'),
-  '18': require('../../assets/images/Fetus_weeks_img/18-fetaldev-E-deeptan_4x3.jpg'),
-  '19': require('../../assets/images/Fetus_weeks_img/19-fetaldev-E-deeptan_4x3.jpg'),
-  '20': require('../../assets/images/Fetus_weeks_img/20-fetaldev-E-deeptan_4x3.jpg'),
-  '21': require('../../assets/images/Fetus_weeks_img/21-fetaldev-E-deeptan_4x3.jpg'),
-  '22': require('../../assets/images/Fetus_weeks_img/22-fetaldev-E-deeptan_4x3.jpg'),
-  '23': require('../../assets/images/Fetus_weeks_img/23-fetaldev-E-deeptan_4x3.jpg'),
-  '24': require('../../assets/images/Fetus_weeks_img/24-fetaldev-E-deeptan_4x3.jpg'),
-  '25': require('../../assets/images/Fetus_weeks_img/25-fetaldev-E-deeptan_4x3.jpg'),
-  '26': require('../../assets/images/Fetus_weeks_img/26-fetaldev-E-deeptan_4x3.jpg'),
-  '27': require('../../assets/images/Fetus_weeks_img/27-fetaldev-E-deeptan_4x3.jpg'),
-  '28': require('../../assets/images/Fetus_weeks_img/28-fetaldev-E-deeptan_4x3.jpg'),
-  '29': require('../../assets/images/Fetus_weeks_img/29-fetaldev-E-deeptan_4x3.jpg'),
-  '30': require('../../assets/images/Fetus_weeks_img/30-fetaldev-E-deeptan_4x3.jpg'),
-  '31': require('../../assets/images/Fetus_weeks_img/31-fetaldev-E-deeptan_4x3.jpg'),
-  '32': require('../../assets/images/Fetus_weeks_img/32-fetaldev-E-deeptan_4x3.jpg'),
-  '33': require('../../assets/images/Fetus_weeks_img/33-fetaldev-E-deeptan_4x3.jpg'),
-  '34': require('../../assets/images/Fetus_weeks_img/34-fetaldev-E-deeptan_4x3.jpg'),
-  '35': require('../../assets/images/Fetus_weeks_img/35-fetaldev-E-deeptan_4x3.jpg'),
-  '36': require('../../assets/images/Fetus_weeks_img/36-fetaldev-E-deeptan_4x3.jpg'),
-  '37': require('../../assets/images/Fetus_weeks_img/37-fetaldev-E-deeptan_4x3.jpg'),
-  '38': require('../../assets/images/Fetus_weeks_img/38-fetaldev-E-deeptan_4x3.jpg'),
-  '39': require('../../assets/images/Fetus_weeks_img/39-fetaldev-E-deeptan_4x3.jpg'),
-  '40': require('../../assets/images/Fetus_weeks_img/40-fetaldev-E-deeptan_4x3.jpg'),
-  '41': require('../../assets/images/Fetus_weeks_img/41-fetaldev-E-deeptan_4x3.jpg'),
-};
-
-const getFetusImage = (week: number) => {
-  const formattedWeek = week.toString().padStart(2, '0');
-  return fetusImages[formattedWeek];
-};
 
 export default function HomeScreen() {
   const { width: windowWidth, height } = useWindowDimensions();
@@ -102,58 +57,76 @@ export default function HomeScreen() {
       colors={['#cce5f6', '#f8cde9']}
       style={styles.container}
     >
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.page}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Meu Bebê</Text>
-            <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
-            <TouchableOpacity
-              accessibilityLabel="Sair da conta"
-              accessibilityRole="button"
-              onPress={handleSignOut}
-              style={styles.signOutButton}
-            >
-              <FontAwesome name="sign-out" size={18} color="#20B2AA" />
-              <Text style={styles.signOutText}>Sair</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.imageContainer}>
-            <View style={styles.imageWrapper}>
-              <Image
-                source={getFetusImage(gestationWeek)}
-                style={styles.fetusImage}
-                resizeMode="cover"
-              />
-            </View>
-          </View>
-
-          <View style={styles.infoContainer}>
-            <View style={styles.infoCard}>
-              <FontAwesome name="calendar" size={24} color="#20B2AA" />
-              <Text style={styles.infoTitle}>Data Prevista do Parto</Text>
-              <Text style={styles.infoValue}>{dpp}</Text>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.page}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Meu Bebê</Text>
+              <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  accessibilityLabel="Sobre o MyFetus"
+                  accessibilityRole="link"
+                  onPress={() => router.push('/sobre')}
+                  style={styles.signOutButton}
+                >
+                  <FontAwesome name="info-circle" size={18} color={ACCESSIBLE_COLORS.primary} />
+                  <Text style={styles.signOutText}>Sobre</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID="e2e-patient-sign-out"
+                  accessibilityLabel="Sair da conta"
+                  accessibilityRole="button"
+                  accessibilityHint="Encerra a sessão atual"
+                  onPress={handleSignOut}
+                  style={styles.signOutButton}
+                >
+                  <FontAwesome name="sign-out" size={18} color={ACCESSIBLE_COLORS.primary} />
+                  <Text style={styles.signOutText}>Sair</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <View style={styles.infoCard}>
-              <FontAwesome name="arrows-alt" size={24} color="#20B2AA" />
-              <Text style={styles.infoTitle}>Tamanho do Bebê</Text>
-              <Text style={styles.infoValue}>{babySize}</Text>
+            <View style={styles.imageContainer}>
+              <View style={styles.imageWrapper}>
+                <FetusWeekImage
+                  week={gestationWeek}
+                  style={styles.fetusImage}
+                  resizeMode="cover"
+                />
+              </View>
+            </View>
+
+            <View style={styles.infoContainer}>
+              <View style={styles.infoCard}>
+                <FontAwesome name="calendar" size={24} color={ACCESSIBLE_COLORS.primary} />
+                <Text style={styles.infoTitle}>Data Prevista do Parto</Text>
+                <Text style={styles.infoValue}>{dpp}</Text>
+              </View>
+
+              <View style={styles.infoCard}>
+                <FontAwesome name="arrows-alt" size={24} color={ACCESSIBLE_COLORS.primary} />
+                <Text style={styles.infoTitle}>Tamanho do Bebê</Text>
+                <Text style={styles.infoValue}>{babySize}</Text>
+              </View>
+            </View>
+
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.descriptionTitle}>Desenvolvimento</Text>
+              <Text style={styles.descriptionText}>{babyDescription}</Text>
             </View>
           </View>
-
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionTitle}>Desenvolvimento</Text>
-            <Text style={styles.descriptionText}>{babyDescription}</Text>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
 const createStyles = (width: number, height: number) => StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  safeArea: {
     flex: 1,
   },
   scrollView: {
@@ -173,14 +146,18 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     paddingBottom: height * 0.02,
     alignItems: 'center',
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   title: {
     fontSize: width * 0.07,
     fontWeight: 'bold',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
   },
   subtitle: {
     fontSize: width * 0.045,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginTop: 5,
   },
   signOutButton: {
@@ -188,11 +165,12 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     marginTop: 12,
+    minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   signOutText: {
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     fontWeight: '600',
   },
   infoContainer: {
@@ -218,13 +196,13 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   },
   infoTitle: {
     fontSize: width * 0.035,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     marginTop: 10,
     textAlign: 'center',
   },
   infoValue: {
     fontSize: width * 0.04,
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     fontWeight: 'bold',
     marginTop: 5,
     textAlign: 'center',
@@ -246,12 +224,12 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   descriptionTitle: {
     fontSize: width * 0.05,
     fontWeight: 'bold',
-    color: '#20B2AA',
+    color: ACCESSIBLE_COLORS.primary,
     marginBottom: 10,
   },
   descriptionText: {
     fontSize: width * 0.035,
-    color: '#666',
+    color: ACCESSIBLE_COLORS.muted,
     lineHeight: 20,
   },
   imageContainer: {

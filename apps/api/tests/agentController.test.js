@@ -46,6 +46,10 @@ const clientMock = {
       return { rows: linked ? [{ '?column?': 1 }] : [] };
     }
 
+    if (sql.includes('FROM doctors')) {
+      return { rows: [{ approval_status: 'approved' }] };
+    }
+
     const pregnant = PREGNANTS[Number(params[0])];
 
     if (/SELECT id, user_id\s+FROM pregnants/.test(sql)) {
@@ -308,13 +312,13 @@ test.describe('POST /api/agent/maternal-analysis - autorizacao', () => {
         tokenFor({ id: 10, role: 'medico' })
       );
       assert.strictEqual(res.status, 400);
-      assert.deepStrictEqual(queryLog, []);
+      assert.deepStrictEqual(queryLog.filter(({ sql }) => !sql.includes('FROM doctors')), []);
     });
 
     test('retorna 400 sem query', async () => {
       const res = await post({ patientId: 1 }, tokenFor({ id: 10, role: 'medico' }));
       assert.strictEqual(res.status, 400);
-      assert.deepStrictEqual(queryLog, []);
+      assert.deepStrictEqual(queryLog.filter(({ sql }) => !sql.includes('FROM doctors')), []);
     });
   });
 });

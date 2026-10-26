@@ -10,12 +10,15 @@ const {
 } = require('../services/documentExtractionWorker');
 const logger = require('../utils/logger');
 const { audit } = require('../services/auditService');
+const { sendInternalError } = require('../utils/httpErrors');
 
 const ALLOWED_DOCUMENT_UPDATE_FIELDS = ['document_name', 'document_type'];
 const ENCRYPTED_STORAGE_DIR = path.resolve(
   process.env.DOCUMENT_STORAGE_DIR || 'uploads/encrypted'
 );
-const UPLOAD_CLEANUP_ROOT = path.resolve('uploads');
+const UPLOAD_CLEANUP_ROOT = path.resolve(
+  process.env.DOCUMENT_UPLOAD_TEMP_DIR || 'uploads'
+);
 
 function getUploadedFile(req) {
   return req.files?.file?.[0] || req.files?.document?.[0] || req.file || null;
@@ -124,18 +127,80 @@ const uploadDocument = async (req, res) => {
   let storedPath;
   let dbClient;
   let committed = false;
+  let examRequest;
 
   try {
     if (!file) return res.status(400).send('Nenhum arquivo enviado');
-    const { pregnant_id, document_name } = req.body || {};
+    if (!req.user || !['gestante', 'medico', 'admin'].includes(req.user.role)) {
+      await cleanupUploadedFile(req);
+      return res.status(403).json({ error: 'Perfil de usuario nao autorizado' });
+    }
+
+    const { document_name } = req.body || {};
+    const rawExamRequestId = req.body?.exam_request_id;
+    const examRequestId = rawExamRequestId ? Number(rawExamRequestId) : null;
+    let pregnantId = req.body?.pregnant_id ? Number(req.body.pregnant_id) : null;
     const document_type = req.body?.document_type || file.mimetype || null;
-    if (!pregnant_id || !document_name) {
+    if (!document_name) {
       await cleanupUploadedFile(req);
       return res.status(400).json({
-        error: 'pregnant_id e document_name sao obrigatorios',
+        error: 'document_name e obrigatorio',
       });
     }
-    if (!(await ensureCanAccessOwnOrLinkedPregnant(req, res, pregnant_id))) {
+    if (rawExamRequestId && (!Number.isInteger(examRequestId) || examRequestId < 1)) {
+      await cleanupUploadedFile(req);
+      return res.status(400).json({ error: 'exam_request_id invalido' });
+    }
+    if (req.user.role === 'gestante' && !examRequestId) {
+      await cleanupUploadedFile(req);
+      return res.status(400).json({
+        error: 'Gestante deve enviar o exame vinculado a uma solicitacao',
+      });
+    }
+
+    if (examRequestId) {
+      dbClient = await client.connect();
+      await dbClient.query('BEGIN');
+      const requestResult = await dbClient.query(
+        'SELECT * FROM exam_requests WHERE id = $1 FOR UPDATE',
+        [examRequestId]
+      );
+      examRequest = requestResult.rows[0];
+      if (!examRequest) {
+        await dbClient.query('ROLLBACK');
+        dbClient.release();
+        dbClient = null;
+        await cleanupUploadedFile(req);
+        return res.status(404).json({ error: 'Solicitacao de exame nao encontrada' });
+      }
+      if (examRequest.status !== 'pending') {
+        await dbClient.query('ROLLBACK');
+        dbClient.release();
+        dbClient = null;
+        await cleanupUploadedFile(req);
+        return res.status(409).json({ error: 'A solicitacao nao esta pendente' });
+      }
+      if (pregnantId && pregnantId !== examRequest.pregnant_id) {
+        await dbClient.query('ROLLBACK');
+        dbClient.release();
+        dbClient = null;
+        await cleanupUploadedFile(req);
+        return res.status(400).json({ error: 'O paciente nao corresponde a solicitacao' });
+      }
+      pregnantId = examRequest.pregnant_id;
+    }
+
+    if (!pregnantId || !Number.isInteger(pregnantId) || pregnantId < 1) {
+      if (dbClient) await dbClient.query('ROLLBACK');
+      if (dbClient) dbClient.release();
+      dbClient = null;
+      await cleanupUploadedFile(req);
+      return res.status(400).json({ error: 'pregnant_id e obrigatorio' });
+    }
+    if (!(await ensureCanAccessOwnOrLinkedPregnant(req, res, pregnantId))) {
+      if (dbClient) await dbClient.query('ROLLBACK');
+      if (dbClient) dbClient.release();
+      dbClient = null;
       await cleanupUploadedFile(req);
       return;
     }
@@ -144,7 +209,7 @@ const uploadDocument = async (req, res) => {
     await fileCryptoService.encryptFile(
       file.path,
       storedPath,
-      { pregnantId: pregnant_id }
+      { pregnantId }
     );
     await cleanupUploadedFile(req);
 
@@ -152,16 +217,19 @@ const uploadDocument = async (req, res) => {
       { document_name, document_type },
       'pregnant_documents'
     );
-    dbClient = await client.connect();
-    await dbClient.query('BEGIN');
+    if (!dbClient) {
+      dbClient = await client.connect();
+      await dbClient.query('BEGIN');
+    }
     const result = await dbClient.query(
       `INSERT INTO pregnant_documents (
-         pregnant_id, document_name, document_type, file_path,
+         pregnant_id, exam_request_id, document_name, document_type, file_path,
          encryption_key_version, file_encryption_version
-       ) VALUES ($1, $2, $3, $4, $5, $6)
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
-        pregnant_id,
+        pregnantId,
+        examRequestId,
         encryptedMetadata.document_name,
         encryptedMetadata.document_type,
         storedPath,
@@ -169,6 +237,14 @@ const uploadDocument = async (req, res) => {
         cryptoService.getCurrentVersion(),
       ]
     );
+    if (examRequestId) {
+      await dbClient.query(
+        `UPDATE exam_requests
+         SET status = 'submitted'
+         WHERE id = $1 AND status = 'pending'`,
+        [examRequestId]
+      );
+    }
     await dbClient.query('COMMIT');
     committed = true;
 
@@ -180,7 +256,7 @@ const uploadDocument = async (req, res) => {
       resource: 'pregnant_documents',
       resource_id: result.rows[0].id,
       outcome: 'SUCCESS',
-      detail: { pregnant_id, document_type },
+      detail: { pregnant_id: pregnantId, exam_request_id: examRequestId, document_type },
     });
     return res.status(201).json({
       message: 'Documento enviado com seguranca; extracao de texto iniciada',
@@ -217,7 +293,7 @@ const getDocuments = async (req, res) => {
     );
     return res.json(result.rows.map(sanitizeDocument));
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -230,7 +306,7 @@ const getDocumentById = async (req, res) => {
     if (!(await ensureCanAccessPregnant(req, res, document.pregnant_id))) return;
     return res.json(sanitizeDocument(document));
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -371,7 +447,7 @@ const updateDocument = async (req, res) => {
     );
     return res.json(sanitizeDocument(result.rows[0]));
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -406,7 +482,7 @@ const getDocumentExtractedText = async (req, res) => {
       extracted_text: document.extracted_text,
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -428,7 +504,7 @@ const retryDocumentTextExtraction = async (req, res) => {
       document_id: document.id,
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return sendInternalError(res);
   }
 };
 
@@ -455,6 +531,9 @@ async function ensureCanAccessOwnOrLinkedPregnant(req, res, pregnantId) {
 }
 
 const updateDocumentReport = async (req, res) => {
+  let dbClient;
+  let committed = false;
+
   try {
     const comment =
       typeof req.body?.report_comment === 'string' ? req.body.report_comment.trim() : '';
@@ -475,7 +554,10 @@ const updateDocumentReport = async (req, res) => {
       { report_comment: comment },
       'pregnant_documents'
     );
-    const result = await client.query(
+
+    dbClient = await client.connect();
+    await dbClient.query('BEGIN');
+    const result = await dbClient.query(
       `UPDATE pregnant_documents
           SET report_comment = $1,
               status = 'reviewed',
@@ -486,6 +568,22 @@ const updateDocumentReport = async (req, res) => {
         RETURNING *`,
       [encrypted.report_comment, req.user.id, req.params.id]
     );
+    if (!result.rows[0]) {
+      await dbClient.query('ROLLBACK');
+      return res.status(404).json({ error: 'Documento nao encontrado' });
+    }
+
+    if (document.exam_request_id) {
+      await dbClient.query(
+        `UPDATE exam_requests
+            SET status = 'reviewed', updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND status IN ('submitted', 'reviewed')`,
+        [document.exam_request_id]
+      );
+    }
+
+    await dbClient.query('COMMIT');
+    committed = true;
     audit(req, {
       action: 'DOCUMENT_REPORT_SAVED',
       resource: 'pregnant_documents',
@@ -498,8 +596,17 @@ const updateDocumentReport = async (req, res) => {
       document: sanitizeDocument(result.rows[0]),
     });
   } catch (error) {
+    if (dbClient && !committed) {
+      try {
+        await dbClient.query('ROLLBACK');
+      } catch (_) {
+        // Preserve the original error.
+      }
+    }
     logger.error('Erro ao salvar relatorio do documento', { details: error.message });
     return res.status(500).json({ error: 'Erro ao salvar relatorio' });
+  } finally {
+    if (dbClient) dbClient.release();
   }
 };
 

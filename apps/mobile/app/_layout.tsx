@@ -1,23 +1,33 @@
 // app/_layout.tsx
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { SessionProvider, useSession } from '@/contexts/SessionContext';
 import { isClinicianRole, isPatientRole } from '@/types/session';
+import { subscribeToConsentRequired } from '@/utils/consentEvents';
 
 export default function RootLayout() {
   return (
-    <SessionProvider>
-      <RootNavigator />
-    </SessionProvider>
+    <SafeAreaProvider>
+      <SessionProvider>
+        <RootNavigator />
+      </SessionProvider>
+    </SafeAreaProvider>
   );
 }
 
 function RootNavigator() {
   const colorScheme = useColorScheme();
   const { user, isLoading } = useSession();
+  const router = useRouter();
+
+  useEffect(() => subscribeToConsentRequired(() => {
+    if (user) router.replace('/consentimento' as never);
+  }), [router, user]);
 
   if (isLoading) {
     return (
@@ -50,6 +60,10 @@ function RootNavigator() {
           <Stack.Screen name="CadastroMedico" options={{ headerShown: false }} />
         </Stack.Protected>
 
+        <Stack.Protected guard={Boolean(user)}>
+          <Stack.Screen name="consentimento" options={{ headerShown: false }} />
+        </Stack.Protected>
+
         <Stack.Protected guard={isPatient}>
           <Stack.Screen name="outra-gestacao" options={{ headerShown: false }} />
           <Stack.Screen name="welcome" options={{ headerShown: false }} />
@@ -60,6 +74,10 @@ function RootNavigator() {
         <Stack.Protected guard={isClinician}>
           <Stack.Screen name="doctor" options={{ headerShown: false }} />
         </Stack.Protected>
+
+        {/* Tela Sobre (E7-09): fora dos guards, acessível com e sem login.
+            Fica por último para nunca virar a tela inicial de quem está logado. */}
+        <Stack.Screen name="sobre" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
