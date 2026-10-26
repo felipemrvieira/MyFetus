@@ -66,7 +66,7 @@ async function extractTextFromPdf(filePath, fileName) {
     throw new Error(`Não foi possível extrair texto de ${fileName}`);
   }
 
-  return result.text;
+  return result;
 }
 
 function buildPineconeRecord(chunk, embedding, sourceMetadata) {
@@ -88,11 +88,14 @@ async function ingestSingleDocument({ fileName, filePath, source }, manifestVers
   logger.info('Ingestão RAG: documento iniciado');
   logger.info('Ingestão RAG: fonte');
 
-  const text = await extractTextFromPdf(filePath, fileName);
+  const extractionResult = await extractTextFromPdf(filePath, fileName);
 
-  const chunks = createChunks(text, {
+  const chunks = createChunks(extractionResult.pages || extractionResult.text, {
     source: source.title,
     documentId: source.documentId,
+    title: source.title,
+    year: source.year,
+    edition: source.edition,
     section: (source.topics && source.topics[0]) || 'Geral',
     documentType: source.documentType,
   });
@@ -124,6 +127,9 @@ async function ingestSingleDocument({ fileName, filePath, source }, manifestVers
     fileName,
     source: source.title,
     documentId: source.documentId,
+    title: source.title,
+    year: source.year,
+    edition: source.edition,
     sha256: source.sha256,
     chunks: chunks.length,
     vectors: result.upsertedCount,
