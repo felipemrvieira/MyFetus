@@ -63,17 +63,28 @@ export default function HomeScreen() {
             <View style={styles.header}>
               <Text style={styles.title}>Meu Bebê</Text>
               <Text style={styles.subtitle}>Semana {gestationWeek}</Text>
-              <TouchableOpacity
-                testID="e2e-patient-sign-out"
-                accessibilityLabel="Sair da conta"
-                accessibilityRole="button"
-                accessibilityHint="Encerra a sessão atual"
-                onPress={handleSignOut}
-                style={styles.signOutButton}
-              >
-                <FontAwesome name="sign-out" size={18} color={ACCESSIBLE_COLORS.primary} />
-                <Text style={styles.signOutText}>Sair</Text>
-              </TouchableOpacity>
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  accessibilityLabel="Sobre o MyFetus"
+                  accessibilityRole="link"
+                  onPress={() => router.push('/sobre')}
+                  style={styles.signOutButton}
+                >
+                  <FontAwesome name="info-circle" size={18} color={ACCESSIBLE_COLORS.primary} />
+                  <Text style={styles.signOutText}>Sobre</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID="e2e-patient-sign-out"
+                  accessibilityLabel="Sair da conta"
+                  accessibilityRole="button"
+                  accessibilityHint="Encerra a sessão atual"
+                  onPress={handleSignOut}
+                  style={styles.signOutButton}
+                >
+                  <FontAwesome name="sign-out" size={18} color={ACCESSIBLE_COLORS.primary} />
+                  <Text style={styles.signOutText}>Sair</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.imageContainer}>
@@ -135,6 +146,10 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     paddingBottom: height * 0.02,
     alignItems: 'center',
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   title: {
     fontSize: width * 0.07,
     fontWeight: 'bold',
@@ -150,6 +165,7 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     marginTop: 12,
+    minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },

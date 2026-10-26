@@ -467,6 +467,7 @@ O arquivo `.env.example` na raiz é a referência oficial para configuração lo
 | `REGISTER_RATE_LIMIT_MAX` | Não | `5` | Limite para cadastro. |
 | `ADMIN_READ_RATE_LIMIT_MAX` | Não | `100` | Limite para leitura administrativa. |
 | `CLINICAL_RATE_LIMIT_MAX` | Não | `60` | Limite para consultas clínicas autenticadas. |
+| `DATA_EXPORT_RATE_LIMIT_MAX` | Não | `5` | Limite para a exportação de dados do titular (confere senha). |
 
 ### Criptografia, documentos e IA
 
