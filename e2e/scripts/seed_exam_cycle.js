@@ -21,6 +21,7 @@ const reportText = 'Resultado sintetico revisado: hemoglobina 12.5 g/dL.';
 
 const doctorEmail = `e2e.doctor.${runId}@example.test`.toLowerCase();
 const patientEmail = `e2e.patient.${runId}@example.test`.toLowerCase();
+const otherPatientEmail = `e2e.other-patient.${runId}@example.test`.toLowerCase();
 
 const doctorConsents = [
   { purpose: 'termos_de_uso_medico', version: '0.1-rascunho' },
@@ -99,11 +100,29 @@ async function main() {
     }),
   });
 
+  // Segunda gestante sem vínculo com o médico: usada para comprovar o limite
+  // A/B sem expor prontuário em um smoke test.
+  await request('/api/users', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'Outra Gestante E2E Sintética',
+      email: otherPatientEmail,
+      password,
+      birthdate: '1992-02-02',
+      consents: patientConsents,
+    }),
+  });
+
   const doctorSession = await login(doctorEmail);
   const patientSession = await login(patientEmail);
+  const otherPatientSession = await login(otherPatientEmail);
   const pregnantId = Number(patientSession.user?.pregnant_id);
+  const otherPregnantId = Number(otherPatientSession.user?.pregnant_id);
   if (!Number.isInteger(pregnantId) || pregnantId < 1) {
     throw new Error('Login sintético não retornou pregnant_id');
+  }
+  if (!Number.isInteger(otherPregnantId) || otherPregnantId < 1) {
+    throw new Error('Login da segunda gestante sintética não retornou pregnant_id');
   }
 
   await request('/api/pregnancies', {
@@ -137,6 +156,7 @@ async function main() {
     `E2E_PATIENT_EMAIL=${patientEmail}`,
     `E2E_PASSWORD=${password}`,
     `E2E_PREGNANT_ID=${pregnantId}`,
+    `E2E_OTHER_PREGNANT_ID=${otherPregnantId}`,
     `E2E_EXAM_NAME=${examName}`,
     `E2E_REPORT_TEXT=${reportText}`,
   ].join('\n') + '\n');

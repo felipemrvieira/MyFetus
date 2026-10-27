@@ -22,6 +22,10 @@ const {
   evaluateGuidelines,
   loadManifest,
 } = require('./ragManifestGate');
+const {
+  buildIngestionReport,
+  writeIngestionReport,
+} = require('./ragReportService');
 const logger = require('../utils/logger');
 
 const GUIDELINES_DIR = path.join(__dirname, '..', 'data', 'guidelines');
@@ -206,6 +210,7 @@ async function ingestGuidelines(options = {}) {
 
   const checkpoint = loadCheckpoint(checkpointPath);
   const results = [];
+  const failures = [];
   let skippedCount = 0;
   let upsertedCount = 0;
 
@@ -230,26 +235,51 @@ async function ingestGuidelines(options = {}) {
       continue;
     }
 
-    // Processa documento e grava checkpoint incremental
-    const docResult = await ingestSingleDocument(document, gate.manifestVersion, options);
+    try {
+      // Processa documento e grava checkpoint incremental somente após o upsert completo.
+      const docResult = await ingestSingleDocument(document, gate.manifestVersion, options);
 
-    checkpoint.documents[source.documentId] = {
-      sha256: source.sha256,
-      completedAt: new Date().toISOString(),
-      vectorCount: docResult.vectors,
-    };
-    saveCheckpoint(checkpointPath, checkpoint);
+      checkpoint.documents[source.documentId] = {
+        sha256: source.sha256,
+        completedAt: new Date().toISOString(),
+        vectorCount: docResult.vectors,
+      };
+      saveCheckpoint(checkpointPath, checkpoint);
 
-    results.push({
-      ...docResult,
-      status: 'indexed',
-    });
-    upsertedCount += docResult.vectors;
+      results.push({
+        ...docResult,
+        status: 'indexed',
+      });
+      upsertedCount += docResult.vectors;
+    } catch (error) {
+      const failure = {
+        fileName: document.fileName,
+        documentId: source.documentId,
+        code: error.code || 'INGESTION_FAILED',
+        message: error.message,
+      };
+      failures.push(failure);
+      results.push({
+        fileName: document.fileName,
+        documentId: source.documentId,
+        title: source.title,
+        year: source.year,
+        edition: source.edition,
+        sha256: source.sha256,
+        chunks: 0,
+        vectors: 0,
+        status: 'failed',
+      });
+      logger.error('Ingestão RAG: documento falhou', {
+        documentId: source.documentId,
+        code: failure.code,
+      });
+    }
   }
 
   const durationMs = Date.now() - startTime;
 
-  return {
+  const result = {
     namespace,
     manifestVersion: gate.manifestVersion,
     documents: results.length,
@@ -257,7 +287,22 @@ async function ingestGuidelines(options = {}) {
     upsertedCount,
     durationMs,
     results,
+    failures,
   };
+
+  if (options.reportPath !== false) {
+    const report = buildIngestionReport(result);
+    result.reportPath = writeIngestionReport(report, options.reportPath);
+  }
+
+  if (failures.length > 0) {
+    const error = new Error(`Ingestão RAG concluída com ${failures.length} falha(s).`);
+    error.code = 'RAG_INGESTION_FAILED';
+    error.result = result;
+    throw error;
+  }
+
+  return result;
 }
 
 module.exports = {
