@@ -204,6 +204,15 @@ export default function DashboardScreen() {
               <Ionicons name="information-circle-outline" size={28} color="#555" />
             </TouchableOpacity>
             <TouchableOpacity
+              testID="e2e-doctor-my-data"
+              accessibilityLabel="Meus dados"
+              accessibilityRole="button"
+              onPress={() => router.push('/meus-dados' as never)}
+              style={styles.headerActionButton}
+            >
+              <Ionicons name="download-outline" size={26} color="#555" />
+            </TouchableOpacity>
+            <TouchableOpacity
               testID="e2e-doctor-sign-out"
               accessibilityLabel="Sair da conta"
               accessibilityRole="button"
