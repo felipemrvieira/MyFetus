@@ -109,6 +109,12 @@ jobs:
       - name: Generate synthetic PDF
         run: node e2e/scripts/create_synthetic_pdf.js e2e/artifacts/synthetic-lab-report.pdf
 
+      - name: Verify API safety boundaries
+        env:
+          E2E_API_URL: http://127.0.0.1:3000
+          E2E_SAFETY_REPORT_PATH: ${{ runner.temp }}/mobile-safety-report.json
+        run: node e2e/scripts/verify_mobile_safety.js
+
       - name: Build Android APK
         working-directory: apps/mobile
         env:
@@ -159,6 +165,7 @@ jobs:
           path: |
             ${{ runner.temp }}/maestro-smoke-results.xml
             ${{ runner.temp }}/maestro-results.xml
+            ${{ runner.temp }}/mobile-safety-report.json
             ${{ runner.temp }}/myfetus-api.log
             ~/.maestro
           if-no-files-found: warn

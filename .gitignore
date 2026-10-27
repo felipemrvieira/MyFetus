@@ -49,3 +49,6 @@ apps/api/data/guidelines/*.pdf
 # Checkpoints de ingestão RAG
 apps/api/data/.rag-checkpoint.json
 *checkpoint.json
+
+# Relatórios operacionais da ingestão RAG
+apps/api/data/rag-reports/
