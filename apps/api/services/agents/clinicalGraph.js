@@ -1,74 +1,24 @@
 const { analyzeMaternal } = require('./maternalAgent');
 const { analyzeFetal } = require('./fetalAgent');
+const {
+  CRITICAL_RULES,
+  classifyQuery,
+  normalize,
+  routeInScope,
+} = require('./guardrailService');
 const { sanitizeForLLM } = require('../../utils/piiSanitizer');
 
-const MATERNAL_TERMS = [
-  'pressao', 'pressão', 'pa ', 'imc', 'peso', 'vacina', 'vacinas',
-  'glicemia', 'diabetes', 'medicamento', 'ibuprofeno', 'acido folico',
-  'ácido fólico', 'cabeca', 'cabeça', 'visao', 'visão',
-];
-
-const FETAL_TERMS = [
-  'bebe', 'bebê', 'fetal', 'feto', 'altura uterina', 'ultrassom',
-  'ultrassonografia', 'doppler', 'mexer', 'movimento', 'crescimento',
-  'pequeno', 'frequencia cardiaca', 'frequência cardíaca',
-];
-
-const CRITICAL_RULES = [
-  {
-    regex: /(dor de cabe[cç]a|cefaleia).*(vis[aã]o turva|escotoma|luzes)|((vis[aã]o turva|escotoma).*(dor de cabe[cç]a|cefaleia))/i,
-    reason: 'Sintomas neurológicos associados a possível síndrome hipertensiva na gestação.',
-  },
-  {
-    regex: /(beb[eê]|feto).*(parou|sem|n[aã]o).*(mexer|movimentar|movimentos?)|movimentos? fetais?.*(ausentes?|reduzidos?)/i,
-    reason: 'Redução ou ausência de movimentos fetais pode indicar emergência obstétrica.',
-  },
-  {
-    regex: /ibuprofeno|anti[-\s]?inflamat[oó]rio/i,
-    reason: 'Uso de anti-inflamatório na gestação exige avaliação médica, especialmente no terceiro trimestre.',
-  },
-  {
-    regex: /(press[aã]o|pa)\D*(1[6-9]\d|[2-9]\d{2})\D*(\/|por)\D*(1[1-9]\d|[2-9]\d{2})|170\s*\/\s*115/i,
-    reason: 'Pressão arterial em faixa de crise hipertensiva exige avaliação imediata.',
-  },
-  {
-    regex: /sangramento intenso|convuls[aã]o|desmaio|perda de liquido|perda de líquido/i,
-    reason: 'Sintoma de alarme obstétrico que precisa de atendimento presencial.',
-  },
-];
-
-function normalize(text) {
-  return String(text || '').toLowerCase();
-}
-
 function detectHumanReview(query) {
-  const matched = CRITICAL_RULES.find((rule) => rule.regex.test(query));
-  if (!matched) return { needs_human_review: false, ambiguity_reason: null };
+  const classification = classifyQuery(query);
   return {
-    needs_human_review: true,
-    ambiguity_reason: matched.reason,
+    needs_human_review: classification.needs_human_review,
+    ambiguity_reason: classification.needs_human_review ? classification.reason : null,
   };
 }
 
-function includesAny(text, terms) {
-  return terms.some((term) => text.includes(term));
-}
-
 function routeAgents(query) {
-  const normalized = normalize(query);
-  if (normalized.trim().length < 12) {
-    return { route: 'clarify', maternal: false, fetal: false };
-  }
-
-  const maternal = includesAny(normalized, MATERNAL_TERMS);
-  const fetal = includesAny(normalized, FETAL_TERMS);
-
-  if (!maternal && !fetal) {
-    return { route: 'clarify', maternal: false, fetal: false };
-  }
-  if (maternal && fetal) return { route: 'both', maternal: true, fetal: true };
-  if (fetal) return { route: 'fetal', maternal: false, fetal: true };
-  return { route: 'maternal', maternal: true, fetal: false };
+  const classification = classifyQuery(query);
+  return classification.route || routeInScope(query);
 }
 
 function uniqueSources(sources) {
@@ -87,6 +37,7 @@ function uniqueSources(sources) {
 }
 
 function synthesizeFinalResponse(state) {
+  if (state.guardrail_response) return state.guardrail_response;
   if (state.needs_human_review) {
     return 'Pelos sinais descritos, esta situação precisa de avaliação humana imediata. Procure atendimento obstétrico presencial ou serviço de urgência, e leve seus registros de pré-natal.';
   }
@@ -103,8 +54,8 @@ function synthesizeFinalResponse(state) {
 async function runClinicalAgentGraph(input, dependencies = {}) {
   const query = input.query;
   const sanitizedQuery = input.sanitized_query || sanitizeForLLM(query);
-  const route = routeAgents(sanitizedQuery);
-  const review = detectHumanReview(sanitizedQuery);
+  const classification = classifyQuery(sanitizedQuery);
+  const route = classification.route || { route: 'clarify', maternal: false, fetal: false };
   const state = {
     query,
     sanitized_query: sanitizedQuery,
@@ -112,13 +63,17 @@ async function runClinicalAgentGraph(input, dependencies = {}) {
     route: route.route,
     maternal_analysis: '',
     fetal_analysis: '',
-    needs_human_review: review.needs_human_review,
-    ambiguity_reason: review.ambiguity_reason,
+    needs_human_review: classification.needs_human_review,
+    ambiguity_reason: classification.reason,
+    guardrail_category: classification.category,
+    guardrail_decision: classification.decision,
+    guardrail_response: classification.response,
+    guardrail_contract_version: classification.contractVersion,
     final_response: '',
     sources: [],
   };
 
-  if (state.needs_human_review || route.route === 'clarify') {
+  if (classification.decision !== 'allow_controlled_generation') {
     state.final_response = synthesizeFinalResponse(state);
     return state;
   }
@@ -167,6 +122,7 @@ async function runClinicalAgentGraph(input, dependencies = {}) {
 module.exports = {
   CRITICAL_RULES,
   detectHumanReview,
+  normalize,
   routeAgents,
   runClinicalAgentGraph,
   synthesizeFinalResponse,
