@@ -30,3 +30,20 @@ _Avoid_: Diagnóstico, Laudo automatizado, Parecer definitivo
 Ato médico privativo de identificação de patologias e definição de condutas terapêuticas, baseado na anamnese, exame físico e julgamento profissional.
 _Avoid_: Classificação automática de doença, Veredito do sistema
 
+## Base de Conhecimento e RAG
+
+**Chunk**:
+Fragmento textual determinístico extraído de um manual oficial para indexação vetorial e citação precisa de evidências clínicas.
+_Avoid_: Pedaço de texto, Fatia, Segmento avulso
+
+**Extração Determinística**:
+Processo reproduzível de leitura e particionamento onde o mesmo PDF de entrada produz invariavelmente os mesmos blocos, IDs e metadados.
+_Avoid_: Extração aleatória, Chunking dinâmico
+
+**Seção Estrutural de Diretriz**:
+Divisão formal de conteúdo (capítulo, protocolo ou título normativo) mapeada durante a extração para contextualizar o chunk.
+_Avoid_: Categoria solta, Tag livre
+
+**Fixture Sintética de Diretriz**:
+Documento PDF gerado programaticamente sem qualquer dado real de paciente, simulando estrutura, paginação e ruídos para testes automatizados.
+_Avoid_: Arquivo mock genérico, PDF de teste real
