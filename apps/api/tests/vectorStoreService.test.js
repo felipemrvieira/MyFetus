@@ -2,6 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 
 const {
+  deleteVectorsByDocument,
   upsertVectors,
   queryVectors,
   describeIndexStats,
@@ -122,4 +123,24 @@ test('upsertVectors: executa retry com backoff em erros transitórios', async ()
 
   assert.strictEqual(res.upsertedCount, 1);
   assert.strictEqual(attempts, 3, 'Deve tentar 3 vezes antes de obter sucesso');
+});
+
+test('deleteVectorsByDocument: remove somente os vetores do documento no namespace', async () => {
+  resetMockStore();
+  const records = [
+    { id: 'doc-a-p1-c0', values: createFakeVector(), metadata: { documentId: 'doc-a' } },
+    { id: 'doc-b-p1-c0', values: createFakeVector(), metadata: { documentId: 'doc-b' } },
+  ];
+
+  await upsertVectors(records, 'guidelines-test', { mock: true });
+  const result = await deleteVectorsByDocument('doc-a', 'guidelines-test', { mock: true });
+  const stats = await describeIndexStats({ mock: true });
+
+  assert.strictEqual(result.deletedCount, 1);
+  assert.strictEqual(stats.namespaces['guidelines-test'].recordCount, 1);
+  assert.strictEqual((await queryVectors(createFakeVector(), {
+    namespace: 'guidelines-test',
+    mock: true,
+    topK: 5,
+  })).matches[0].metadata.documentId, 'doc-b');
 });

@@ -280,7 +280,42 @@ async function describeIndexStats(options = {}) {
   return index.describeIndexStats();
 }
 
+/**
+ * Remove todos os vetores de um documento dentro de um namespace.
+ * O documentId vem do manifesto e nunca é aceito vazio para evitar limpeza ampla.
+ */
+async function deleteVectorsByDocument(documentId, namespace, options = {}) {
+  if (!documentId || typeof documentId !== 'string') {
+    throw new Error('documentId é obrigatório para rollback do RAG.');
+  }
+
+  const config = getVectorStoreConfig();
+  const targetNamespace = namespace || config.namespace;
+
+  if (isMockMode(options)) {
+    const nsMap = mockStore.get(targetNamespace);
+    if (!nsMap) {
+      return { documentId, namespace: targetNamespace, deletedCount: 0, mode: 'mock' };
+    }
+
+    let deletedCount = 0;
+    for (const [id, record] of nsMap.entries()) {
+      if (record.metadata?.documentId === documentId) {
+        nsMap.delete(id);
+        deletedCount += 1;
+      }
+    }
+
+    return { documentId, namespace: targetNamespace, deletedCount, mode: 'mock' };
+  }
+
+  const namespaceIndex = getNamespace(targetNamespace);
+  await namespaceIndex.deleteMany({ documentId });
+  return { documentId, namespace: targetNamespace, deletedCount: null, mode: 'pinecone' };
+}
+
 module.exports = {
+  deleteVectorsByDocument,
   describeIndexStats,
   getVectorStoreConfig,
   queryVectors,

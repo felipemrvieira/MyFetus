@@ -19,5 +19,8 @@ async function main() {
 
 main().catch((error) => {
   console.error('Erro na ingestão RAG:', error);
+  if (error.result?.reportPath) {
+    console.error(`Relatório da execução: ${error.result.reportPath}`);
+  }
   process.exit(1);
 });
