@@ -12,24 +12,7 @@
 
 let LOINC_CATALOG = []; // Cache em memória
 let catalogLoaded = false;
-let FALLBACK_CATALOG = null;
-
-const getFallbackCatalog = () => {
-  if (FALLBACK_CATALOG !== null) {
-    return FALLBACK_CATALOG;
-  }
-
-  try {
-    const { INITIAL_LOINC_CATALOG } = require('./loincInitializer');
-    FALLBACK_CATALOG = Array.isArray(INITIAL_LOINC_CATALOG) ? INITIAL_LOINC_CATALOG : [];
-  } catch (error) {
-    const logger = require('../utils/logger');
-    logger.error('Falha ao carregar catálogo LOINC', { code: 'LOINC_FALLBACK_LOAD_FAILED' });
-    FALLBACK_CATALOG = [];
-  }
-
-  return FALLBACK_CATALOG;
-};
+const { INITIAL_LOINC_CATALOG } = require('../data/loinc-catalog');
 
 const normalizeText = (value) => {
   if (value === null || value === undefined) return '';
@@ -89,7 +72,7 @@ const buildMatch = (entry, alias, score, input) => ({
 
 const mapClinicalTerm = (term) => {
   if (LOINC_CATALOG.length === 0) {
-    LOINC_CATALOG = getFallbackCatalog();
+    LOINC_CATALOG = INITIAL_LOINC_CATALOG;
   }
 
   const input = normalizeText(term);
