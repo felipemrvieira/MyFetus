@@ -79,7 +79,10 @@ const createDoctor = async (req, res) => {
 
   const birthdatePolicy = validateAdultBirthdate(birthdate);
   if (!birthdatePolicy.valid) {
-    return res.status(400).json({ error: birthdatePolicy.message, code: birthdatePolicy.code });
+    const error = birthdatePolicy.code === 'MINIMUM_AGE_REQUIRED'
+      ? 'O cadastro exige idade mínima de 18 anos.'
+      : 'Data de nascimento inválida.';
+    return res.status(400).json({ error, code: birthdatePolicy.code });
   }
 
   // E7-01.1: médico aceita os termos do próprio perfil e declara ciência da política.
