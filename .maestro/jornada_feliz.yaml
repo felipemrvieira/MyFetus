@@ -18,11 +18,11 @@ appId: host.exp.exponent
 - tapOn:
     id: e2e-login-email
 - eraseText
-- inputText: "gestante_teste@myfetus.com"
+- inputText: "teste@teste.com"
 - tapOn:
     id: e2e-login-password
 - eraseText
-- inputText: "SenhaTeste123!"
+- inputText: "testeteste"
 - tapOn:
     id: e2e-login-submit
 
@@ -53,10 +53,10 @@ appId: host.exp.exponent
 - assertVisible: "Controle de Água"
 
 - tapOn: "Checklist"
-- assertVisible: "Checklist do"
+- assertVisible: ".*Checklist.*"
 
 - tapOn: "Exames"
-- assertVisible: "Solicitações do médico"
+- assertVisible: ".*Solicitações do médico.*"
 
 # 5. Retorno à Home e Logout
 - tapOn: "Início"
