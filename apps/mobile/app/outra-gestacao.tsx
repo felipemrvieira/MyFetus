@@ -71,6 +71,7 @@ export default function OutraGestacaoScreen() {
 
         <View style={styles.optionsContainer}>
           <TouchableOpacity
+            testID="e2e-previous-pregnancy-yes"
             style={[
               styles.optionButton,
               hadPreviousPregnancies === true && styles.optionSelected,
@@ -88,6 +89,7 @@ export default function OutraGestacaoScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            testID="e2e-previous-pregnancy-no"
             style={[
               styles.optionButton,
               hadPreviousPregnancies === false && styles.optionSelected,
@@ -106,6 +108,7 @@ export default function OutraGestacaoScreen() {
         </View>
 
         <TouchableOpacity
+          testID="e2e-previous-pregnancy-continue"
           style={[
             styles.continueButton,
             hadPreviousPregnancies !== null && styles.continueButtonActive,

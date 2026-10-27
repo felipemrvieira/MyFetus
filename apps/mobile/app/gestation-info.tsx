@@ -219,6 +219,7 @@ export default function GestationInfoScreen() {
         </Text>
 
         <TouchableOpacity 
+          testID="e2e-gestation-continue"
           style={styles.continueButton}
           onPress={handleContinue}
           accessibilityLabel="Continuar para o início"
