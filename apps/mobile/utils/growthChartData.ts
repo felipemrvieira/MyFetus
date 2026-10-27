@@ -29,7 +29,7 @@ export const IMC_ADEQUADO_SOBREPESO: CurvePoint[] = [
   { week: 6, value: 24.9 }, { week: 8, value: 25.3 }, { week: 10, value: 25.6 },
   { week: 12, value: 26.0 }, { week: 14, value: 26.3 }, { week: 16, value: 26.6 },
   { week: 18, value: 26.9 }, { week: 20, value: 27.2 }, { week: 22, value: 27.5 },
-  { week: 24, value: 27.8 }, { week: 26, value: 28.1 }, { week: 28, value: 25.9 },
+  { week: 24, value: 27.8 }, { week: 26, value: 28.1 }, { week: 28, value: 28.4 },
   { week: 30, value: 28.6 }, { week: 32, value: 28.8 }, { week: 34, value: 29.0 },
   { week: 36, value: 29.1 }, { week: 38, value: 29.2 }, { week: 40, value: 29.2 },
   { week: 42, value: 29.2 },

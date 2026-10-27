@@ -22,6 +22,10 @@ class GrowthValidationError extends Error {
   }
 }
 
+const HADLOCK_LOG_SIGMA = 0.12;
+const P10_Z_SCORE = -1.28155;
+const P90_Z_SCORE = 1.28155;
+
 function erf(x) {
   const sign = x >= 0 ? 1 : -1;
   x = Math.abs(x);
@@ -109,8 +113,7 @@ function calculateHadlockPercentile(gestationalAgeWeeks, biometrics) {
   const expectedMedianWeight = calculateExpectedMedianWeight(gestationalAgeWeeks);
   
   // CORREÇÃO 3: Distribuição Log-Normal para precisão clínica nos extremos
-  const logCV = 0.12; // 12% de coeficiente de variação
-  const zScore = (Math.log(estimatedWeightGrams) - Math.log(expectedMedianWeight)) / logCV;
+  const zScore = (Math.log(estimatedWeightGrams) - Math.log(expectedMedianWeight)) / HADLOCK_LOG_SIGMA;
   
   // Transformação matemática do Z-Score no percentil exato
   const percentile = normalCDF(zScore) * 100;
@@ -129,17 +132,15 @@ function calculateHadlockPercentile(gestationalAgeWeeks, biometrics) {
  */
 function generateCurvePointsForWeek(gaWeeks) {
   const p50Weight = calculateExpectedMedianWeight(gaWeeks);
-  const stdDev = p50Weight * 0.12; // 12% de desvio padrão na curva de Hadlock
-
-  // Z-scores aproximados para os limites clínicos normais
-  const zScoreP10 = -1.28155; 
-  const zScoreP90 = 1.28155;
+  // Os limites devem usar a mesma distribuição log-normal do percentil individual.
+  const p10Weight = p50Weight * Math.exp(P10_Z_SCORE * HADLOCK_LOG_SIGMA);
+  const p90Weight = p50Weight * Math.exp(P90_Z_SCORE * HADLOCK_LOG_SIGMA);
 
   return {
     semana: gaWeeks,
-    p10: Math.round(p50Weight + (zScoreP10 * stdDev)),
+    p10: Math.round(p10Weight),
     p50: Math.round(p50Weight),
-    p90: Math.round(p50Weight + (zScoreP90 * stdDev))
+    p90: Math.round(p90Weight)
   };
 }
 
