@@ -74,7 +74,9 @@ const exportMyData = async (req, res) => {
     auditExport(req, 'SUCCESS', { format: 'json', sections: summarize(exportData) });
 
     res.set('Cache-Control', 'no-store');
-    res.attachment(exportFileName(new Date(exportData.gerado_em)));
+    const filename = exportFileName(new Date(exportData.gerado_em));
+    res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    res.type('json');
     return res.status(200).json(exportData);
   } catch (error) {
     if (dbClient) await dbClient.query('ROLLBACK').catch(() => {});

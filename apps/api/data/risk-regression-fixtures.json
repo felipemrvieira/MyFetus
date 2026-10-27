@@ -1,0 +1,29 @@
+{
+  "fixtureVersion": "1.0.0",
+  "catalogVersion": "1.0.0",
+  "approvalStatus": "technical-baseline-awaiting-po",
+  "scope": "synthetic-contract-coverage",
+  "notes": "Casos sintéticos para verificar o contrato executável. Não substituem validação clínica nem alteram os limiares do catálogo.",
+  "cases": [
+    {"id": "maternal_age_15_or_less", "category": "maternal_age", "inputOverrides": {"maternalAge": 15}, "expected": {"status": "alert", "alertRuleIds": ["maternal_age_15_or_less"]}},
+    {"id": "maternal_age_35_or_more", "category": "maternal_age", "inputOverrides": {"maternalAge": 35}, "expected": {"status": "alert", "alertRuleIds": ["maternal_age_35_or_more"]}},
+    {"id": "blood_pressure_severe", "category": "blood_pressure", "inputOverrides": {"systolic": 160, "diastolic": 80}, "expected": {"status": "alert", "alertRuleIds": ["blood_pressure_elevated", "blood_pressure_severe"]}},
+    {"id": "blood_pressure_elevated", "category": "blood_pressure", "inputOverrides": {"systolic": 140, "diastolic": 80}, "expected": {"status": "alert", "alertRuleIds": ["blood_pressure_elevated"]}},
+    {"id": "fasting_glucose_attention", "category": "blood_glucose", "inputOverrides": {"glucoseType": "fasting", "glucoseValue": 92}, "expected": {"status": "alert", "alertRuleIds": ["fasting_glucose_attention"]}},
+    {"id": "casual_glucose_attention", "category": "blood_glucose", "inputOverrides": {"glucoseType": "casual", "glucoseValue": 200}, "expected": {"status": "alert", "alertRuleIds": ["casual_glucose_attention"]}},
+    {"id": "ogtt_glucose_attention", "category": "blood_glucose", "inputOverrides": {"glucoseType": "ogtt75g", "glucoseValue": 92}, "expected": {"status": "alert", "alertRuleIds": ["ogtt_glucose_attention"]}},
+    {"id": "bmi_outside_healthy_range_low", "category": "pre_pregnancy_bmi", "inputOverrides": {"prePregnancyBmi": 18.4}, "expected": {"status": "alert", "alertRuleIds": ["bmi_outside_healthy_range"]}},
+    {"id": "bmi_outside_healthy_range_high", "category": "pre_pregnancy_bmi", "inputOverrides": {"prePregnancyBmi": 25}, "expected": {"status": "alert", "alertRuleIds": ["bmi_outside_healthy_range"]}},
+    {"id": "fundal_height_outside_curve", "category": "fundal_height", "inputOverrides": {"fundalHeightPercentile": 5}, "expected": {"status": "pending_decision", "alertRuleIds": []}},
+    {"id": "fetal_heart_rate_low", "category": "fetal_heart_rate", "inputOverrides": {"fetalHeartRate": 109, "gestationalWeeks": 20}, "expected": {"status": "alert", "alertRuleIds": ["fetal_heart_rate_low"]}},
+    {"id": "fetal_heart_rate_high", "category": "fetal_heart_rate", "inputOverrides": {"fetalHeartRate": 161, "gestationalWeeks": 20}, "expected": {"status": "alert", "alertRuleIds": ["fetal_heart_rate_high"]}},
+    {"id": "gestational_age_42_or_more", "category": "gestational_age", "inputOverrides": {"gestationalWeeks": 42}, "expected": {"status": "alert", "alertRuleIds": ["gestational_age_41_or_more", "gestational_age_42_or_more"]}},
+    {"id": "gestational_age_41_or_more", "category": "gestational_age", "inputOverrides": {"gestationalWeeks": 41}, "expected": {"status": "alert", "alertRuleIds": ["gestational_age_41_or_more"]}},
+    {"id": "family_history_present", "category": "family_history", "inputOverrides": {"familyHistory": true}, "expected": {"status": "alert", "alertRuleIds": ["family_history_present"]}},
+    {"id": "clinical_history_present", "category": "clinical_history", "inputOverrides": {"clinicalHistory": true}, "expected": {"status": "alert", "alertRuleIds": ["clinical_history_present"]}},
+    {"id": "previous_pregnancy_risk", "category": "previous_pregnancy", "inputOverrides": {"previousPregnancyRisk": true}, "expected": {"status": "alert", "alertRuleIds": ["previous_pregnancy_risk"]}},
+    {"id": "current_pregnancy_acute", "category": "current_pregnancy", "inputOverrides": {"currentPregnancyFlags": ["bleeding"]}, "expected": {"status": "alert", "alertRuleIds": ["current_pregnancy_acute"]}},
+    {"id": "current_pregnancy_other", "category": "current_pregnancy", "inputOverrides": {"currentPregnancyFlags": ["anemia"]}, "expected": {"status": "alert", "alertRuleIds": ["current_pregnancy_other"]}},
+    {"id": "vaccination_pending", "category": "vaccination", "inputOverrides": {"vaccinationStatus": "pending"}, "expected": {"status": "pending_decision", "alertRuleIds": []}}
+  ]
+}
