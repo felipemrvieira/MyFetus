@@ -1,0 +1,145 @@
+{
+  "catalogVersion": "1.0.0",
+  "reviewedAt": "2026-10-23",
+  "decisionStatus": "adjusted",
+  "source": "docs/regras-de-risco.md",
+  "scope": "triagem_obstetrica",
+  "levels": {
+    "green": "parâmetro adequado ou risco habitual",
+    "yellow": "sinal de alerta ou risco intermediário",
+    "red": "parâmetro crítico ou atenção imediata",
+    "pending": "dado ou decisão necessária antes da avaliação"
+  },
+  "categories": [
+    {
+      "id": "maternal_age",
+      "label": "Idade materna",
+      "requiredFields": ["maternalAge"],
+      "fields": {"maternalAge": {"unit": "anos", "min": 0, "max": 120}},
+      "rules": [
+        {"id": "maternal_age_15_or_less", "when": {"field": "maternalAge", "op": "lte", "value": 15}, "severity": "yellow", "evidence": "idade materna igual ou inferior a 15 anos", "suggestedAction": "encaminhar para avaliação da equipe assistencial"},
+        {"id": "maternal_age_35_or_more", "when": {"field": "maternalAge", "op": "gte", "value": 35}, "severity": "yellow", "evidence": "idade materna igual ou superior a 35 anos", "suggestedAction": "manter acompanhamento profissional e vigilância pré-natal"}
+      ]
+    },
+    {
+      "id": "blood_pressure",
+      "label": "Pressão arterial",
+      "requiredFields": ["systolic", "diastolic"],
+      "fields": {
+        "systolic": {"unit": "mmHg", "min": 40, "max": 300},
+        "diastolic": {"unit": "mmHg", "min": 20, "max": 200}
+      },
+      "rules": [
+        {"id": "blood_pressure_severe", "when": {"any": [{"field": "systolic", "op": "gte", "value": 160}, {"field": "diastolic", "op": "gte", "value": 110}]}, "severity": "red", "evidence": "pressão sistólica ≥160 mmHg ou diastólica ≥110 mmHg", "suggestedAction": "procurar avaliação profissional no mesmo dia"},
+        {"id": "blood_pressure_elevated", "when": {"any": [{"field": "systolic", "op": "gte", "value": 140}, {"field": "diastolic", "op": "gte", "value": 90}]}, "severity": "yellow", "evidence": "pressão sistólica ≥140 mmHg ou diastólica ≥90 mmHg", "suggestedAction": "repetir a aferição em repouso e falar com a equipe de saúde"}
+      ]
+    },
+    {
+      "id": "blood_glucose",
+      "label": "Glicemia",
+      "requiredFields": ["glucoseType", "glucoseValue"],
+      "fields": {"glucoseValue": {"unit": "mg/dL", "min": 0, "max": 1000}},
+      "rules": [
+        {"id": "fasting_glucose_attention", "when": {"all": [{"field": "glucoseType", "op": "eq", "value": "fasting"}, {"field": "glucoseValue", "op": "gte", "value": 92}]}, "severity": "yellow", "evidence": "glicemia de jejum ≥92 mg/dL", "suggestedAction": "registrar o resultado e encaminhar para avaliação profissional"},
+        {"id": "casual_glucose_attention", "when": {"all": [{"field": "glucoseType", "op": "eq", "value": "casual"}, {"field": "glucoseValue", "op": "gte", "value": 200}]}, "severity": "yellow", "evidence": "glicemia casual ≥200 mg/dL", "suggestedAction": "registrar o tipo de exame e encaminhar para avaliação profissional"},
+        {"id": "ogtt_glucose_attention", "when": {"all": [{"field": "glucoseType", "op": "eq", "value": "ogtt75g"}, {"field": "glucoseValue", "op": "gte", "value": 92}]}, "severity": "yellow", "evidence": "ponto de corte de atenção do TOTG 75 g atingido", "suggestedAction": "registrar o ponto de corte e encaminhar para avaliação profissional"}
+      ]
+    },
+    {
+      "id": "pre_pregnancy_bmi",
+      "label": "IMC pré-gestacional",
+      "requiredFields": ["prePregnancyBmi"],
+      "fields": {"prePregnancyBmi": {"unit": "kg/m²", "min": 12, "max": 60}},
+      "rules": [
+        {"id": "bmi_outside_healthy_range", "when": {"any": [{"field": "prePregnancyBmi", "op": "lt", "value": 18.5}, {"field": "prePregnancyBmi", "op": "gte", "value": 25}]}, "severity": "yellow", "evidence": "IMC pré-gestacional fora da faixa de 18,5 a 24,9 kg/m²", "suggestedAction": "manter acompanhamento profissional e nutricional"}
+      ]
+    },
+    {
+      "id": "fundal_height",
+      "label": "Altura uterina",
+      "requiredFields": ["fundalHeight", "gestationalWeeks", "fundalHeightPercentile"],
+      "fields": {
+        "fundalHeight": {"unit": "cm", "min": 0, "max": 100},
+        "gestationalWeeks": {"unit": "semanas", "min": 0, "max": 45},
+        "fundalHeightPercentile": {"unit": "percentil", "min": 0, "max": 100}
+      },
+      "decisionStatus": "pending_curve_contract",
+      "rules": [
+        {"id": "fundal_height_outside_curve", "when": {"any": [{"field": "fundalHeightPercentile", "op": "lt", "value": 10}, {"field": "fundalHeightPercentile", "op": "gt", "value": 90}]}, "severity": "yellow", "evidence": "altura uterina fora dos percentis P10–P90", "suggestedAction": "encaminhar a medida para avaliação profissional"}
+      ]
+    },
+    {
+      "id": "fetal_heart_rate",
+      "label": "Frequência cardíaca fetal",
+      "requiredFields": ["fetalHeartRate", "gestationalWeeks"],
+      "fields": {
+        "fetalHeartRate": {"unit": "bpm", "min": 40, "max": 240},
+        "gestationalWeeks": {"unit": "semanas", "min": 0, "max": 45}
+      },
+      "rules": [
+        {"id": "fetal_heart_rate_low", "when": {"all": [{"field": "gestationalWeeks", "op": "gte", "value": 20}, {"field": "fetalHeartRate", "op": "lt", "value": 110}]}, "severity": "red", "evidence": "frequência cardíaca fetal abaixo de 110 bpm a partir de 20 semanas", "suggestedAction": "procurar avaliação profissional no mesmo dia"},
+        {"id": "fetal_heart_rate_high", "when": {"all": [{"field": "gestationalWeeks", "op": "gte", "value": 20}, {"field": "fetalHeartRate", "op": "gt", "value": 160}]}, "severity": "yellow", "evidence": "frequência cardíaca fetal acima de 160 bpm a partir de 20 semanas", "suggestedAction": "encaminhar a medida para avaliação profissional"}
+      ]
+    },
+    {
+      "id": "gestational_age",
+      "label": "Idade gestacional",
+      "requiredFields": ["gestationalWeeks"],
+      "fields": {"gestationalWeeks": {"unit": "semanas", "min": 0, "max": 45}},
+      "rules": [
+        {"id": "gestational_age_42_or_more", "when": {"field": "gestationalWeeks", "op": "gte", "value": 42}, "severity": "red", "evidence": "idade gestacional igual ou superior a 42 semanas", "suggestedAction": "procurar avaliação profissional no mesmo dia"},
+        {"id": "gestational_age_41_or_more", "when": {"field": "gestationalWeeks", "op": "gte", "value": 41}, "severity": "yellow", "evidence": "idade gestacional igual ou superior a 41 semanas", "suggestedAction": "manter avaliação profissional frequente"}
+      ]
+    },
+    {
+      "id": "family_history",
+      "label": "Antecedentes familiares",
+      "requiredFields": ["familyHistory"],
+      "fields": {"familyHistory": {"unit": "booleano"}},
+      "rules": [
+        {"id": "family_history_present", "when": {"field": "familyHistory", "op": "eq", "value": true}, "severity": "yellow", "evidence": "antecedente familiar de atenção registrado", "suggestedAction": "manter vigilância pré-natal com a equipe de saúde"}
+      ]
+    },
+    {
+      "id": "clinical_history",
+      "label": "Antecedentes clínicos",
+      "requiredFields": ["clinicalHistory"],
+      "fields": {"clinicalHistory": {"unit": "booleano"}},
+      "rules": [
+        {"id": "clinical_history_present", "when": {"field": "clinicalHistory", "op": "eq", "value": true}, "severity": "yellow", "evidence": "antecedente clínico de atenção registrado", "suggestedAction": "manter acompanhamento profissional"}
+      ]
+    },
+    {
+      "id": "previous_pregnancy",
+      "label": "Gestação anterior",
+      "requiredFields": ["previousPregnancyRisk"],
+      "fields": {"previousPregnancyRisk": {"unit": "booleano"}},
+      "rules": [
+        {"id": "previous_pregnancy_risk", "when": {"field": "previousPregnancyRisk", "op": "eq", "value": true}, "severity": "yellow", "evidence": "fator obstétrico anterior de atenção registrado", "suggestedAction": "manter acompanhamento profissional"}
+      ]
+    },
+    {
+      "id": "current_pregnancy",
+      "label": "Gestação atual",
+      "requiredFields": ["currentPregnancyFlags"],
+      "fields": {"currentPregnancyFlags": {"unit": "lista de sinais"}},
+      "rules": [
+        {"id": "current_pregnancy_acute", "when": {"field": "currentPregnancyFlags", "op": "containsAny", "value": ["bleeding", "fluid_loss"]}, "severity": "red", "evidence": "sinal agudo registrado na gestação atual", "suggestedAction": "procurar avaliação profissional no mesmo dia"},
+        {"id": "current_pregnancy_other", "when": {"field": "currentPregnancyFlags", "op": "containsAny", "value": ["hiv", "syphilis", "hypertension", "gestational_diabetes", "insulin", "anemia", "urinary_infection", "toxoplasmosis", "smoking", "alcohol", "rh_immunization", "fever", "rash"]}, "severity": "yellow", "evidence": "condição de atenção registrada na gestação atual", "suggestedAction": "manter avaliação e acompanhamento profissional"}
+      ]
+    },
+    {
+      "id": "vaccination",
+      "label": "Vacinação",
+      "requiredFields": ["vaccinationStatus", "gestationalWeeks"],
+      "fields": {
+        "vaccinationStatus": {"unit": "estado por idade gestacional"},
+        "gestationalWeeks": {"unit": "semanas", "min": 0, "max": 45}
+      },
+      "decisionStatus": "pending_calendar_contract",
+      "rules": [
+        {"id": "vaccination_pending", "when": {"field": "vaccinationStatus", "op": "eq", "value": "pending"}, "severity": "yellow", "evidence": "há pendência vacinal a conferir conforme idade gestacional e histórico", "suggestedAction": "conferir a Caderneta da Gestante com a equipe de saúde"}
+      ]
+    }
+  ]
+}
