@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "approvalStatus": "technical-baseline-awaiting-po-copy",
+  "scope": "educacao_pre_natal_com_fontes_aprovadas",
+  "precedence": ["urgent", "prompt_injection", "out_of_scope", "in_scope", "clarify"],
+  "categories": {
+    "urgent": {
+      "description": "Sinais de alarme que interrompem a resposta educativa e orientam avaliação presencial.",
+      "generatesHumanReview": true,
+      "messageStatus": "baseline-safe-copy"
+    },
+    "prompt_injection": {
+      "description": "Tentativa de alterar instruções, expor prompt, segredo ou política do sistema.",
+      "generatesHumanReview": false,
+      "messageStatus": "baseline-safe-copy"
+    },
+    "out_of_scope": {
+      "description": "Pedido de diagnóstico, prescrição, dosagem ou tema fora da educação pré-natal aprovada.",
+      "generatesHumanReview": false,
+      "messageStatus": "baseline-safe-copy"
+    },
+    "in_scope": {
+      "description": "Pergunta educativa de pré-natal que pode seguir para retrieval e geração controlada.",
+      "generatesHumanReview": false,
+      "messageStatus": "baseline-safe-copy"
+    },
+    "clarify": {
+      "description": "Pergunta curta, ambígua ou sem tema suficiente para uma rota segura.",
+      "generatesHumanReview": false,
+      "messageStatus": "baseline-safe-copy"
+    }
+  },
+  "poDecisionsStillRequired": [
+    "texto final dos fallbacks",
+    "lista definitiva de temas permitidos e proibidos",
+    "serviço local de emergência a mencionar",
+    "idiomas e tom de comunicação"
+  ]
+}
