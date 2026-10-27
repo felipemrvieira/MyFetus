@@ -43,6 +43,9 @@ const { getSecurityConfig, requireHttps } = require('./config/security');
 const hardening = require('./config/apiHardening');
 const { requireCurrentConsent } = require('./middlewares/consent');
 const { createAuthLimiters } = require('./middlewares/authRateLimit');
+const { validateRuntimeRequirements } = require('./config/runtimeRequirements');
+
+validateRuntimeRequirements();
 
 const app = express();
 const securityConfig = getSecurityConfig();
