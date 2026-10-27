@@ -1,39 +1,56 @@
 import React from 'react';
 import {
-  View,
   Text,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons'; // Para o placeholder
+import { api } from '../../../utils/apiClient';
+import FetalGrowthHistoryChart from '../../../components/FetalGrowthHistoryChart';
+import { FetalBiometryRecord, normalizeFetalHistory } from '../../../utils/fetalHistory';
 
 export default function UltrassonsScreen() {
   const router = useRouter();
   const { patientId } = useLocalSearchParams(); // Pega o ID do paciente
+  const [records, setRecords] = React.useState<FetalBiometryRecord[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const handleNext = () => {
-    router.push(`/doctor/${patientId}/historico_exames`);
-  };
+  React.useEffect(() => {
+    if (!patientId) return;
+
+    const loadHistory = async () => {
+      try {
+        setLoading(true);
+        const patient = await api.get(`/pregnants/${patientId}`);
+        const pregnancyId = patient.data?.latest_pregnancy?.id;
+        if (!pregnancyId) {
+          setRecords([]);
+          return;
+        }
+        const response = await api.get(`/history/pregnancies/${pregnancyId}/fetal-biometries`, {
+          params: { order: 'asc', limit: 200 },
+        });
+        setRecords(normalizeFetalHistory(response.data));
+      } catch {
+        Alert.alert('Erro', 'Não foi possível carregar o histórico de ultrassons.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, [patientId]);
+
+  const handleNext = () => router.push(`/doctor/${patientId}/historico_exames`);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        
-        {/* --- GRÁFICO FALSO (PLACEHOLDER) --- */}
-        {/* Mesmo placeholder da Tela 4, mas com labels diferentes */}
-        <View style={styles.chartPlaceholder}>
-          <Ionicons name="analytics-outline" size={80} color="#B0A8D0" />
-          <Text style={styles.chartText}>
-            (Componente de Gráfico de Peso Fetal)
-          </Text>
-          <Text style={styles.chartAxisLabelX}>Data</Text>
-          <Text style={styles.chartAxisLabelY}>Peso Fetal</Text>
-        </View>
-        {/* --- FIM DO GRÁFICO FALSO --- */}
-
+        {loading ? <ActivityIndicator size="large" color="#886aea" /> : <FetalGrowthHistoryChart records={records} />}
 
         {/* Botão para a próxima tela */}
         <TouchableOpacity style={styles.button} onPress={handleNext}>
@@ -55,37 +72,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     alignItems: 'center', 
-  },
-  chartPlaceholder: {
-    width: '100%',
-    height: 350, 
-    backgroundColor: '#F0EFFF', 
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#D8D0F0',
-    marginBottom: 40,
-    position: 'relative', 
-  },
-  chartText: {
-    color: '#B0A8D0',
-    fontSize: 16,
-    marginTop: 10,
-  },
-  chartAxisLabelX: {
-    position: 'absolute',
-    bottom: 10,
-    color: '#888',
-    fontSize: 14,
-  },
-  chartAxisLabelY: {
-    position: 'absolute',
-    left: 10,
-    top: '45%',
-    color: '#888',
-    fontSize: 14,
-    transform: [{ rotate: '-90deg' }],
   },
   button: {
     backgroundColor: '#886aea', 
