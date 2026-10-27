@@ -101,6 +101,18 @@ function createRagLimiterOptions(options = {}) {
   return createLimiterOptions(windowMs, ragMax, 'RAG_RATE_LIMIT_BLOCKED', 'rag');
 }
 
+function createAiLimiterOptions(options = {}) {
+  const windowMs = positiveInteger(
+    options.windowMs ?? process.env.AI_RATE_LIMIT_WINDOW_MS ?? process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+    15 * 60 * 1000
+  );
+  const aiMax = positiveInteger(
+    options.aiMax ?? process.env.AI_RATE_LIMIT_MAX,
+    positiveInteger(options.fallbackMax ?? process.env.API_RATE_LIMIT_MAX, 300)
+  );
+  return createLimiterOptions(windowMs, aiMax, 'AI_RATE_LIMIT_BLOCKED', 'ai');
+}
+
 // Exportação confere senha e gera um arquivo grande: limite baixo por janela.
 function createDataExportLimiterOptions(options = {}) {
   const windowMs = positiveInteger(
@@ -148,6 +160,7 @@ module.exports = {
   createClinicalLimiterOptions,
   createApiLimiterOptions,
   createRagLimiterOptions,
+  createAiLimiterOptions,
   createDataExportLimiterOptions,
   createAccountDeletionLimiterOptions,
   createAuthLimiters,

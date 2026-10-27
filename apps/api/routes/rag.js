@@ -10,7 +10,8 @@ const router = express.Router();
 
 const { rateLimit } = require('express-rate-limit');
 const { authenticateToken, requireRole } = require('../middlewares/auth');
-const { createApiLimiterOptions } = require('../middlewares/authRateLimit');
+const { createAiLimiterOptions } = require('../middlewares/authRateLimit');
+const { createAiUsageMiddleware } = require('../middlewares/aiUsage');
 const {
   askClinicalAgentsChat,
   searchKnowledgeBase,
@@ -18,14 +19,14 @@ const {
   getRAGStats,
 } = require('../controllers/ragController');
 
-router.use(rateLimit(createApiLimiterOptions()));
+router.use(rateLimit(createAiLimiterOptions()));
 
 // Busca semântica no knowledge base (requer autenticação)
-router.post('/search', authenticateToken, searchKnowledgeBase);
+router.post('/search', authenticateToken, createAiUsageMiddleware({ operation: 'rag_search' }), searchKnowledgeBase);
 
 // Chat clínico: retrieval + geração de resposta em linguagem natural (requer autenticação)
-router.post('/chat', authenticateToken, askClinicalChat);
-router.post('/chat/agents', authenticateToken, askClinicalAgentsChat);
+router.post('/chat', authenticateToken, createAiUsageMiddleware({ operation: 'rag_chat' }), askClinicalChat);
+router.post('/chat/agents', authenticateToken, createAiUsageMiddleware({ operation: 'rag_agents' }), askClinicalAgentsChat);
 
 // Estatísticas do RAG (admin only)
 router.get('/stats', authenticateToken, requireRole('admin'), getRAGStats);
