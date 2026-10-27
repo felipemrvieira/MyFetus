@@ -15,6 +15,8 @@ O presente catálogo estabelece a fotografia técnica integral das regras de est
 
 Este documento constitui o catálogo versionado para auditoria e implementação posterior. A baseline foi revisada pelo Product Owner em 23/10/2026; a decisão registrada para as doze categorias é `ajustada`, com as remoções e regras específicas indicadas abaixo. Nenhuma alteração no motor de produção é realizada neste PR: a implementação deve consumir este catálogo somente depois de uma ADR ou regra equivalente versionada.
 
+O contrato executável correspondente está em [`apps/api/data/alert-rules.json`](../apps/api/data/alert-rules.json) e é avaliado pelo [`apps/api/services/riskEngine.js`](../apps/api/services/riskEngine.js). O motor é determinístico, não transforma ausência em resultado verde e rejeita valores fora das faixas plausíveis. Categorias que ainda dependem de uma curva ou calendário formalizado retornam `pending_decision`; elas não geram alerta clínico por aproximação.
+
 ### 1.2 Distinção Conceitual entre Triagem e Diagnóstico
 Em conformidade com a legislação sanitária brasileira, resoluções do Conselho Federal de Medicina (CFM) e os termos consolidados no [GLOSSARY.md](file:///C:/Users/Adryan/Documents/MyFetus/GLOSSARY.md):
 
