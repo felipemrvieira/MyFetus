@@ -121,6 +121,7 @@ export default function WelcomeScreen() {
             
             <View style={styles.inputContainer}>
               <TextInput
+                testID="e2e-last-menstruation"
                 style={styles.dateInput}
                 placeholder="DD/MM/AAAA"
                 value={selectedDate}
@@ -130,6 +131,7 @@ export default function WelcomeScreen() {
                 placeholderTextColor="#f9a9a7"
               />
               <TouchableOpacity 
+                testID="e2e-last-menstruation-submit"
                 style={[
                   styles.submitButton,
                   selectedDate.length !== 10 && styles.submitButtonDisabled
