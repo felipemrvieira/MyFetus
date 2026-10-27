@@ -2,8 +2,15 @@ const generationService = require('../generationService');
 
 const FETAL_FILTERS = {
   $or: [
-    { tema: { $in: ['desenvolvimento_fetal', 'ultrassonografia', 'altura_uterina'] } },
-    { section: { $in: ['ultrassonografia', 'crescimento fetal', 'doppler'] } },
+    {
+      documentId: {
+        $in: [
+          'manual-gestacao-alto-risco-ms-2022',
+          'caderneta-gestante-ms-2026',
+        ],
+      },
+    },
+    { section: { $in: ['ultrassonografia', 'crescimento fetal', 'doppler', 'altura uterina'] } },
   ],
 };
 

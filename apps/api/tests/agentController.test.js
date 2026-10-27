@@ -74,10 +74,8 @@ const embeddingMock = { generateEmbedding: test.mock.fn(async () => [0.1]) };
 const mocks = {
   '../backend': clientMock,
   '../services/clinicalDataService': { decryptPregnantDetails: decryptMock },
-  '../utils/ragRetrieval': {
-    semanticSearch: async () => ({
-      resultados: [{ fonte: 'FEBRASGO', trecho: 'Diretriz de teste' }],
-    }),
+  '../services/ragRetrievalService': {
+    retrieveChunks: async () => [{ fonte: 'FEBRASGO', trecho: 'Diretriz de teste' }],
   },
   '../services/generationService': generationServiceMock,
   '../services/embeddingService': embeddingMock,

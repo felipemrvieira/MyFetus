@@ -2,11 +2,8 @@ const client = require('../backend'); // Importação correta usada no seu proje
 const {
   decryptPregnantDetails,
 } = require('../services/clinicalDataService');
-const ragRetrieval = require('../utils/ragRetrieval');
 const { generateMaternalAgentAnalysis } = require('../services/generationService');
-
-const embeddingService = require('../services/embeddingService');
-const vectorStore = require('../services/vectorStoreService');
+const { retrieveChunks } = require('../services/ragRetrievalService');
 const {
   doctorCanAccessPregnant,
   ensureCanAccessPregnant,
@@ -77,21 +74,9 @@ async function handleMaternalAnalysis(req, res) {
     );
 
 
-    const queryEmbedding = await embeddingService.generateEmbedding(query);
-    const rawPineconeResults = await vectorStore.queryVectors(queryEmbedding, { topK: 10 });
-
-    // 2. Extraia os chunks (o Pinecone retorna 'matches')
-    const chunks = rawPineconeResults.matches.map(m => ({
-        id: m.id,
-        texto: m.metadata.text, // ou o campo onde está o texto
-        metadados: m.metadata,
-        embedding: m.values
-    }));
-
-    // 3. Busca RAG (Diretrizes médicas)
-    // const queryEmbedding = await embeddingService.generateEmbedding(query);
-    const searchResponse = await ragRetrieval.semanticSearch(query, queryEmbedding, chunks);
-    const ragResults = searchResponse.resultados; // ACESSE A PROPRIEDADE AQUI
+    // Retrieval de diretrizes usa o mesmo serviço dos endpoints RAG. O contexto
+    // clínico só chega ao gerador depois da autorização acima.
+    const ragResults = await retrieveChunks(query, 10, {});
 
     // Adicione esta verificação funcional
     if (ragResults.length === 0) {
