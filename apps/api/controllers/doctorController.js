@@ -16,6 +16,7 @@ const {
   recordDecision,
   validateSignupConsents,
 } = require('../services/consentService');
+const { validateAdultBirthdate } = require('../utils/agePolicy');
 
 const SALT_ROUNDS = 10;
 const DOCTOR_ROLE = 'medico';
@@ -74,6 +75,14 @@ const createDoctor = async (req, res) => {
     return res.status(400).json({
       error: 'Nome, email, senha (8+ caracteres), data de nascimento, CRM e UF do CRM (2 letras) são obrigatórios',
     });
+  }
+
+  const birthdatePolicy = validateAdultBirthdate(birthdate);
+  if (!birthdatePolicy.valid) {
+    const error = birthdatePolicy.code === 'MINIMUM_AGE_REQUIRED'
+      ? 'O cadastro exige idade mínima de 18 anos.'
+      : 'Data de nascimento inválida.';
+    return res.status(400).json({ error, code: birthdatePolicy.code });
   }
 
   // E7-01.1: médico aceita os termos do próprio perfil e declara ciência da política.

@@ -103,6 +103,10 @@ runTest('Deve gerar os pontos da curva (P10, P50, P90) corretamente para uma sem
   // Validar se a distribuição lógica faz sentido (P10 < P50 < P90)
   assert.ok(points.p10 < points.p50, 'P10 deve ser menor que P50');
   assert.ok(points.p90 > points.p50, 'P90 deve ser maior que P50');
+
+  const logSigma = 0.12;
+  assert.strictEqual(points.p10, Math.round(expectedP50 * Math.exp(-1.28155 * logSigma)));
+  assert.strictEqual(points.p90, Math.round(expectedP50 * Math.exp(1.28155 * logSigma)));
 });
 
 runTest('Deve gerar a matriz completa da curva de crescimento (semanas 10 a 40)', () => {
@@ -119,6 +123,12 @@ runTest('Deve gerar a matriz completa da curva de crescimento (semanas 10 a 40)'
   
   // Verificar se os dados do último elemento contêm números válidos
   assert.ok(fullChart[30].p90 > 0, 'O peso na semana 40 deve ser um número positivo');
+
+  for (let index = 1; index < fullChart.length; index += 1) {
+    assert.ok(fullChart[index].p10 >= fullChart[index - 1].p10, 'P10 deve ser monotônica');
+    assert.ok(fullChart[index].p50 >= fullChart[index - 1].p50, 'P50 deve ser monotônica');
+    assert.ok(fullChart[index].p90 >= fullChart[index - 1].p90, 'P90 deve ser monotônica');
+  }
 });
 
 // ----------------------------------------------------------------------
