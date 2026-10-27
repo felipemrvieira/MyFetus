@@ -21,6 +21,7 @@ const {
   getAllowedUserUpdateFields,
 } = require('../utils/userPolicy');
 const { sendInternalError } = require('../utils/httpErrors');
+const { validateAdultBirthdate } = require('../utils/agePolicy');
 
 const SALT_ROUNDS = 10;
 
@@ -142,6 +143,11 @@ const createUser = async (req, res) => {
     return res.status(400).json({
       error: 'Nome, email, data de nascimento e senha de ao menos 8 caracteres sao obrigatorios',
     });
+  }
+
+  const birthdatePolicy = validateAdultBirthdate(birthdate);
+  if (!birthdatePolicy.valid) {
+    return res.status(400).json({ error: birthdatePolicy.message, code: birthdatePolicy.code });
   }
 
   // E7-01.1: sem aceite da versão vigente do termo, a conta não é criada.
