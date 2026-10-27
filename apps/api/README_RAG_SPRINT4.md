@@ -361,3 +361,9 @@ Para dúvidas sobre a implementação, consulte:
 
 **Última atualização:** 31 de maio de 2026  
 **Status:** Semana 1 Completa ✅
+# Nota de migração
+
+Este documento descreve o protótipo histórico da Sprint 4. O caminho de
+produção atual é `services/ragRetrievalService.js`, usado pelo controller RAG,
+pelos agentes e pelo endpoint de análise materna. O utilitário legado e seu
+teste foram removidos para evitar dois contratos de retrieval concorrentes.
