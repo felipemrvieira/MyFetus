@@ -2,8 +2,17 @@ const generationService = require('../generationService');
 
 const MATERNAL_FILTERS = {
   $or: [
-    { tema: { $in: ['saude_materna', 'pre_eclampsia', 'vacinas', 'nutricao'] } },
-    { source: { $in: ['FEBRASGO', 'Manual MS Gestacao Alto Risco'] } },
+    {
+      documentId: {
+        $in: [
+          'caderneta-gestante-ms-2026',
+          'manual-gestacao-alto-risco-ms-2022',
+          'caderno32-prenatal-baixo-risco-ms-2012',
+          'febrasgo-predicao-prevencao-pre-eclampsia-2023',
+        ],
+      },
+    },
+    { section: { $in: ['vacinas', 'nutrição', 'diabetes', 'pré-eclâmpsia'] } },
   ],
 };
 

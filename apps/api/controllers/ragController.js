@@ -5,9 +5,12 @@
  * Gerencia requisições de busca semântica e consulta ao knowledge base
  */
 
-const vectorStoreService = require('../services/vectorStoreService');
-const embeddingService = require('../services/embeddingService');
 const generationService = require('../services/generationService');
+const vectorStoreService = require('../services/vectorStoreService');
+const {
+  RagRetrievalError,
+  retrieveChunks: retrieveChunksFromService,
+} = require('../services/ragRetrievalService');
 const client = require('../backend');
 const { decryptPregnantDetails } = require('../services/clinicalDataService');
 const { ensureCanAccessPregnant } = require('../utils/clinicalAccess');
@@ -20,28 +23,16 @@ const { audit } = require('../services/auditService');
  * Usado tanto pelo endpoint de busca pura quanto pelo chat (retrieval + generation).
  */
 async function retrieveChunks(query, topK, filtros) {
-  // 1. Aplica a regra de negócio do prefixo exigida pelo contrato
-  const prefixedQuery = `query: ${query}`;
+  return retrieveChunksFromService(query, topK, filtros);
+}
 
-  // 2. Gera o vetor real com a string prefixada
-  const queryEmbedding = await embeddingService.generateEmbedding(prefixedQuery);
-
-  // 3. Consulta o Pinecone no namespace correto
-  const pineconeResult = await vectorStoreService.queryVectors(queryEmbedding, {
-    namespace: 'guidelines',
-    topK,
-    filter: filtros && Object.keys(filtros).length > 0 ? filtros : undefined
+function sendRetrievalError(error, res) {
+  if (!(error instanceof RagRetrievalError)) return false;
+  const clientError = ['EMPTY_QUERY', 'INVALID_TOP_K', 'INVALID_FILTER'].includes(error.code);
+  return res.status(clientError ? 400 : 503).json({
+    error: clientError ? error.message : 'Base de conhecimento indisponível',
+    code: error.code,
   });
-
-  // 4. Mapeia a resposta usando estritamente o contrato de metadados
-  return pineconeResult.matches.map(match => ({
-    trecho: match.metadata.text,
-    fonte: match.metadata.source,
-    pagina: match.metadata.page,
-    secao: match.metadata.section,
-    relevancia: Number(match.score.toFixed(4)),
-    documento_id: match.metadata.documentId
-  }));
 }
 
 function validateSearchInput(query, topK) {
@@ -141,6 +132,7 @@ const searchKnowledgeBase = async (req, res) => {
         tempo_ms: Date.now() - startTime
     });
   } catch (error) {
+    if (sendRetrievalError(error, res)) return;
     // ... resto do código (catch)
     const logger = require('../utils/logger');
     logger.error('RAG_SEARCH_FAILED');
@@ -196,6 +188,7 @@ const askClinicalChat = async (req, res) => {
       tempo_ms: Date.now() - startTime
     });
   } catch (error) {
+    if (sendRetrievalError(error, res)) return;
     const logger = require('../utils/logger');
     logger.error('RAG_CHAT_FAILED');
     audit(req, {
@@ -266,6 +259,7 @@ const askClinicalAgentsChat = async (req, res) => {
       tempo_ms: Date.now() - startTime,
     });
   } catch (error) {
+    if (sendRetrievalError(error, res)) return;
     const logger = require('../utils/logger');
     logger.error('RAG_AGENTS_CHAT_FAILED');
     audit(req, {
