@@ -47,3 +47,15 @@ _Avoid_: Categoria solta, Tag livre
 **Fixture Sintética de Diretriz**:
 Documento PDF gerado programaticamente sem qualquer dado real de paciente, simulando estrutura, paginação e ruídos para testes automatizados.
 _Avoid_: Arquivo mock genérico, PDF de teste real
+
+**Upsert Idempotente**:
+Operação de inserção ou atualização no índice vetorial onde a reexecução com o mesmo identificador determinístico preserva a contagem de registros sem duplicar dados.
+_Avoid_: Ingestão cega, Insert duplicado
+
+**Namespace de Diretrizes**:
+Partição lógica isolada dentro do índice vetorial dedicada exclusivamente ao armazenamento de vetores provenientes de manuais clínicos oficiais aprovados.
+_Avoid_: Índice secundário, Tabela de vetores
+
+**Vetor de Evidência Clínica**:
+Representação matemática densa gerada por modelo de linguagem a partir de um chunk de diretriz para possibilitar recuperação semântica por similaridade de cosseno.
+_Avoid_: Embedding avulso, Ponto geométrico
