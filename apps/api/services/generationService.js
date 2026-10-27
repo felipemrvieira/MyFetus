@@ -6,6 +6,7 @@
 
 require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
+const { getDefaultAiUsageStore } = require('./aiUsageService');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -36,6 +37,11 @@ Termine sempre a sua análise reforçando que a decisão clínica e o diagnósti
 // ============================================================================
 
 let client = null;
+
+function recordProviderUsage(operation, response) {
+  const usage = response?.usageMetadata || response?.usage_metadata;
+  if (usage) getDefaultAiUsageStore().recordProviderUsage(operation, usage);
+}
 
 function getClient() {
   if (!GEMINI_API_KEY) {
@@ -109,6 +115,8 @@ async function generateAnswer(query, trechos) {
     },
   });
 
+  recordProviderUsage('rag_chat', response);
+
   return response.text || 'Não consegui gerar uma resposta agora. Tente novamente em alguns instantes.';
 }
 
@@ -141,6 +149,8 @@ ${query}
         temperature: 0.2, 
       },
     });
+
+    recordProviderUsage('maternal_analysis', response);
 
     return response.text || 'Não foi possível completar a análise clínica no momento.';
   } catch (error) {
