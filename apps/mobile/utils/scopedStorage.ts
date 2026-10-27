@@ -24,3 +24,11 @@ export async function getScopedItem(
 export function setScopedItem(userId: number, key: string, value: string): Promise<void> {
   return AsyncStorage.setItem(buildScopedKey(userId, key), value);
 }
+
+// Apaga do aparelho tudo o que foi guardado para este usuário (ex.: conta excluída).
+export async function clearScopedItems(userId: number): Promise<void> {
+  const prefix = buildScopedKey(userId, '');
+  const keys = await AsyncStorage.getAllKeys();
+  const owned = keys.filter((key) => key.startsWith(prefix));
+  if (owned.length > 0) await AsyncStorage.multiRemove(owned);
+}

@@ -84,6 +84,17 @@ export default function HomeScreen() {
                   <FontAwesome name="sign-out" size={18} color={ACCESSIBLE_COLORS.primary} />
                   <Text style={styles.signOutText}>Sair</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  testID="e2e-patient-my-data"
+                  accessibilityLabel="Meus dados"
+                  accessibilityRole="button"
+                  accessibilityHint="Abre a exportação dos seus dados pessoais"
+                  onPress={() => router.push('/meus-dados' as never)}
+                  style={styles.signOutButton}
+                >
+                  <FontAwesome name="download" size={18} color={ACCESSIBLE_COLORS.primary} />
+                  <Text style={styles.signOutText}>Meus dados</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -146,10 +157,6 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     paddingBottom: height * 0.02,
     alignItems: 'center',
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
   title: {
     fontSize: width * 0.07,
     fontWeight: 'bold',
@@ -159,6 +166,12 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
     fontSize: width * 0.045,
     color: ACCESSIBLE_COLORS.muted,
     marginTop: 5,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
   },
   signOutButton: {
     alignItems: 'center',

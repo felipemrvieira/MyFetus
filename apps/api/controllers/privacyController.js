@@ -4,8 +4,20 @@ const logger = require('../utils/logger');
 const cryptoService = require('../services/cryptoService');
 const { audit } = require('../services/auditService');
 const { createDataExportService, summarize } = require('../services/dataExportService');
+const {
+  AccountDeletionError,
+  createAccountDeletionService,
+} = require('../services/accountDeletionService');
+
+const SALT_ROUNDS = 10;
+const DELETION_CONFIRMATION = 'EXCLUIR';
 
 const exportService = createDataExportService({ crypto: cryptoService });
+const deletionService = createAccountDeletionService({
+  crypto: cryptoService,
+  hashPassword: (value) => bcrypt.hash(value, SALT_ROUNDS),
+  logger,
+});
 
 function exportFileName(date) {
   return `myfetus-meus-dados-${date.toISOString().slice(0, 10)}.json`;
@@ -74,6 +86,65 @@ const exportMyData = async (req, res) => {
   }
 };
 
+function auditDeletion(req, outcome, detail) {
+  audit(req, {
+    action: 'ACCOUNT_DELETED',
+    resource: 'users',
+    resource_id: req.user.id,
+    outcome,
+    detail,
+  });
+}
+
+// Exclusão pelo próprio titular: senha atual e a palavra EXCLUIR digitada.
+const deleteMyAccount = async (req, res) => {
+  const { password, confirmation } = req.body || {};
+  if (typeof password !== 'string' || password.length === 0) {
+    return res.status(400).json({ error: 'Confirme sua senha para excluir a conta', code: 'PASSWORD_REQUIRED' });
+  }
+  if (confirmation !== DELETION_CONFIRMATION) {
+    return res.status(400).json({ error: 'Digite EXCLUIR para confirmar', code: 'CONFIRMATION_REQUIRED' });
+  }
+
+  let dbClient;
+  try {
+    dbClient = await client.connect();
+
+    if (!(await passwordMatches(dbClient, req.user.id, password))) {
+      auditDeletion(req, 'FAILURE', { reason: 'invalid_password' });
+      return res.status(403).json({ error: 'Senha incorreta', code: 'INVALID_PASSWORD' });
+    }
+
+    const result = await deletionService.deleteAccount(dbClient, { userId: req.user.id });
+    auditDeletion(req, 'SUCCESS', {
+      role: result.role,
+      mode: result.mode,
+      counts: result.counts,
+      files_removed: result.files.removed,
+      files_failed: result.files.failed,
+    });
+
+    return res.status(200).json({ message: 'Conta excluída', mode: result.mode });
+  } catch (error) {
+    if (error instanceof AccountDeletionError) {
+      auditDeletion(req, 'FAILURE', { reason: error.code });
+      if (error.code === 'USER_NOT_FOUND') {
+        return res.status(403).json({ error: 'Senha incorreta', code: 'INVALID_PASSWORD' });
+      }
+      return res.status(403).json({
+        error: 'A exclusão desta conta é feita por procedimento operacional',
+        code: error.code,
+      });
+    }
+    logger.error('Erro ao excluir conta do titular', { details: error.message });
+    auditDeletion(req, 'FAILURE', { reason: 'internal_error' });
+    return res.status(500).json({ error: 'Erro ao excluir conta' });
+  } finally {
+    if (dbClient) dbClient.release();
+  }
+};
+
 module.exports = {
+  deleteMyAccount,
   exportMyData,
 };
