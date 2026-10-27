@@ -1,10 +1,10 @@
-appId: ${APP_ID:-host.exp.exponent}
+appId: host.exp.exponent
 
 ---
 
-# E1-16.5: Smoke test da Jornada Feliz no Mobile (compatível com Expo Go e APK nativo)
+# E1-16.5: Smoke test da Jornada Feliz no Mobile (Expo Go)
 # Cenário:
-# 1. Login com credenciais da gestante
+# 1. Login com credenciais da gestante de teste
 # 2. Onboarding gestacional com cálculo de DUM (se primeiro acesso da paciente)
 # 3. Validação da tela inicial (Meu Bebê)
 # 4. Navegação pelas abas principais (Água, Checklist, Exames)
@@ -18,11 +18,11 @@ appId: ${APP_ID:-host.exp.exponent}
 - tapOn:
     id: e2e-login-email
 - eraseText
-- inputText: ${PATIENT_EMAIL:-"gestante_teste@myfetus.com"}
+- inputText: "gestante_teste@myfetus.com"
 - tapOn:
     id: e2e-login-password
 - eraseText
-- inputText: ${PATIENT_PASSWORD:-"SenhaTeste123!"}
+- inputText: "SenhaTeste123!"
 - tapOn:
     id: e2e-login-submit
 

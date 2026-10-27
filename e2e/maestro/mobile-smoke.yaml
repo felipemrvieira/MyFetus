@@ -1,4 +1,4 @@
-appId: ${APP_ID:-com.myfetus.app}
+appId: com.myfetus.app
 
 ---
 
