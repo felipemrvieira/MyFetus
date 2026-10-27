@@ -407,6 +407,64 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/privacy/delete:
+    post:
+      tags: [Privacidade]
+      summary: Exclui (gestante) ou anonimiza (medico) a conta do titular autenticado
+      operationId: deleteMyAccount
+      security: [{ bearerAuth: [] }]
+      description: |
+        Direito de eliminacao (E7-02, LGPD art. 18, VI). O titular e sempre o usuario do token. Exige a
+        senha atual e o campo `confirmation` igual a `EXCLUIR`. Gestante: a conta e apagada com os dados
+        clinicos em cascata, e os arquivos cifrados dos exames sao removidos do disco depois do COMMIT.
+        Medico: a conta e anonimizada e desativada (nome, e-mail, CRM e telefone substituidos) e os
+        vinculos com pacientes sao apagados; pedidos de exame e laudos continuam no prontuario das
+        pacientes. Administrador: fora do autoatendimento. Consentimentos e audit_logs sao mantidos
+        ate o fim do projeto. Fica fora do bloqueio por consentimento. Gera ACCOUNT_DELETED em
+        audit_logs, so com modo e contagens. Limite padrao de 5 pedidos a cada 15 minutos
+        (ACCOUNT_DELETION_RATE_LIMIT_MAX). Backups so sao limpos quando expiram.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, confirmation]
+              properties:
+                password: { type: string, description: Senha atual do titular. }
+                confirmation: { type: string, enum: [EXCLUIR] }
+            example:
+              password: senha-sintetica-123
+              confirmation: EXCLUIR
+      responses:
+        '200':
+          description: Conta excluida (gestante) ou anonimizada (medico).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  mode: { type: string, enum: [deleted, anonymized] }
+              example: { message: Conta excluída, mode: deleted }
+        '400':
+          description: Senha ou confirmacao ausentes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Digite EXCLUIR para confirmar, code: CONFIRMATION_REQUIRED }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: |
+            Senha incorreta, conta inativa ou inexistente (INVALID_PASSWORD), ou perfil administrador
+            (ACCOUNT_DELETION_NOT_SELF_SERVICE). E 403, e nao 401, para o app nao tratar como sessao expirada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Senha incorreta, code: INVALID_PASSWORD }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   # ----------------------------------------------------------------- Medicos
   /api/doctors:
     post:
