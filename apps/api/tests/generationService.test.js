@@ -79,13 +79,10 @@ test.describe('Generation Service - Agente Materno', () => {
   });
 
   test.it('deve lidar graciosamente com dados de paciente nulos ou incompletos', async () => {
-    await generateMaternalAgentAnalysis('Qual a conduta para diabetes gestacional?', [], null);
-    
-    const callArgs = mockGenerateContent.mock.calls[0].arguments[0];
+    const result = await generateMaternalAgentAnalysis('Qual a conduta para diabetes gestacional?', [], null);
 
-    // Valida uso de mensagens de fallback
-    assert.match(callArgs.contents, /Nenhum dado clínico fornecido/);
-    assert.match(callArgs.contents, /Nenhuma diretriz médica específica/);
+    assert.match(result, /fonte aprovada suficiente|equipe de saúde/i);
+    assert.strictEqual(mockGenerateContent.mock.calls.length, 0);
   });
 
   test.it('deve lançar um erro se a API do Gemini falhar', async () => {
@@ -98,7 +95,7 @@ test.describe('Generation Service - Agente Materno', () => {
     });
 
     await assert.rejects(
-      generateMaternalAgentAnalysis('Teste', [], {}),
+      generateMaternalAgentAnalysis('Quais vacinas são avaliadas no pré-natal?', [{ fonte: 'Dummy', trecho: 'Dummy' }], {}),
       /Falha ao comunicar com o LLM para análise clínica./
     );
 
@@ -113,9 +110,9 @@ test.describe('Generation Service - Agente Materno', () => {
     delete require.cache[require.resolve('../services/generationService')];
     const freshGenerationService = require('../services/generationService');
     
-    // Passamos um array com 1 item (em vez de vazio) para passar pelo "early return" e forçar a checagem da chave
+    // Passamos uma pergunta dentro do escopo e uma fonte para forçar a checagem da chave
     await assert.rejects(
-      freshGenerationService.generateAnswer('Teste', [{ fonte: 'Dummy', trecho: 'Dummy' }]),
+      freshGenerationService.generateAnswer('Quais vacinas são avaliadas no pré-natal?', [{ fonte: 'Dummy', trecho: 'Dummy' }]),
       /GEMINI_API_KEY não configurada no \.env\./
     );
 
