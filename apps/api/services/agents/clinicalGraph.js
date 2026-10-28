@@ -2,6 +2,7 @@ const { analyzeMaternal } = require('./maternalAgent');
 const { analyzeFetal } = require('./fetalAgent');
 const {
   CRITICAL_RULES,
+  SAFE_MESSAGES,
   classifyQuery,
   normalize,
   routeInScope,
@@ -39,7 +40,7 @@ function uniqueSources(sources) {
 function synthesizeFinalResponse(state) {
   if (state.guardrail_response) return state.guardrail_response;
   if (state.needs_human_review) {
-    return 'Pelos sinais descritos, esta situação precisa de avaliação humana imediata. Procure atendimento obstétrico presencial ou serviço de urgência, e leve seus registros de pré-natal.';
+    return SAFE_MESSAGES.urgent;
   }
   if (state.route === 'clarify') {
     return 'Preciso de mais detalhes para direcionar a análise com segurança. Informe semanas de gestação, sintoma principal e há quanto tempo isso ocorre.';
@@ -48,7 +49,7 @@ function synthesizeFinalResponse(state) {
   const parts = [];
   if (state.maternal_analysis) parts.push(`Análise materna: ${state.maternal_analysis}`);
   if (state.fetal_analysis) parts.push(`Análise fetal: ${state.fetal_analysis}`);
-  return `${parts.join('\n\n')}\n\nEsta orientação não substitui consulta médica.`;
+  return `${parts.join('\n\n')}\n\n${SAFE_MESSAGES.disclaimer}`;
 }
 
 async function runClinicalAgentGraph(input, dependencies = {}) {

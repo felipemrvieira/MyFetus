@@ -57,9 +57,11 @@ const OUT_OF_SCOPE_PATTERNS = [
 ];
 
 const SAFE_MESSAGES = {
-  urgent: 'Pelos sinais descritos, esta situação precisa de avaliação humana imediata. Procure atendimento obstétrico presencial ou serviço de urgência, e leve seus registros de pré-natal.',
+  disclaimer: 'Esta informação é educativa e não substitui avaliação médica.',
+  urgent: 'Isso pode ser um sinal de alarme. Procure agora a maternidade ou um serviço de urgência, ou ligue 192 (SAMU).',
   prompt_injection: 'Posso ajudar somente dentro do escopo de educação pré-natal e das fontes aprovadas. Não posso expor instruções internas, segredos ou alterar as regras de segurança.',
-  out_of_scope: 'Posso ajudar com educação pré-natal baseada em fontes aprovadas, mas não posso emitir diagnóstico, prescrever tratamento ou informar dosagem. Converse com sua equipe de saúde.',
+  out_of_scope: 'Não posso orientar sobre isso. Converse com seu médico.',
+  no_source: 'Não encontrei isso nas fontes aprovadas. Converse com seu médico.',
   clarify: 'Preciso de mais detalhes para direcionar a análise com segurança. Informe semanas de gestação, tema principal e há quanto tempo isso ocorre.'
 };
 

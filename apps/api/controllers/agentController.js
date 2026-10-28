@@ -8,6 +8,7 @@ const {
   doctorCanAccessPregnant,
   ensureCanAccessPregnant,
 } = require('../utils/clinicalAccess');
+const { SAFE_MESSAGES } = require('../services/agents/guardrailService');
 const logger = require('../utils/logger');
 
 async function handleMaternalAnalysis(req, res) {
@@ -84,7 +85,7 @@ async function handleMaternalAnalysis(req, res) {
         // Opção A: Retornar um aviso para o usuário
         return res.status(200).json({ 
             success: true, 
-            analysis: "Não encontrei diretrizes clínicas específicas para esta questão no momento. Por favor, consulte um profissional de saúde." 
+        analysis: SAFE_MESSAGES.no_source
         });
     }
 
