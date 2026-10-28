@@ -1944,6 +1944,92 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/alert-events/pregnancies/{pregnancyId}:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    get:
+      tags: [Alertas]
+      summary: Lista eventos de alerta de uma gestação
+      operationId: listAlertEvents
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, gestante, medico]
+      description: Ordena alertas abertos e reconhecidos antes dos encerrados.
+      responses:
+        '200':
+          description: Eventos de alerta da gestação.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pregnancy_id, events]
+                properties:
+                  pregnancy_id: { type: integer }
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/AlertEvent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/alert-events/{alertId}/acknowledge:
+    parameters:
+      - name: alertId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      tags: [Alertas]
+      summary: Reconhece um alerta
+      operationId: acknowledgeAlert
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      description: O reconhecimento registra ciência e não encerra o alerta.
+      responses:
+        '200':
+          description: Alerta reconhecido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertEvent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/alert-events/{alertId}/close:
+    parameters:
+      - name: alertId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      tags: [Alertas]
+      summary: Encerra um alerta com justificativa
+      operationId: closeAlert
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [justification]
+              properties:
+                justification: { type: string, minLength: 3, maxLength: 1000 }
+      responses:
+        '200':
+          description: Alerta encerrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertEvent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /api/daily-entries/{entryKey}:
     parameters:
       - name: entryKey
@@ -2398,6 +2484,29 @@ components:
         history:
           type: object
           additionalProperties: true
+
+    AlertEvent:
+      type: object
+      required: [id, pregnancy_id, pregnant_id, rule_id, severity, status, source_type, message]
+      properties:
+        id: { type: integer }
+        alert_key: { type: string, format: uuid }
+        pregnancy_id: { type: integer }
+        pregnant_id: { type: integer }
+        rule_id: { type: string }
+        severity: { type: string, enum: [yellow, red] }
+        status: { type: string, enum: [open, acknowledged, closed] }
+        source_type: { type: string, enum: [daily_entry, lab_result, risk_engine] }
+        source_id: { type: [string, 'null'] }
+        message: { type: string }
+        signal_codes:
+          type: array
+          items: { type: string }
+        first_seen_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        acknowledged_at: { type: [string, 'null'], format: date-time }
+        closed_at: { type: [string, 'null'], format: date-time }
+        close_reason: { type: [string, 'null'] }
 
     Pregnancy:
       type: object
