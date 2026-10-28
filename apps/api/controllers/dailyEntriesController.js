@@ -16,6 +16,11 @@ const {
   validateDailyEntryByGestationalAge,
 } = require('../services/dailyEntryRuleService');
 const { buildDailyRiskFeed } = require('../services/dailyRiskFeedService');
+const {
+  autoCloseNormalAlert,
+  dailyEntryAlerts,
+  upsertAlertEvent,
+} = require('../services/alertEventService');
 
 function handleError(res, error) {
   if (error instanceof DailyEntryValidationError) {
@@ -29,6 +34,16 @@ function handleError(res, error) {
 
 function encryptEntry(entry) {
   return cryptoService.encryptRecord(toEncryptedFields(entry), 'daily_entries');
+}
+
+async function syncDailyAlerts(entry, { pregnancyId, pregnantId, sourceId }) {
+  const alerts = dailyEntryAlerts(entry, { pregnancyId, pregnantId, sourceId });
+  for (const alert of alerts) await upsertAlertEvent(client, alert);
+  if (!alerts.some(alert => alert.rule_id === 'daily_blood_pressure')) {
+    await autoCloseNormalAlert(client, { pregnancyId, ruleId: 'daily_blood_pressure', severity: 'yellow' });
+    await autoCloseNormalAlert(client, { pregnancyId, ruleId: 'daily_blood_pressure', severity: 'red' });
+  }
+  return alerts;
 }
 
 async function findPregnancyWithWeeks(pregnancyId) {
@@ -84,6 +99,12 @@ async function createDailyEntry(req, res) {
       ]
     );
     const created = cryptoService.decryptRecord(result.rows[0], 'daily_entries');
+    const createdSerialized = serializeEntry(created);
+    await syncDailyAlerts(createdSerialized, {
+      pregnancyId,
+      pregnantId: currentPregnancy.pregnant_id,
+      sourceId: entryKey,
+    });
     audit(req, {
       action: 'DAILY_ENTRY_CREATED',
       resource: 'daily_entries',
@@ -91,7 +112,7 @@ async function createDailyEntry(req, res) {
       detail: { pregnancy_id: pregnancyId, version: 1 },
     });
     return res.status(201).json({
-      ...serializeEntry(created),
+      ...createdSerialized,
       gestational_rule_context: ruleContext,
     });
   } catch (error) {
@@ -216,6 +237,12 @@ async function updateDailyEntry(req, res) {
     );
     await db.query('COMMIT');
     const updated = cryptoService.decryptRecord(result.rows[0], 'daily_entries');
+    const updatedSerialized = serializeEntry(updated);
+    await syncDailyAlerts(updatedSerialized, {
+      pregnancyId: currentRow.pregnancy_id,
+      pregnantId: currentRow.pregnant_id,
+      sourceId: entryKey,
+    });
     audit(req, {
       action: 'DAILY_ENTRY_UPDATED',
       resource: 'daily_entries',
@@ -223,7 +250,7 @@ async function updateDailyEntry(req, res) {
       detail: { pregnancy_id: currentRow.pregnancy_id, version: updated.version },
     });
     return res.json({
-      ...serializeEntry(updated),
+      ...updatedSerialized,
       gestational_rule_context: ruleContext,
     });
   } catch (error) {
