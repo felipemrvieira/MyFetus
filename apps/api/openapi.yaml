@@ -2078,7 +2078,6 @@ paths:
               type: object
               required: [observations]
               properties:
-                gestational_weeks: { type: number, minimum: 0 }
                 observations:
                   type: array
                   items: { $ref: '#/components/schemas/ClinicalObservation' }
