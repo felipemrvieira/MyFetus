@@ -2539,7 +2539,6 @@ components:
         unit: { type: string }
         status: { type: string, enum: [accepted, pending, rejected] }
         glucose_type: { type: [string, 'null'], enum: [fasting, casual, 'null'] }
-
     AlertEvent:
       type: object
       required: [id, pregnancy_id, pregnant_id, rule_id, severity, status, source_type, message]
