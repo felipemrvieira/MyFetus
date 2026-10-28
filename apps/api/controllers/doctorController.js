@@ -231,13 +231,13 @@ const listDoctors = async (req, res) => {
       const user = cryptoService.decryptRecord(row, 'users');
       const doctor = cryptoService.decryptRecord(row, 'doctors');
       return {
+        ...sanitizeDoctor(doctor),
         id: doctor.id,
         user_id: user.id,
         name: user.name,
         email: user.email,
         birthdate: user.birthdate,
         is_active: user.is_active,
-        ...sanitizeDoctor(doctor),
       };
     }));
   } catch (error) {

@@ -25,6 +25,18 @@ const clientMock = {
     if (/SELECT \* FROM doctors WHERE user_id/.test(sql)) {
       return { rows: [{ ...doctor }] };
     }
+    if (/FROM doctors d/.test(sql)) {
+      return {
+        rows: [{
+          ...doctor,
+          user_id: doctor.user_id,
+          name: 'v1:encrypted-doctor-name',
+          email: 'v1:encrypted-doctor-email',
+          birthdate: 'v1:encrypted-doctor-birthdate',
+          is_active: true,
+        }],
+      };
+    }
     if (/UPDATE doctors/.test(sql)) {
       doctor.approval_status = params[0] || doctor.approval_status;
       doctor.approval_reason = params[1] || null;
@@ -40,7 +52,9 @@ const mocks = {
   '../utils/logger': { error() {}, warn() {}, info() {} },
   '../services/cryptoService': {
     encryptRecord: (record) => record,
-    decryptRecord: (record) => record,
+    decryptRecord: (record, table) => table === 'users'
+      ? { ...record, name: 'Dra. Ana Souza', email: 'ana.souza@example.com', birthdate: '1990-01-01' }
+      : record,
     getCurrentVersion: () => 1,
   },
   '../services/doctorApprovalService': {
@@ -160,5 +174,18 @@ test.describe('aprovação de médicos (E7-03)', () => {
     );
     assert.equal(approved.status, 200);
     assert.equal(approved.body.approval_status, 'approved');
+  });
+
+  test('lista nome e email descriptografados para aprovação administrativa', async () => {
+    const response = await request(
+      'GET',
+      '/api/doctors?approval_status=pending',
+      { id: 99, role: 'admin' }
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body[0].name, 'Dra. Ana Souza');
+    assert.equal(response.body[0].email, 'ana.souza@example.com');
+    assert.equal(response.body[0].crm, '123456');
   });
 });
