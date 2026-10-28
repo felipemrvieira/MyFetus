@@ -6,6 +6,10 @@ const {
   normalizePayload,
   serializeEntry,
 } = require('../services/dailyEntryService');
+const {
+  buildDailyEntryRuleContext,
+  validateDailyEntryByGestationalAge,
+} = require('../services/dailyEntryRuleService');
 
 test('normaliza um registro diário com os campos aprovados pelo PO', () => {
   const entry = normalizePayload({
@@ -40,7 +44,23 @@ test('exige data e pelo menos um dado', () => {
 test('aplica as faixas de digitação sem transformar validação em alerta', () => {
   assert.throws(() => normalizePayload({ entry_date: '2026-10-28', systolic: 59 }, 20), /systolic/);
   assert.throws(() => normalizePayload({ entry_date: '2026-10-28', glucose_mg_dl: 601 }, 20), /glucose_mg_dl/);
-  assert.throws(() => normalizePayload({ entry_date: '2026-10-28', reduced_fetal_movements: false }, 27), /28 semanas/);
+  assert.doesNotThrow(() => normalizePayload({ entry_date: '2026-10-28', reduced_fetal_movements: false }, 27));
+});
+
+test('mantém o diário disponível antes de seis semanas e expõe a política por IG', () => {
+  const context = buildDailyEntryRuleContext({ weeks: 5, dum: '2026-09-20' });
+  assert.equal(context.weekly_rules_enabled, false);
+  assert.equal(context.reduced_fetal_movements_enabled, false);
+  assert.doesNotThrow(() => validateDailyEntryByGestationalAge({ reduced_fetal_movements: null }, context));
+});
+
+test('bloqueia apenas movimentos fetais antes de 28 semanas', () => {
+  const context = buildDailyEntryRuleContext({ weeks: 27, dum: '2026-05-01' });
+  assert.throws(
+    () => validateDailyEntryByGestationalAge({ reduced_fetal_movements: true }, context),
+    error => error.code === 'MOVEMENTS_NOT_APPLICABLE'
+  );
+  assert.doesNotThrow(() => validateDailyEntryByGestationalAge({ reduced_fetal_movements: null, systolic: 140 }, context));
 });
 
 test('serializa valores descriptografados para o contrato da API', () => {

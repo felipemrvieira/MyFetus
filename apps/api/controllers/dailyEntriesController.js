@@ -11,10 +11,17 @@ const {
 const { ensureCanAccessPregnancy } = require('../utils/clinicalAccess');
 const { audit } = require('../services/auditService');
 const { sendInternalError } = require('../utils/httpErrors');
+const {
+  buildDailyEntryRuleContext,
+  validateDailyEntryByGestationalAge,
+} = require('../services/dailyEntryRuleService');
 
 function handleError(res, error) {
   if (error instanceof DailyEntryValidationError) {
     return res.status(400).json({ error: error.validationMessage });
+  }
+  if (error?.code === 'MOVEMENTS_NOT_APPLICABLE') {
+    return res.status(400).json({ error: 'movimentos fetais so podem ser informados a partir de 28 semanas' });
   }
   return sendInternalError(res);
 }
@@ -25,7 +32,8 @@ function encryptEntry(entry) {
 
 async function findPregnancyWithWeeks(pregnancyId) {
   const result = await client.query(
-    'SELECT id, pregnant_id, weeks FROM pregnancies WHERE id = $1',
+    `SELECT id, pregnant_id, weeks, dum, ig_ultrassonografia
+     FROM pregnancies WHERE id = $1`,
     [pregnancyId]
   );
   return result.rows[0]
@@ -41,7 +49,11 @@ async function createDailyEntry(req, res) {
     const currentPregnancy = await findPregnancyWithWeeks(pregnancyId);
     if (!currentPregnancy) return res.status(404).json({ error: 'Gestação não encontrada' });
 
-    const entry = normalizePayload(req.body, currentPregnancy.weeks);
+    const ruleContext = buildDailyEntryRuleContext(currentPregnancy);
+    const entry = validateDailyEntryByGestationalAge(
+      normalizePayload(req.body, currentPregnancy.weeks),
+      ruleContext
+    );
     const encrypted = encryptEntry(entry);
     const entryKey = buildEntryKey();
     const result = await client.query(
@@ -77,7 +89,10 @@ async function createDailyEntry(req, res) {
       resource_id: entryKey,
       detail: { pregnancy_id: pregnancyId, version: 1 },
     });
-    return res.status(201).json(serializeEntry(created));
+    return res.status(201).json({
+      ...serializeEntry(created),
+      gestational_rule_context: ruleContext,
+    });
   } catch (error) {
     return handleError(res, error);
   }
@@ -127,7 +142,11 @@ async function updateDailyEntry(req, res) {
     const pregnancy = await findPregnancyWithWeeks(currentRow.pregnancy_id);
     const current = cryptoService.decryptRecord(currentRow, 'daily_entries');
     const patch = { ...serializeEntry(current), ...req.body, entry_date: req.body?.entry_date || current.entry_date };
-    const entry = normalizePayload(patch, pregnancy?.weeks);
+    const ruleContext = buildDailyEntryRuleContext(pregnancy || {});
+    const entry = validateDailyEntryByGestationalAge(
+      normalizePayload(patch, pregnancy?.weeks),
+      ruleContext
+    );
     const encrypted = encryptEntry(entry);
     await db.query(
       'UPDATE daily_entries SET is_current = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
@@ -169,7 +188,10 @@ async function updateDailyEntry(req, res) {
       resource_id: entryKey,
       detail: { pregnancy_id: currentRow.pregnancy_id, version: updated.version },
     });
-    return res.json(serializeEntry(updated));
+    return res.json({
+      ...serializeEntry(updated),
+      gestational_rule_context: ruleContext,
+    });
   } catch (error) {
     try { await db.query('ROLLBACK'); } catch {}
     return handleError(res, error);
