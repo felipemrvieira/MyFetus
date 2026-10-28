@@ -16,6 +16,22 @@ function validationError(res, error) {
   return null;
 }
 
+async function ensureAlertAccess(req, res, alertId) {
+  if (!Number.isInteger(alertId) || alertId <= 0) {
+    res.status(400).json({ error: 'alert_id invalido' });
+    return false;
+  }
+  const result = await client.query(
+    'SELECT pregnancy_id FROM alert_events WHERE id = $1',
+    [alertId]
+  );
+  if (!result.rows[0]) {
+    res.status(404).json({ error: 'Alerta não encontrado ou já encerrado' });
+    return false;
+  }
+  return Boolean(await ensureCanAccessPregnancy(req, res, result.rows[0].pregnancy_id));
+}
+
 async function listAlertEvents(req, res) {
   try {
     const pregnancyId = Number(req.params.pregnancyId);
@@ -37,7 +53,9 @@ async function listAlertEvents(req, res) {
 
 async function acknowledge(req, res) {
   try {
-    const result = await acknowledgeAlert(client, Number(req.params.alertId), req.user.id);
+    const alertId = Number(req.params.alertId);
+    if (!(await ensureAlertAccess(req, res, alertId))) return;
+    const result = await acknowledgeAlert(client, alertId, req.user.id);
     if (!result) return res.status(404).json({ error: 'Alerta não encontrado ou já encerrado' });
     audit(req, { action: 'ALERT_ACKNOWLEDGED', resource: 'alert_events', resource_id: String(result.id), detail: { status: result.status } });
     return res.json(result);
@@ -48,7 +66,9 @@ async function acknowledge(req, res) {
 
 async function close(req, res) {
   try {
-    const result = await closeAlert(client, Number(req.params.alertId), req.user.id, req.body?.justification);
+    const alertId = Number(req.params.alertId);
+    if (!(await ensureAlertAccess(req, res, alertId))) return;
+    const result = await closeAlert(client, alertId, req.user.id, req.body?.justification);
     if (!result) return res.status(404).json({ error: 'Alerta não encontrado ou já encerrado' });
     audit(req, { action: 'ALERT_CLOSED', resource: 'alert_events', resource_id: String(result.id), detail: { status: result.status } });
     return res.json(result);
