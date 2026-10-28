@@ -2060,6 +2060,49 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/clinical-risk/pregnancies/{pregnancyId}/evaluations/exams:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    post:
+      tags: [Risco clinico]
+      summary: Reavalia exames aceitos para uma gestação
+      operationId: syncExamObservations
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      description: Considera somente observações com status accepted; resultados pendentes ou rejeitados são ignorados.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [observations]
+              properties:
+                observations:
+                  type: array
+                  items: { $ref: '#/components/schemas/ClinicalObservation' }
+      responses:
+        '200':
+          description: Avaliação concluída.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pregnancy_id, status, accepted_count, ignored_count, events]
+                properties:
+                  pregnancy_id: { type: integer }
+                  status: { type: string, enum: [evaluated, partial] }
+                  accepted_count: { type: integer, minimum: 0 }
+                  ignored_count: { type: integer, minimum: 0 }
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/AlertEvent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2485,6 +2528,16 @@ components:
           type: object
           additionalProperties: true
 
+    ClinicalObservation:
+      type: object
+      required: [source_id, analyte, value, status]
+      properties:
+        source_id: { type: string, minLength: 1 }
+        analyte: { type: string }
+        value: { type: number }
+        unit: { type: string }
+        status: { type: string, enum: [accepted, pending, rejected] }
+        glucose_type: { type: [string, 'null'], enum: [fasting, casual, 'null'] }
     AlertEvent:
       type: object
       required: [id, pregnancy_id, pregnant_id, rule_id, severity, status, source_type, message]
