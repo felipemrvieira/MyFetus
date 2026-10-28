@@ -12,19 +12,21 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../utils/apiClient';
 
-type TrafficLevel = 'green' | 'yellow' | 'red';
+type TrafficLevel = 'green' | 'yellow' | 'red' | 'pending';
 
 type AlertCategory = {
   level: TrafficLevel;
+  status: string;
   label: string;
   detail: string;
+  missing_fields?: string[];
 };
 
 type AlertsData = {
   patient_id: string;
   patient_name: string;
   overall_level: TrafficLevel;
-  alert_counts: { green: number; yellow: number; red: number };
+  alert_counts: { green: number; yellow: number; red: number; pending: number };
   categories: Record<string, AlertCategory | null>;
 };
 
@@ -32,6 +34,7 @@ const TRAFFIC_CONFIG: Record<TrafficLevel, { color: string; bg: string; icon: st
   green: { color: '#27ae60', bg: '#e8f8f0', icon: 'checkmark-circle', label: 'Normal' },
   yellow: { color: '#f39c12', bg: '#fef9e7', icon: 'warning', label: 'Atenção' },
   red: { color: '#e74c3c', bg: '#fdedec', icon: 'alert-circle', label: 'Crítico' },
+  pending: { color: '#7f8c8d', bg: '#f2f4f4', icon: 'help-circle', label: 'Pendente' },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -56,12 +59,12 @@ function TrafficLightCircle({ level, size = 14 }: { level: TrafficLevel; size?: 
   );
 }
 
-function OverallGauge({ level, counts }: { level: TrafficLevel; counts: { green: number; yellow: number; red: number } }) {
-  const total = counts.green + counts.yellow + counts.red;
+function OverallGauge({ level, counts }: { level: TrafficLevel; counts: { green: number; yellow: number; red: number; pending: number } }) {
+  const total = counts.green + counts.yellow + counts.red + counts.pending;
   return (
     <View style={styles.gaugeContainer}>
       <View style={styles.gaugeRow}>
-        {(['green', 'yellow', 'red'] as TrafficLevel[]).map((lvl) => {
+        {(['green', 'yellow', 'red', 'pending'] as TrafficLevel[]).map((lvl) => {
           const cfg = TRAFFIC_CONFIG[lvl];
           const pct = total > 0 ? (counts[lvl] / total) * 100 : 0;
           return (
@@ -70,12 +73,12 @@ function OverallGauge({ level, counts }: { level: TrafficLevel; counts: { green:
         })}
       </View>
       <View style={styles.gaugeLegend}>
-        {(['green', 'yellow', 'red'] as TrafficLevel[]).map((lvl) => {
+        {(['green', 'yellow', 'red', 'pending'] as TrafficLevel[]).map((lvl) => {
           const cfg = TRAFFIC_CONFIG[lvl];
           return (
             <View key={lvl} style={styles.gaugeLegendItem}>
               <View style={[styles.legendDot, { backgroundColor: cfg.color }]} />
-              <Text style={styles.legendText}>{counts[lvl]} {lvl === 'green' ? 'Normais' : lvl === 'yellow' ? 'Atenção' : 'Críticos'}</Text>
+              <Text style={styles.legendText}>{counts[lvl]} {lvl === 'green' ? 'Normais' : lvl === 'yellow' ? 'Atenção' : lvl === 'red' ? 'Críticos' : 'Pendentes'}</Text>
             </View>
           );
         })}

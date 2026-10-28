@@ -735,11 +735,13 @@ paths:
               example:
                 patient_id: '1'
                 patient_name: Maria Exemplo
+                catalog_version: 1.0.0
                 overall_level: yellow
-                alert_counts: { green: 2, yellow: 1, red: 0 }
+                alert_counts: { green: 2, yellow: 1, red: 0, pending: 3 }
                 categories:
                   pressao_arterial:
                     level: yellow
+                    status: alert
                     label: Pre-hipertensao
                     detail: PA 132/86 mmHg (pre-hipertensao)
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -2190,6 +2192,7 @@ components:
       properties:
         patient_id: { type: string }
         patient_name: { type: string }
+        catalog_version: { type: string, pattern: '^\\d+\\.\\d+\\.\\d+$' }
         overall_level: { type: string, enum: [green, yellow, red] }
         alert_counts:
           type: object
@@ -2197,14 +2200,28 @@ components:
             green: { type: integer }
             yellow: { type: integer }
             red: { type: integer }
+            pending: { type: integer }
         categories:
           type: object
           additionalProperties:
             type: object
             properties:
-              level: { type: string, enum: [green, yellow, red] }
+              level: { type: string, enum: [green, yellow, red, pending] }
+              status: { type: string, enum: [no_alert, alert, pending_data, pending_decision] }
               label: { type: string }
               detail: { type: string }
+              missing_fields:
+                type: array
+                items: { type: string }
+              alerts:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    ruleId: { type: string }
+                    severity: { type: string, enum: [green, yellow, red] }
+                    evidence: { type: string }
+                    suggestedAction: { type: string }
 
     Pregnancy:
       type: object
