@@ -1,7 +1,7 @@
 {
   "fixtureVersion": "1.0.0",
-  "catalogVersion": "1.0.0",
-  "approvalStatus": "technical-baseline-awaiting-po",
+  "catalogVersion": "1.1.0",
+  "approvalStatus": "po-approved-2026-10-28",
   "scope": "synthetic-contract-coverage",
   "notes": "Casos sintéticos para verificar o contrato executável. Não substituem validação clínica nem alteram os limiares do catálogo.",
   "cases": [
@@ -14,7 +14,7 @@
     {"id": "ogtt_glucose_attention", "category": "blood_glucose", "inputOverrides": {"glucoseType": "ogtt75g", "glucoseValue": 92}, "expected": {"status": "alert", "alertRuleIds": ["ogtt_glucose_attention"]}},
     {"id": "bmi_outside_healthy_range_low", "category": "pre_pregnancy_bmi", "inputOverrides": {"prePregnancyBmi": 18.4}, "expected": {"status": "alert", "alertRuleIds": ["bmi_outside_healthy_range"]}},
     {"id": "bmi_outside_healthy_range_high", "category": "pre_pregnancy_bmi", "inputOverrides": {"prePregnancyBmi": 25}, "expected": {"status": "alert", "alertRuleIds": ["bmi_outside_healthy_range"]}},
-    {"id": "fundal_height_outside_curve", "category": "fundal_height", "inputOverrides": {"fundalHeightPercentile": 5}, "expected": {"status": "pending_decision", "alertRuleIds": []}},
+    {"id": "fundal_height_outside_curve", "category": "fundal_height", "inputOverrides": {"fundalHeightPercentile": 5}, "expected": {"status": "alert", "alertRuleIds": ["fundal_height_outside_curve"]}},
     {"id": "fetal_heart_rate_low", "category": "fetal_heart_rate", "inputOverrides": {"fetalHeartRate": 109, "gestationalWeeks": 20}, "expected": {"status": "alert", "alertRuleIds": ["fetal_heart_rate_low"]}},
     {"id": "fetal_heart_rate_high", "category": "fetal_heart_rate", "inputOverrides": {"fetalHeartRate": 161, "gestationalWeeks": 20}, "expected": {"status": "alert", "alertRuleIds": ["fetal_heart_rate_high"]}},
     {"id": "gestational_age_42_or_more", "category": "gestational_age", "inputOverrides": {"gestationalWeeks": 42}, "expected": {"status": "alert", "alertRuleIds": ["gestational_age_41_or_more", "gestational_age_42_or_more"]}},
@@ -24,6 +24,6 @@
     {"id": "previous_pregnancy_risk", "category": "previous_pregnancy", "inputOverrides": {"previousPregnancyRisk": true}, "expected": {"status": "alert", "alertRuleIds": ["previous_pregnancy_risk"]}},
     {"id": "current_pregnancy_acute", "category": "current_pregnancy", "inputOverrides": {"currentPregnancyFlags": ["bleeding"]}, "expected": {"status": "alert", "alertRuleIds": ["current_pregnancy_acute"]}},
     {"id": "current_pregnancy_other", "category": "current_pregnancy", "inputOverrides": {"currentPregnancyFlags": ["anemia"]}, "expected": {"status": "alert", "alertRuleIds": ["current_pregnancy_other"]}},
-    {"id": "vaccination_pending", "category": "vaccination", "inputOverrides": {"vaccinationStatus": "pending"}, "expected": {"status": "pending_decision", "alertRuleIds": []}}
+    {"id": "vaccination_pending", "category": "vaccination", "inputOverrides": {"vaccinationStatus": "pending"}, "expected": {"status": "alert", "alertRuleIds": ["vaccination_pending"]}}
   ]
 }
