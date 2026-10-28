@@ -32,7 +32,8 @@ function encryptEntry(entry) {
 
 async function findPregnancyWithWeeks(pregnancyId) {
   const result = await client.query(
-    'SELECT id, pregnant_id, weeks FROM pregnancies WHERE id = $1',
+    `SELECT id, pregnant_id, weeks, dum, ig_ultrassonografia
+     FROM pregnancies WHERE id = $1`,
     [pregnancyId]
   );
   return result.rows[0]
