@@ -115,6 +115,16 @@ const ENCRYPTED_FIELDS = Object.freeze({
     'dgn',
     'idade_gestacional_semanas',
   ]),
+  daily_entries: Object.freeze([
+    'alarm_symptoms',
+    'other_symptoms',
+    'free_text',
+    'systolic',
+    'diastolic',
+    'weight_kg',
+    'glucose_mg_dl',
+    'reduced_fetal_movements',
+  ]),
 });
 
 const HASHED_FIELDS = Object.freeze({
@@ -163,6 +173,18 @@ const CLEAR_FIELDS = Object.freeze({
     'doctor_id', 'pregnant_id', 'status',
   ]),
   medidas_fetais: Object.freeze(['encryption_key_version']),
+  daily_entries: Object.freeze([
+    'entry_key',
+    'pregnant_id',
+    'pregnancy_id',
+    'entry_date',
+    'timezone',
+    'version',
+    'is_current',
+    'previous_version_id',
+    'created_by_user_id',
+    'encryption_key_version',
+  ]),
 });
 
 function getEncryptedFields(table) {

@@ -1851,6 +1851,91 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  # --------------------------------------------------------------- Diario
+  /api/daily-entries:
+    post:
+      tags: [Diario]
+      summary: Registra uma entrada diária da gestante
+      operationId: createDailyEntry
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante, admin]
+      description: Exige data e pelo menos um dado. A entrada fica vinculada à gestação informada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DailyEntryInput' }
+            example:
+              pregnancy_id: 12
+              entry_date: '2026-10-28'
+              timezone: America/Recife
+              other_symptoms: [azia]
+              weight_kg: 68.4
+      responses:
+        '201':
+          description: Entrada criada na versão 1.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DailyEntry' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/daily-entries/pregnancies/{pregnancyId}:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    get:
+      tags: [Diario]
+      summary: Lista o diário atual de uma gestação
+      operationId: listDailyEntries
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante, medico, admin]
+      description: Gestante acessa a própria gestação; médico precisa de vínculo ativo.
+      responses:
+        '200':
+          description: Entradas atuais, ordenadas da mais recente para a mais antiga.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DailyEntry' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/daily-entries/{entryKey}:
+    parameters:
+      - name: entryKey
+        in: path
+        required: true
+        schema: { type: string, maxLength: 80 }
+    put:
+      tags: [Diario]
+      summary: Corrige uma entrada do diário criando nova versão
+      operationId: updateDailyEntry
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante, admin]
+      description: A versão anterior permanece preservada para auditoria; não existe exclusão silenciosa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DailyEntryInput' }
+      responses:
+        '200':
+          description: Nova versão da entrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DailyEntry' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2222,6 +2307,39 @@ components:
                     severity: { type: string, enum: [green, yellow, red] }
                     evidence: { type: string }
                     suggestedAction: { type: string }
+
+    DailyEntryInput:
+      type: object
+      required: [entry_date]
+      properties:
+        pregnancy_id: { type: integer, minimum: 1 }
+        entry_date: { type: string, format: date }
+        timezone: { type: string, maxLength: 80, default: America/Recife }
+        alarm_symptoms:
+          type: array
+          items: { type: string, enum: [sangramento, perda_liquido, cefaleia_intensa, febre, contracoes] }
+        other_symptoms:
+          type: array
+          items: { type: string, enum: [enjoo, azia, dor_costas, inchaco_leve, cansaco] }
+        free_text: { type: string, maxLength: 500 }
+        systolic: { type: number, minimum: 60, maximum: 260 }
+        diastolic: { type: number, minimum: 30, maximum: 160 }
+        weight_kg: { type: number, minimum: 30, maximum: 250 }
+        glucose_mg_dl: { type: number, minimum: 20, maximum: 600 }
+        reduced_fetal_movements: { type: boolean, description: Disponível a partir de 28 semanas. }
+    DailyEntry:
+      allOf:
+        - $ref: '#/components/schemas/DailyEntryInput'
+        - type: object
+          required: [id, entry_key, pregnant_id, pregnancy_id, version, created_at]
+          properties:
+            id: { type: integer }
+            entry_key: { type: string }
+            pregnant_id: { type: integer }
+            version: { type: integer, minimum: 1 }
+            created_by_user_id: { type: integer }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
 
     Pregnancy:
       type: object
