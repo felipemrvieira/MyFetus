@@ -15,6 +15,7 @@ const {
   buildDailyEntryRuleContext,
   validateDailyEntryByGestationalAge,
 } = require('../services/dailyEntryRuleService');
+const { buildDailyRiskFeed } = require('../services/dailyRiskFeedService');
 
 function handleError(res, error) {
   if (error instanceof DailyEntryValidationError) {
@@ -118,6 +119,39 @@ async function listDailyEntries(req, res) {
   }
 }
 
+async function listDailyRiskFeed(req, res) {
+  try {
+    const pregnancyId = validateId(req.params.pregnancyId, 'pregnancy_id');
+    if (!(await ensureCanAccessPregnancy(req, res, pregnancyId))) return;
+    const result = await client.query(
+      `SELECT * FROM daily_entries
+       WHERE pregnancy_id = $1 AND is_current = TRUE
+       ORDER BY entry_date DESC, id DESC
+       LIMIT 500`,
+      [pregnancyId]
+    );
+    const entries = result.rows.map((row) => serializeEntry(
+      cryptoService.decryptRecord(row, 'daily_entries')
+    ));
+    audit(req, {
+      action: 'DAILY_RISK_FEED_ACCESSED',
+      resource: 'daily_entries',
+      resource_id: String(pregnancyId),
+      detail: { count: entries.length },
+    });
+    return res.json({
+      pregnancy_id: pregnancyId,
+      entries: buildDailyRiskFeed(entries),
+      policy: {
+        evaluated_fields: ['alarm_symptoms', 'reduced_fetal_movements', 'systolic', 'diastolic'],
+        history_only_fields: ['weight_kg', 'glucose_mg_dl', 'other_symptoms', 'free_text'],
+      },
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+}
+
 async function updateDailyEntry(req, res) {
   const entryKey = String(req.params.entryKey || '').trim();
   if (!entryKey || entryKey.length > 80) return res.status(400).json({ error: 'entry_key invalido' });
@@ -201,5 +235,6 @@ async function updateDailyEntry(req, res) {
 module.exports = {
   createDailyEntry,
   listDailyEntries,
+  listDailyRiskFeed,
   updateDailyEntry,
 };

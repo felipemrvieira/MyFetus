@@ -19,6 +19,12 @@ router.get(
   requireRole('gestante', 'medico', 'admin'),
   controller.listDailyEntries
 );
+router.get(
+  '/pregnancies/:pregnancyId/feed',
+  authenticateToken,
+  requireRole('gestante', 'medico', 'admin'),
+  controller.listDailyRiskFeed
+);
 router.put(
   '/:entryKey',
   authenticateToken,
