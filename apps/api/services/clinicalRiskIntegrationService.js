@@ -38,7 +38,7 @@ function buildObservationAlerts(observations, context) {
         ? 'Isso pode ser um sinal de alarme. Procure agora a maternidade ou um serviço de urgência, ou ligue 192 (SAMU).'
         : 'Pressão arterial em faixa de atenção. Fale com a equipe de saúde.',
     });
-    else alerts.push(...awaitableNormalClosure(context, ruleId));
+    else alerts.push(...normalClosureAlerts(context, ruleId));
   }
 
   for (const observation of accepted) {
@@ -77,7 +77,7 @@ function buildObservationAlerts(observations, context) {
   return alerts;
 }
 
-function awaitableNormalClosure(context, ruleId) {
+function normalClosureAlerts(context, ruleId) {
   return [{
     pregnancy_id: context.pregnancyId,
     pregnant_id: context.pregnantId,
