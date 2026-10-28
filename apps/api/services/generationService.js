@@ -7,6 +7,7 @@
 require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
 const { getDefaultAiUsageStore } = require('./aiUsageService');
+const { SAFE_MESSAGES } = require('./agents/guardrailService');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -20,7 +21,7 @@ const SYSTEM_INSTRUCTION = `Você é o assistente clínico do MyFetus, um app de
 Responda em português do Brasil, de forma clara, breve e acolhedora.
 Baseie a resposta SOMENTE nos trechos de diretrizes fornecidos no contexto.
 Se o contexto não tiver a resposta, diga que não encontrou essa informação nas diretrizes disponíveis e recomende falar com o médico responsável.
-Nunca dê diagnóstico. Deixe claro que isso não substitui uma consulta médica.`;
+Nunca dê diagnóstico, prescrição ou dosagem. Termine toda orientação com: "${SAFE_MESSAGES.disclaimer}"`;
 
 // NOVO: Prompt super-restrito para o Agente Materno (focado no médico)
 const AGENTE_MATERNO_INSTRUCTION = `Você é o Agente Materno do MyFetus, um assistente clínico virtual avançado de apoio à decisão médica.
@@ -93,6 +94,14 @@ function buildPatientContext(dadosPaciente) {
   return context;
 }
 
+function ensureDisclaimer(text) {
+  const response = String(text || '').trim();
+  if (!response) return SAFE_MESSAGES.disclaimer;
+  return response.includes(SAFE_MESSAGES.disclaimer)
+    ? response
+    : `${response}\n\n${SAFE_MESSAGES.disclaimer}`;
+}
+
 
 // ============================================================================
 // 4. FUNÇÕES DE GERAÇÃO (LLM)
@@ -101,7 +110,7 @@ function buildPatientContext(dadosPaciente) {
 // Função original (mantida)
 async function generateAnswer(query, trechos) {
   if (!trechos || trechos.length === 0) {
-    return 'Não encontrei informações sobre isso nas diretrizes disponíveis. Recomendo conversar com seu médico sobre essa dúvida.';
+    return SAFE_MESSAGES.no_source;
   }
 
   const ai = getClient();
@@ -117,7 +126,7 @@ async function generateAnswer(query, trechos) {
 
   recordProviderUsage('rag_chat', response);
 
-  return response.text || 'Não consegui gerar uma resposta agora. Tente novamente em alguns instantes.';
+  return ensureDisclaimer(response.text || 'Não consegui gerar uma resposta agora. Tente novamente em alguns instantes.');
 }
 
 // NOVO: Função central do Agente Materno
@@ -152,7 +161,7 @@ ${query}
 
     recordProviderUsage('maternal_analysis', response);
 
-    return response.text || 'Não foi possível completar a análise clínica no momento.';
+    return ensureDisclaimer(response.text || 'Não foi possível completar a análise clínica no momento.');
   } catch (error) {
     const logger = require('../utils/logger');
     logger.error('Erro na geração do Agente Materno');

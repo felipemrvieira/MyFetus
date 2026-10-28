@@ -6,6 +6,7 @@ const {
   detectUrgency,
   hasInjection,
   hasOutOfScopeRequest,
+  SAFE_MESSAGES,
 } = require('../services/agents/guardrailService');
 const { runClinicalAgentGraph } = require('../services/agents/clinicalGraph');
 
@@ -57,4 +58,17 @@ test('urgência sem provedor real sempre retorna resposta segura', async () => {
   assert.equal(state.guardrail_category, 'urgent');
   assert.equal(state.maternal_analysis, '');
   assert.doesNotMatch(state.final_response, /tome|diagnóstico|você tem/i);
+});
+
+test('usa exatamente os textos aprovados pelo PO para fallback e urgência', () => {
+  assert.equal(
+    classifyQuery('Minha pressão está 170/115 e estou com 30 semanas').response,
+    SAFE_MESSAGES.urgent
+  );
+  assert.equal(
+    classifyQuery('Qual é o diagnóstico definitivo e qual a dose exata?').response,
+    SAFE_MESSAGES.out_of_scope
+  );
+  assert.equal(SAFE_MESSAGES.no_source, 'Não encontrei isso nas fontes aprovadas. Converse com seu médico.');
+  assert.equal(SAFE_MESSAGES.disclaimer, 'Esta informação é educativa e não substitui avaliação médica.');
 });

@@ -1,6 +1,8 @@
 {
-  "version": "1.0.0",
-  "approvalStatus": "technical-baseline-awaiting-po-copy",
+  "version": "1.1.0",
+  "approvalStatus": "po-approved-2026-10-28",
+  "approvedBy": "ruypontes",
+  "approvedAt": "2026-10-28",
   "scope": "educacao_pre_natal_com_fontes_aprovadas",
   "precedence": ["urgent", "prompt_injection", "out_of_scope", "in_scope", "clarify"],
   "categories": {
@@ -30,10 +32,5 @@
       "messageStatus": "baseline-safe-copy"
     }
   },
-  "poDecisionsStillRequired": [
-    "texto final dos fallbacks",
-    "lista definitiva de temas permitidos e proibidos",
-    "serviço local de emergência a mencionar",
-    "idiomas e tom de comunicação"
-  ]
+  "poDecisionsStillRequired": []
 }
