@@ -59,7 +59,7 @@ test('limite inválido falha explicitamente', () => {
   );
 });
 
-test('categorias sem contrato de curva/calendário permanecem pendentes', () => {
+test('categorias com dados aprovados são avaliadas pelo contrato clínico', () => {
   const result = evaluateRisk({
     maternalAge: 36,
     systolic: 120,
@@ -74,8 +74,9 @@ test('categorias sem contrato de curva/calendário permanecem pendentes', () => 
     previousPregnancyRisk: false,
     currentPregnancyFlags: [],
     vaccinationStatus: 'regular',
-    fundalHeight: 20
+    fundalHeight: 20,
+    fundalHeightPercentile: 50
   });
-  assert.equal(result.categories.find(category => category.category === 'fundal_height').status, 'pending_decision');
-  assert.equal(result.categories.find(category => category.category === 'vaccination').status, 'pending_decision');
+  assert.equal(result.categories.find(category => category.category === 'fundal_height').status, 'no_alert');
+  assert.equal(result.categories.find(category => category.category === 'vaccination').status, 'no_alert');
 });

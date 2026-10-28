@@ -1,4 +1,8 @@
 const { evaluateRisk } = require('./riskEngine');
+const {
+  applyGestationalPolicy,
+  buildGestationalRuleContext,
+} = require('./gestationalRuleService');
 
 const FAMILY_FIELDS = [
   'antecedentes_diabetes',
@@ -99,6 +103,9 @@ function buildRiskInput(patient, pregnancy, options = {}) {
   const prePregnancyWeight = positiveNumber(patient?.peso_pregestacional);
   const height = positiveNumber(patient?.altura);
   const gestationalWeeks = positiveNumber(pregnancy?.weeks);
+  const gestationalRuleContext = buildGestationalRuleContext(pregnancy, {
+    isMultiplePregnancy: Boolean(patient?.antecedentes_gemelar),
+  });
   // `frequencia_cardiaca` is ambiguous in the current schema: the two mobile
   // forms have historically written maternal heart rate and BCF to the same
   // column. Until the columns are split, do not use that value as FCF.
@@ -126,11 +133,12 @@ function buildRiskInput(patient, pregnancy, options = {}) {
   input.clinicalHistory = anyTruthy(patient, CLINICAL_FIELDS);
   input.previousPregnancyRisk = anyTruthy(patient, PREVIOUS_PREGNANCY_FIELDS);
   input.currentPregnancyFlags = buildCurrentPregnancyFlags(patient);
+  input.isMultiplePregnancy = gestationalRuleContext.multiplePregnancy;
 
   // O calendário vacinal por IG ainda não está representado no schema do
   // cadastro. Deixamos a categoria pendente em vez de contar vacinas de forma
   // aritmética ou inferir elegibilidade.
-  return input;
+  return { ...input, gestationalRuleContext };
 }
 
 function categoryDetail(category) {
@@ -139,6 +147,9 @@ function categoryDetail(category) {
   }
   if (category.status === 'pending_data') {
     return `Dados pendentes: ${category.missingFields.join(', ')}.`;
+  }
+  if (category.status === 'not_applicable') {
+    return category.reason || 'Regra ainda não aplicável para esta idade gestacional.';
   }
   if (category.alerts.length === 0) return 'Nenhum alerta identificado pelos dados informados.';
   return category.alerts.map((alert) => alert.evidence).join('; ');
@@ -164,17 +175,20 @@ function serializeCategory(category) {
 }
 
 function evaluatePatientRisk(patient, pregnancy, options = {}) {
-  const evaluation = evaluateRisk(buildRiskInput(patient, pregnancy, options), options);
-  const categories = Object.fromEntries(evaluation.categories.map(serializeCategory));
+  const input = buildRiskInput(patient, pregnancy, options);
+  const evaluation = evaluateRisk(input, options);
+  const categoriesWithPolicy = applyGestationalPolicy(evaluation.categories, input.gestationalRuleContext);
+  const categories = Object.fromEntries(categoriesWithPolicy.map(serializeCategory));
   const alertCounts = { green: 0, yellow: 0, red: 0, pending: 0 };
 
-  evaluation.categories.forEach((category) => {
+  categoriesWithPolicy.forEach((category) => {
     if (category.status.startsWith('pending_')) alertCounts.pending += 1;
     else alertCounts[category.severity] += 1;
   });
 
   return {
     catalog_version: evaluation.catalogVersion,
+    gestational_rule_context: input.gestationalRuleContext,
     overall_level: evaluation.overallSeverity,
     alert_counts: alertCounts,
     categories,
