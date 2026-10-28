@@ -14,7 +14,7 @@ const { sendInternalError } = require('../utils/httpErrors');
 
 function handleError(res, error) {
   if (error instanceof DailyEntryValidationError) {
-    return res.status(400).json({ error: error.message });
+    return res.status(400).json({ error: error.validationMessage });
   }
   return sendInternalError(res);
 }

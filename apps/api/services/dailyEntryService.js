@@ -16,7 +16,13 @@ const OTHER_SYMPTOMS = Object.freeze([
   'cansaco',
 ]);
 
-class DailyEntryValidationError extends Error {}
+class DailyEntryValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'DailyEntryValidationError';
+    this.validationMessage = message;
+  }
+}
 
 function validateId(value, field) {
   const id = Number(value);
