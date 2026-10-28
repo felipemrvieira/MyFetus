@@ -124,6 +124,9 @@ app.use('/api/consents', consentRoutes);
 const privacyRoutes = require('./routes/privacy');
 app.use('/api/privacy', privacyRoutes);
 
+const dailyEntriesRoutes = require('./routes/dailyEntries');
+app.use('/api/daily-entries', dailyEntriesRoutes);
+
 // Documentacao OpenAPI/Swagger (E1-09): contrato em apps/api/openapi.yaml.
 const docsRoutes = require('./routes/docs');
 app.use('/docs', docsRoutes);

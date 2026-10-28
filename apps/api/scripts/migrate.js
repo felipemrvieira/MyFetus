@@ -29,6 +29,7 @@ const migrations = [
   ['13_exam_requests.sql', 'migration_exam_requests.sql'],
   ['14_exam_request_documents.sql', 'migration_exam_request_documents.sql'],
   ['15_doctor_approval.sql', 'migration_doctor_approval.sql'],
+  ['16_daily_entries.sql', 'migration_daily_entries.sql'],
 ];
 
 function required(name) {
