@@ -94,14 +94,6 @@ function normalizePayload(payload = {}, gestationalWeeks) {
     reduced_fetal_movements: optionalBoolean(payload.reduced_fetal_movements, 'reduced_fetal_movements'),
   };
 
-  if (gestationalWeeks !== null && gestationalWeeks !== undefined && Number(gestationalWeeks) < 28) {
-    if (entry.reduced_fetal_movements !== null) {
-      throw new DailyEntryValidationError(
-        'reduced_fetal_movements so pode ser informado a partir de 28 semanas'
-      );
-    }
-  }
-
   const hasData = entry.alarm_symptoms.length > 0 ||
     entry.other_symptoms.length > 0 ||
     entry.free_text !== null ||
