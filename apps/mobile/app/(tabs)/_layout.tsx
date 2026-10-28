@@ -67,6 +67,16 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="diario"
+        options={{
+          title: 'Diário',
+          tabBarAccessibilityLabel: 'Diário da gestação',
+          tabBarIcon: ({ color }) => (
+            <FontAwesome name="calendar" size={22} color={color} />
+          ),
+        }}
+      />
 
       <Tabs.Screen
         name="exames"

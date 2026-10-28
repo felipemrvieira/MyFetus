@@ -114,6 +114,44 @@ export interface CreatePregnancyRequest {
   ig_ultrassonografia: string;
 }
 
+export type DailyAlarmSymptom = 'sangramento' | 'perda_liquido' | 'cefaleia_intensa' | 'febre' | 'contracoes';
+export type DailyOtherSymptom = 'enjoo' | 'azia' | 'dor_costas' | 'inchaco_leve' | 'cansaco';
+
+export interface DailyEntryInput {
+  pregnancy_id?: number;
+  entry_date: string;
+  timezone?: string;
+  alarm_symptoms?: DailyAlarmSymptom[];
+  other_symptoms?: DailyOtherSymptom[];
+  free_text?: string;
+  systolic?: number;
+  diastolic?: number;
+  weight_kg?: number;
+  glucose_mg_dl?: number;
+  reduced_fetal_movements?: boolean;
+}
+
+export interface DailyEntry {
+  id: number;
+  entry_key: string;
+  pregnant_id: number;
+  pregnancy_id: number;
+  entry_date: string;
+  timezone?: string;
+  version: number;
+  alarm_symptoms: DailyAlarmSymptom[];
+  other_symptoms: DailyOtherSymptom[];
+  free_text: string | null;
+  systolic: number | null;
+  diastolic: number | null;
+  weight_kg: number | null;
+  glucose_mg_dl: number | null;
+  reduced_fetal_movements: boolean | null;
+  created_by_user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // ==========================================
 // LOTE 3: EXAMES E DOCUMENTOS
 // ==========================================
