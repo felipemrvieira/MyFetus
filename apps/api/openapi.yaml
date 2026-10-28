@@ -1906,6 +1906,44 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/daily-entries/pregnancies/{pregnancyId}/feed:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    get:
+      tags: [Diario]
+      summary: Lista o feed de risco do diário
+      operationId: listDailyRiskFeed
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante, medico, admin]
+      description: Avalia sinais de alarme e pressão; peso, glicemia, outros sintomas e texto livre permanecem como histórico.
+      responses:
+        '200':
+          description: Feed diário com sinais e histórico.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pregnancy_id, entries, policy]
+                properties:
+                  pregnancy_id: { type: integer }
+                  entries:
+                    type: array
+                    items: { $ref: '#/components/schemas/DailyRiskFeedEntry' }
+                  policy:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      evaluated_fields:
+                        type: array
+                        items: { type: string }
+                      history_only_fields:
+                        type: array
+                        items: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /api/daily-entries/{entryKey}:
     parameters:
       - name: entryKey
@@ -2340,6 +2378,26 @@ components:
             created_by_user_id: { type: integer }
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
+    DailyRiskFeedEntry:
+      type: object
+      required: [entry_key, entry_date, version, level, signals, history]
+      properties:
+        entry_key: { type: string }
+        entry_date: { type: string, format: date }
+        version: { type: integer, minimum: 1 }
+        level: { type: string, enum: [green, yellow, red] }
+        signals:
+          type: array
+          items:
+            type: object
+            required: [code, level, message]
+            properties:
+              code: { type: string }
+              level: { type: string, enum: [yellow, red] }
+              message: { type: string }
+        history:
+          type: object
+          additionalProperties: true
 
     Pregnancy:
       type: object
