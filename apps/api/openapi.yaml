@@ -551,6 +551,54 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
+  /api/doctors/me/dashboard:
+    get:
+      tags: [Medicos]
+      summary: Dashboard do médico ordenado por gravidade (E3-10)
+      operationId: getMyDoctorDashboard
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      description: >-
+        Lista só as gestantes com vínculo ativo com o médico do token, com resumo
+        (nome, IG, pior alerta e data). Ordem aprovada pelo P.O.: vermelho não
+        reconhecido, amarelo não reconhecido, vermelho reconhecido, amarelo
+        reconhecido e sem alerta; no empate, o alerta mais recente primeiro.
+        Alertas encerrados (`closed`) não contam. Os contadores cobrem todas as
+        pacientes vinculadas (antes dos filtros); `total` é a quantidade após os
+        filtros. Paginação de 20. O admin não acessa esta rota até existir o
+        procedimento auditado (#69).
+      parameters:
+        - name: gravidade
+          in: query
+          required: false
+          schema: { type: string, enum: [red, yellow, none] }
+          description: Gravidade do pior alerta ativo; `none` = sem alerta ativo.
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pendente, reconhecido] }
+          description: >-
+            `pendente` = tem alerta não reconhecido; `reconhecido` = todos os
+            alertas ativos já foram reconhecidos.
+        - name: busca
+          in: query
+          required: false
+          schema: { type: string, maxLength: 100 }
+          description: Trecho do nome, sem diferenciar maiúsculas e acentos.
+        - name: pagina
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, default: 1 }
+      responses:
+        '200':
+          description: Resumo das pacientes vinculadas, ordenado por gravidade.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DoctorDashboard' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/doctors/me:
     put:
       tags: [Medicos]
@@ -2380,6 +2428,53 @@ components:
         especialidade: { type: string }
         telefone: { type: string }
 
+    DoctorDashboard:
+      type: object
+      required: [contadores, total, pagina, por_pagina, total_paginas, pacientes]
+      properties:
+        contadores:
+          type: object
+          required: [vermelho, amarelo, sem_alerta, nao_reconhecidos]
+          properties:
+            vermelho: { type: integer, description: Pacientes cujo pior alerta ativo é vermelho. }
+            amarelo: { type: integer, description: Pacientes cujo pior alerta ativo é amarelo. }
+            sem_alerta: { type: integer, description: Pacientes sem alerta ativo. }
+            nao_reconhecidos: { type: integer, description: Pacientes com ao menos um alerta não reconhecido. }
+        total: { type: integer, description: Pacientes após os filtros. }
+        pagina: { type: integer }
+        por_pagina: { type: integer }
+        total_paginas: { type: integer }
+        pacientes:
+          type: array
+          items:
+            type: object
+            required: [pregnant_id, nome, ig_semanas, pior_alerta, alertas_nao_reconhecidos]
+            properties:
+              pregnant_id: { type: integer }
+              nome: { type: string }
+              ig_semanas: { type: [integer, 'null'] }
+              alertas_nao_reconhecidos: { type: integer }
+              pior_alerta:
+                oneOf:
+                  - type: 'null'
+                  - type: object
+                    required: [gravidade, reconhecido, data]
+                    properties:
+                      gravidade: { type: string, enum: [red, yellow] }
+                      reconhecido: { type: boolean }
+                      data: { type: string, format: date-time }
+      example:
+        contadores: { vermelho: 1, amarelo: 2, sem_alerta: 3, nao_reconhecidos: 2 }
+        total: 6
+        pagina: 1
+        por_pagina: 20
+        total_paginas: 1
+        pacientes:
+          - pregnant_id: 7
+            nome: Gestante Sintetica 07
+            ig_semanas: 28
+            alertas_nao_reconhecidos: 1
+            pior_alerta: { gravidade: red, reconhecido: false, data: '2026-10-29T14:00:00.000Z' }
     DoctorApprovalStatus:
       type: object
       required: [approval_status]
