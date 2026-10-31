@@ -8,7 +8,8 @@
  *
  * Escopo aprovado pelo P.O. em 23/10/2026 (comentário na #69):
  *   - gestante: conta, consentimentos, prontuário, gestações, eventos, históricos,
- *     pedidos de exame, documentos (metadados e texto extraído) e vínculos;
+ *     pedidos de exame, documentos (metadados e texto extraído), resultados
+ *     estruturados dos exames (com o status da revisão médica) e vínculos;
  *   - médico: conta, consentimentos e o próprio perfil profissional, nunca os
  *     dados dos pacientes;
  *   - administrador: conta e consentimentos (exportação de terceiros só por
@@ -39,6 +40,12 @@ const COLUMNS = Object.freeze({
   pregnant_documents: [
     'id', 'exam_request_id', 'document_name', 'document_type', 'status', 'report_comment',
     'extracted_text', 'extraction_status', 'uploaded_at', 'reviewed_at', 'updated_at',
+  ],
+  // Sem o autor nem a justificativa da revisão: são registros do médico (terceiro).
+  lab_results: [
+    'id', 'document_id', 'analyte_id', 'loinc', 'raw_text', 'original_value', 'original_unit',
+    'original_observed_at', 'value', 'unit', 'reference_low', 'reference_high', 'observed_at',
+    'exam_type', 'timepoint', 'status', 'reviewed_at', 'created_at',
   ],
   doctor_patient_links: ['status', 'created_at', 'updated_at'],
 });
@@ -79,7 +86,7 @@ function createDataExportService({ crypto, now = () => new Date() }) {
     if (pregnants.length === 0) {
       return {
         prontuario: null, gestacoes: [], eventos: [], biometria_fetal: [], peso_materno: [],
-        pedidos_de_exame: [], documentos: [], vinculos_medicos: [],
+        pedidos_de_exame: [], documentos: [], resultados_de_exame: [], vinculos_medicos: [],
       };
     }
 
@@ -114,6 +121,10 @@ function createDataExportService({ crypto, now = () => new Date() }) {
       `SELECT ${selectList('pregnant_documents', 'd')} FROM pregnant_documents d
        WHERE d.pregnant_id = ANY($1::int[]) ORDER BY d.uploaded_at, d.id`,
       [pregnantIds]);
+    const resultados = await rowsOf(db, 'lab_results',
+      `SELECT ${selectList('lab_results', 'x')} FROM lab_results x
+       WHERE x.pregnant_id = ANY($1::int[]) ORDER BY x.document_id, x.line_index`,
+      [pregnantIds]);
     const vinculos = await rowsOf(db, 'doctor_patient_links',
       `SELECT ${selectList('doctor_patient_links', 'l')} FROM doctor_patient_links l
        WHERE l.pregnant_id = ANY($1::int[]) ORDER BY l.created_at`,
@@ -127,6 +138,7 @@ function createDataExportService({ crypto, now = () => new Date() }) {
       peso_materno: peso,
       pedidos_de_exame: pedidos,
       documentos,
+      resultados_de_exame: resultados,
       vinculos_medicos: vinculos,
     };
   }

@@ -59,3 +59,17 @@ test('data inválida não é estimada', () => {
   assert.equal(result.results[0].status, 'pending_review');
   assert.equal(result.results[0].ambiguity_reason, 'exam_date_not_found');
 });
+
+test('glicemia só recebe o tipo quando ele está escrito na linha', () => {
+  const result = parseExamText(`
+    Data do exame: 2026-10-12
+    Glicose: 110 mg/dL
+    Glicemia casual: 150 mg/dL
+    Glicemia TOTG 75 g jejum: 90 mg/dL
+  `);
+
+  assert.deepEqual(
+    result.results.map((item) => [item.exam_type, item.timepoint]),
+    [[null, null], ['casual', null], ['ogtt75g', '0h']]
+  );
+});
