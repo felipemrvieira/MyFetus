@@ -2103,6 +2103,226 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/lab-results/documents/{documentId}:
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Exames]
+      summary: Lista os resultados extraídos de um documento para revisão médica
+      operationId: getDocumentLabResults
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      description: "Só o médico vinculado à gestante. Na primeira abertura de um documento já extraído, os analitos são estruturados e ficam pendentes de revisão."
+      responses:
+        '200':
+          description: Documento, contagem por status e resultados.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [document, summary, results]
+                properties:
+                  document:
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      pregnant_id: { type: integer }
+                      document_name: { type: [string, 'null'] }
+                      extraction_status: { type: [string, 'null'] }
+                      uploaded_at: { type: [string, 'null'], format: date-time }
+                      extracted_at: { type: [string, 'null'], format: date-time }
+                  summary:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      pending: { type: integer }
+                      accepted: { type: integer }
+                      corrected: { type: integer }
+                      rejected: { type: integer }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/LabResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/lab-results/{id}/history:
+    parameters:
+      - $ref: '#/components/parameters/LabResultIdPath'
+    get:
+      tags: [Exames]
+      summary: Histórico de versões da revisão de um resultado
+      operationId: getLabResultHistory
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      responses:
+        '200':
+          description: Versões em ordem crescente.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [lab_result_id, history]
+                properties:
+                  lab_result_id: { type: integer }
+                  history:
+                    type: array
+                    items: { $ref: '#/components/schemas/LabResultReview' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/lab-results/{id}/accept:
+    parameters:
+      - $ref: '#/components/parameters/LabResultIdPath'
+    post:
+      tags: [Exames]
+      summary: Aceita o valor extraído
+      operationId: acceptLabResult
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      description: "Só para resultado pendente. Na glicemia, exige o tipo do exame (e o tempo no TOTG 75 g), que pode vir no corpo."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LabResultAcceptRequest' }
+      responses:
+        '200':
+          description: Decisão registrada numa nova versão.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result]
+                properties:
+                  result: { $ref: '#/components/schemas/LabResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422':
+          description: Faltam dados para o valor ter uso clínico (code LAB_RESULT_INCOMPLETE, com a lista em missing).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/lab-results/{id}/correct:
+    parameters:
+      - $ref: '#/components/parameters/LabResultIdPath'
+    post:
+      tags: [Exames]
+      summary: Corrige o valor extraído
+      operationId: correctLabResult
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      description: "Só para resultado pendente. O valor original continua guardado. Justificativa obrigatória."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LabResultCorrectRequest' }
+      responses:
+        '200':
+          description: Decisão registrada numa nova versão.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result]
+                properties:
+                  result: { $ref: '#/components/schemas/LabResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422':
+          description: Faltam dados para o valor ter uso clínico (code LAB_RESULT_INCOMPLETE, com a lista em missing).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/lab-results/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/LabResultIdPath'
+    post:
+      tags: [Exames]
+      summary: Rejeita o valor extraído
+      operationId: rejectLabResult
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      description: "O resultado fica guardado para auditoria, sem uso clínico. Justificativa obrigatória."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LabResultReasonRequest' }
+      responses:
+        '200':
+          description: Decisão registrada numa nova versão.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result]
+                properties:
+                  result: { $ref: '#/components/schemas/LabResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/lab-results/{id}/reopen:
+    parameters:
+      - $ref: '#/components/parameters/LabResultIdPath'
+    post:
+      tags: [Exames]
+      summary: Reabre uma decisão
+      operationId: reopenLabResult
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      description: "Volta o resultado para pendente numa nova versão; a anterior fica no histórico. Justificativa obrigatória."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LabResultReasonRequest' }
+      responses:
+        '200':
+          description: Decisão registrada numa nova versão.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result]
+                properties:
+                  result: { $ref: '#/components/schemas/LabResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2112,6 +2332,11 @@ components:
       description: Token obtido em `POST /api/users/login`. Payload `{ id, role }`.
 
   parameters:
+    LabResultIdPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
     IdPath:
       name: id
       in: path
@@ -2538,6 +2763,83 @@ components:
         unit: { type: string }
         status: { type: string, enum: [accepted, pending, rejected] }
         glucose_type: { type: [string, 'null'], enum: [fasting, casual, 'null'] }
+    LabResultValues:
+      type: object
+      properties:
+        value: { type: [number, string, 'null'] }
+        unit: { type: [string, 'null'] }
+        reference_low: { type: [number, 'null'] }
+        reference_high: { type: [number, 'null'] }
+        observed_at: { type: [string, 'null'], format: date }
+        exam_type: { type: [string, 'null'], enum: [fasting, casual, ogtt75g, null] }
+        timepoint: { type: [string, 'null'], enum: ['0h', '1h', '2h', null] }
+
+    LabResult:
+      type: object
+      required: [id, document_id, analyte_id, status, version, clinically_usable, original, current]
+      properties:
+        id: { type: integer }
+        document_id: { type: integer }
+        analyte_id: { type: string }
+        analyte: { type: string }
+        loinc: { type: [string, 'null'] }
+        status: { type: string, enum: [pending, accepted, corrected, rejected] }
+        version: { type: integer, minimum: 1 }
+        clinically_usable: { type: boolean, description: "Só accepted e corrected têm uso clínico." }
+        original: { $ref: '#/components/schemas/LabResultValues' }
+        current: { $ref: '#/components/schemas/LabResultValues' }
+        raw_text: { type: [string, 'null'], description: Trecho original do documento. }
+        confidence: { type: [number, 'null'] }
+        low_confidence: { type: boolean }
+        ambiguity_reason: { type: [string, 'null'] }
+        missing_for_acceptance:
+          type: array
+          items: { type: string }
+        review_reason: { type: [string, 'null'] }
+        reviewed_by_user_id: { type: [integer, 'null'] }
+        reviewed_at: { type: [string, 'null'], format: date-time }
+
+    LabResultReview:
+      type: object
+      properties:
+        version: { type: integer }
+        action: { type: string, enum: [accept, correct, reject, reopen] }
+        previous_status: { type: string }
+        new_status: { type: string }
+        values: { $ref: '#/components/schemas/LabResultValues' }
+        reason: { type: [string, 'null'] }
+        reviewed_by_user_id: { type: [integer, 'null'] }
+        created_at: { type: string, format: date-time }
+
+    LabResultAcceptRequest:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, description: Versão que o médico abriu; outra versão responde 409. }
+        exam_type: { type: string, enum: [fasting, casual, ogtt75g] }
+        timepoint: { type: string, enum: ['0h', '1h', '2h'] }
+
+    LabResultCorrectRequest:
+      type: object
+      required: [version, reason]
+      properties:
+        version: { type: integer }
+        reason: { type: string, maxLength: 1000 }
+        value: { type: [number, string] }
+        unit: { type: [string, 'null'], maxLength: 30 }
+        reference_low: { type: [number, 'null'] }
+        reference_high: { type: [number, 'null'] }
+        observed_at: { type: string, format: date }
+        exam_type: { type: [string, 'null'], enum: [fasting, casual, ogtt75g, null] }
+        timepoint: { type: [string, 'null'], enum: ['0h', '1h', '2h', null] }
+
+    LabResultReasonRequest:
+      type: object
+      required: [version, reason]
+      properties:
+        version: { type: integer }
+        reason: { type: string, maxLength: 1000 }
+
     AlertEvent:
       type: object
       required: [id, pregnancy_id, pregnant_id, rule_id, severity, status, source_type, message]

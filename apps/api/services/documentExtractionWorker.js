@@ -3,6 +3,24 @@ const client = require('../backend');
 const cryptoService = require('./cryptoService');
 const fileCryptoService = require('./fileCryptoService');
 const { extractDocumentText } = require('./pdfTextExtractor');
+const { createLabResultService } = require('./labResultService');
+const logger = require('../utils/logger');
+
+const labResults = createLabResultService({ crypto: cryptoService });
+
+// Depois da extração, os analitos viram lab_results pendentes de revisão (E2-04).
+// Uma falha aqui não desfaz a extração: a tela de revisão tenta de novo ao abrir.
+async function ingestLabResults(document, text) {
+  try {
+    await labResults.ingestDocumentResults(client, {
+      documentId: document.id,
+      pregnantId: document.pregnant_id,
+      text,
+    });
+  } catch (err) {
+    logger.error('Falha ao estruturar os resultados do exame', { code: 'LAB_RESULTS_INGEST_FAILED' });
+  }
+}
 
 const runningJobs = new Set();
 let workerTimer = null;
@@ -106,6 +124,7 @@ async function processDocumentTextExtraction(documentId) {
     );
 
     await markDone(documentId, extractionResult);
+    await ingestLabResults(document, extractionResult.text);
   } catch (err) {
     await markFailed(documentId, err);
   } finally {

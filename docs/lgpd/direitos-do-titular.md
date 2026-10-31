@@ -44,6 +44,7 @@ Etapas entregues:
 | `biometria_fetal`, `peso_materno` (sem os apagados logicamente) | Sim | | | históricos da sprint 6 |
 | `pedidos_de_exame` | Sim | | | `exam_requests` |
 | `documentos` (metadados, laudo e texto extraído) | Sim | | | `pregnant_documents` |
+| `resultados_de_exame` (valor lido, valor vigente e status da revisão médica) | Sim | | | `lab_results` |
 | `vinculos_medicos` (status e datas) | Sim | | | `doctor_patient_links` |
 | `perfil_profissional` (CRM, UF, especialidade, telefone) | | Sim | | `doctors` |
 
@@ -58,6 +59,7 @@ Coluna nova no banco **não** entra na exportação até ser adicionada lá.
 | `encryption_key_version`, `file_encryption_version`, `file_path` | Detalhes internos de segurança e armazenamento. |
 | `doctor_id`, `created_by_user_id`, `reviewed_by_user_id` e dados do médico vinculado | Dados de terceiros. |
 | `ip_address` e `user_agent` dos consentimentos, `audit_logs` | Registros internos de segurança. |
+| Autor e justificativa da revisão dos resultados (`reviewed_by_user_id`, `review_reason`) | Registros do médico (terceiro). |
 | Arquivos originais dos exames | O JSON traz metadados e o texto extraído; o download dos arquivos pode entrar depois. |
 | `medidas_fetais` | Tabela sem vínculo com usuário (não é dado do titular). |
 | Vetores no Pinecone | Guardam só trechos das diretrizes oficiais (resposta 6 da DPIA), sem dado do titular. |

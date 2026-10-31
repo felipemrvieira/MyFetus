@@ -241,6 +241,17 @@ export default function ExamesScreen() {
                 <TouchableOpacity style={styles.openButton} onPress={() => openDownload(selectedDoc)}>
                   <Text style={styles.openButtonText}>Abrir exame</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  testID="e2e-review-lab-results"
+                  accessibilityRole="button"
+                  style={styles.reviewButton}
+                  onPress={() => router.push({
+                    pathname: '/doctor/[patientId]/revisao_exame',
+                    params: { patientId: String(patientId), documentId: String(selectedDoc.id) },
+                  } as never)}
+                >
+                  <Text style={styles.reviewButtonText}>Revisar valores extraídos</Text>
+                </TouchableOpacity>
 
                 <TextInput
                   testID="e2e-doctor-report"
@@ -374,6 +385,20 @@ const styles = StyleSheet.create({
   },
   openButtonText: {
     color: '#27ae60',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  reviewButton: {
+    borderWidth: 1,
+    borderColor: '#886aea',
+    paddingVertical: 10,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  reviewButtonText: {
+    color: '#5B3FB8',
     fontSize: 14,
     fontWeight: 'bold',
   },
