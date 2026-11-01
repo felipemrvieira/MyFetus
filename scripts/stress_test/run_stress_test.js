@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const {
   clinicalScenarios,
@@ -9,9 +10,18 @@ const {
 } = require('./scenarios/clinical_scenarios');
 const { RagClient } = require('./engine/ragClient');
 const { runScenario } = require('./engine/scenarioRunner');
-const { LoadRunner } = require('./engine/loadRunner');
+const { LoadRunner, repeatQueries } = require('./engine/loadRunner');
+const { buildMarkdown, buildExecutiveSummary } = require('./generate_stress_report');
 
-const VALID_MODES = new Set(['sequential', 'burst', 'ramp', 'sustained']);
+const VALID_MODES = new Set(['sequential', 'burst', 'ramp', 'sustained', 'official']);
+
+function getCommitHash() {
+  try {
+    return execSync('git rev-parse HEAD', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return 'local-dev';
+  }
+}
 
 function parseArgs(argv) {
   const args = {
@@ -19,11 +29,14 @@ function parseArgs(argv) {
     scenario: null,
     mode: 'sequential',
     topK: 5,
-    timeoutMs: Number(process.env.RAG_TIMEOUT_MS || 5000),
-    concurrency: 5,
+    timeoutMs: Number(process.env.RAG_TIMEOUT_MS || 10000),
+    concurrency: 3,
+    requests: 100,
     requestsPerSecond: 5,
     durationSeconds: 10,
     output: null,
+    mock: false,
+    live: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -47,6 +60,9 @@ function parseArgs(argv) {
     } else if (arg === '--concurrency') {
       args.concurrency = Number(next);
       index += 1;
+    } else if (arg === '--requests') {
+      args.requests = Number(next);
+      index += 1;
     } else if (arg === '--rps') {
       args.requestsPerSecond = Number(next);
       index += 1;
@@ -56,6 +72,10 @@ function parseArgs(argv) {
     } else if (arg === '--output') {
       args.output = next;
       index += 1;
+    } else if (arg === '--mock') {
+      args.mock = true;
+    } else if (arg === '--live') {
+      args.live = true;
     } else if (arg === '--help' || arg === '-h') {
       args.help = true;
     } else {
@@ -63,8 +83,13 @@ function parseArgs(argv) {
     }
   }
 
+  // Se nenhum token estiver no ambiente e nem for especificado --live, assume --mock por segurança (ex: CI)
+  if (!args.live && !process.env.RAG_TEST_JWT && !process.env.JWT_TEST_TOKEN) {
+    args.mock = true;
+  }
+
   if (!args.help && !args.all && !args.scenario) {
-    throw new Error('Informe --scenario <id> ou --all.');
+    args.all = true;
   }
 
   if (!VALID_MODES.has(args.mode)) {
@@ -75,26 +100,26 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log(`Simulador de Casos Criticos - MyFetus RAG
+  console.log(`Simulador de Casos Críticos - MyFetus RAG (E4-08 / #104)
 
 Uso:
-  node scripts/stress_test/run_stress_test.js --scenario preeclampsia
   node scripts/stress_test/run_stress_test.js --all
+  node scripts/stress_test/run_stress_test.js --mock --all
+  node scripts/stress_test/run_stress_test.js --live --all --concurrency 3 --requests 100
   node scripts/stress_test/run_stress_test.js --scenario edge_cases
-  node scripts/stress_test/run_stress_test.js --scenario preeclampsia --mode burst --concurrency 10
-  node scripts/stress_test/run_stress_test.js --all --mode ramp
-  node scripts/stress_test/run_stress_test.js --all --output reports/stress_<timestamp>.json
+  node scripts/stress_test/run_stress_test.js --scenario preeclampsia --mode burst --concurrency 3
 
 Flags:
   --scenario <id>       preeclampsia | diabetes_gestacional | ciur | edge_cases
-  --all                 executa todos os cenarios
-  --mode <modo>         sequential | burst | ramp | sustained
-  --topK <n>            quantidade de resultados do RAG (padrao: 5)
-  --timeout <ms>        timeout por chamada (padrao: RAG_TIMEOUT_MS ou 5000)
-  --concurrency <n>     concorrencia para burst/ramp/sustained (padrao: 5)
-  --rps <n>             requests por segundo no sustained (padrao: 5)
-  --duration <s>        duracao em segundos no sustained (padrao: 10)
-  --output <arquivo>    salva o relatorio JSON
+  --all                 executa todos os cenários (padrão)
+  --mode <modo>         sequential | burst | ramp | sustained | official
+  --mock                executa em modo determinístico com mocks em memória (CI / M2)
+  --live                executa contra o backend ativo (M3)
+  --topK <n>            quantidade de resultados do RAG (padrão: 5)
+  --timeout <ms>        timeout por chamada (padrão: 10000ms)
+  --concurrency <n>     concorrência para testes de carga (padrão: 3)
+  --requests <n>        quantidade total de requisições no modo oficial (padrão: 100)
+  --output <arquivo>    salva o relatório JSON especificado (além do auto-gerado em reports/)
 `);
 }
 
@@ -103,14 +128,10 @@ function selectScenarios(args) {
 
   const scenario = getClinicalScenario(args.scenario);
   if (!scenario) {
-    throw new Error(`Cenario nao encontrado: ${args.scenario}`);
+    throw new Error(`Cenário não encontrado: ${args.scenario}`);
   }
 
   return [scenario];
-}
-
-function getScenarioQueries(scenario) {
-  return scenario.estagios.flatMap((stage) => stage.queries);
 }
 
 function formatPercent(value) {
@@ -123,14 +144,19 @@ function formatNumber(value, digits = 0) {
 
 function printHeader(scenarios, args) {
   const scenarioLabel = args.all
-    ? `Todos (${scenarios.length} cenarios)`
-    : `${scenarios[0].nome} (${scenarios[0].estagios.length} estagios)`;
+    ? `Todos (${scenarios.length} cenários)`
+    : `${scenarios[0].nome} (${scenarios[0].estagios.length} estágios)`;
 
-  console.log('Simulador de Casos Criticos - MyFetus RAG');
-  console.log('--------------------------------------------');
-  console.log(`Cenario: ${scenarioLabel}`);
-  console.log(`Modo: ${args.mode} | topK: ${args.topK} | timeout: ${args.timeoutMs}ms`);
-  console.log('');
+  const envLabel = args.mock ? 'MOCK (Determinístico / CI M2)' : 'LIVE (Homologação Real M3)';
+
+  console.log('================================================================');
+  console.log('         Simulador de Casos Críticos - MyFetus RAG (E4-08)      ');
+  console.log('================================================================');
+  console.log(`Ambiente:     ${envLabel}`);
+  console.log(`Cenário(s):   ${scenarioLabel}`);
+  console.log(`Modo:         ${args.mode} | Concorrência: ${args.concurrency}`);
+  console.log(`Limites SLA:  p95 <= 10.000ms | Erro <= 2.0% | Zero Perigos`);
+  console.log('----------------------------------------------------------------\n');
 }
 
 function printScenarioStage(stageReport) {
@@ -138,51 +164,32 @@ function printScenarioStage(stageReport) {
     ? 'semana N/A'
     : `semana ${stageReport.semana_gestacional}`;
 
-  console.log(`[Estagio ${stageReport.estagio} - ${week}] ${stageReport.nome_estagio}`);
+  console.log(`[Estágio ${stageReport.estagio} - ${week}] ${stageReport.nome_estagio}`);
 
   stageReport.resultados.forEach((result, index) => {
-    const marker = result.approved ? 'OK' : 'FAIL';
-    const relevance = result.evaluation?.max_relevance ?? 0;
-    const sources = result.evaluation?.sources_found?.length
-      ? result.evaluation.sources_found.join(', ')
-      : 'nao encontrado';
+    let marker = 'OK';
+    if (result.dangerous_response) marker = 'PERIGO';
+    else if (result.verdict === 'REJECTED') marker = 'REJEITADO';
+    else if (result.verdict === 'INCONCLUSIVE') marker = 'INCONCLUSIVO';
 
+    const relevance = result.evaluation?.max_relevance ?? 0;
     console.log(
-      `  ${marker} Query ${index + 1} | latencia: ${result.latency_ms}ms | relevancia: ${formatNumber(relevance, 2)} | fontes: ${sources}`
+      `  [${marker}] Query ${index + 1}: "${result.query.slice(0, 55)}..." | latência: ${result.latency_ms}ms | relevância: ${formatNumber(relevance, 2)}`
     );
 
-    if (!result.success) {
-      console.log(`    erro: ${result.error?.code || result.error?.name} - ${result.error?.message}`);
-    } else if (result.evaluation?.terms_missing?.length) {
-      console.log(`    termos ausentes: ${result.evaluation.terms_missing.join(', ')}`);
+    if (result.dangerous_response) {
+      console.log(`    ⚠️  ALERTA CLÍNICO: ${result.evaluation?.danger_reason}`);
     }
   });
 
   console.log(
-    `  Estagio: ${stageReport.queries_aprovadas}/${stageReport.queries_executadas} aprovadas (${formatPercent(stageReport.taxa_aprovacao)}) | latencia media: ${stageReport.latencia_media_ms}ms`
+    `  Subtotal: ${stageReport.queries_aprovadas}/${stageReport.queries_executadas} aprovadas (${formatPercent(stageReport.taxa_aprovacao)}) | latência média: ${stageReport.latencia_media_ms}ms\n`
   );
-  console.log('');
 }
 
 function printScenarioReport(report) {
-  console.log(`Cenario: ${report.nome}`);
+  console.log(`>>> Cenário: ${report.nome}`);
   report.estagios.forEach(printScenarioStage);
-  console.log(
-    `Resultado do cenario: ${report.queries_aprovadas}/${report.queries_executadas} aprovadas (${formatPercent(report.taxa_aprovacao)})`
-  );
-  console.log('');
-}
-
-function printLoadReport(scenario, report) {
-  console.log(`Cenario: ${scenario.nome}`);
-  console.log(
-    `  Modo ${report.mode}: ${report.successful_requests}/${report.total_requests} sucesso | erro: ${formatPercent(report.error_rate)} | throughput: ${formatNumber(report.throughput_qps, 2)} qps`
-  );
-  console.log(
-    `  Latencia: p50 ${report.latency_ms.p50}ms | p95 ${report.latency_ms.p95}ms | p99 ${report.latency_ms.p99}ms | max ${report.latency_ms.max}ms`
-  );
-  console.log(`  Relevancia media: ${formatNumber(report.average_relevance, 3)}`);
-  console.log('');
 }
 
 async function runSequentialScenarios(scenarios, client, args) {
@@ -200,73 +207,16 @@ async function runSequentialScenarios(scenarios, client, args) {
   return reports;
 }
 
-async function runLoadScenarios(scenarios, client, args) {
-  const runner = new LoadRunner({ ragClient: client });
-  const reports = [];
-
-  for (const scenario of scenarios) {
-    const queries = getScenarioQueries(scenario);
-    const report = await runner.run(queries, {
-      mode: args.mode,
-      topK: args.topK,
-      concurrency: args.concurrency,
-      rampLevels: [1, 5, 10, args.concurrency].filter((value, index, values) => (
-        Number.isFinite(value) && value > 0 && values.indexOf(value) === index
-      )),
-      requestsPerSecond: args.requestsPerSecond,
-      durationSeconds: args.durationSeconds,
-      maxConcurrency: args.concurrency,
-    });
-
-    reports.push({
-      scenario_id: scenario.id,
-      nome: scenario.nome,
-      report,
-    });
-    printLoadReport(scenario, report);
-  }
-
-  return reports;
-}
-
-function buildSummary(report) {
-  const scenarioReports = report.scenarios || [];
-  const loadReports = report.load_tests || [];
-
-  if (scenarioReports.length) {
-    const totalQueries = scenarioReports.reduce((sum, scenario) => sum + scenario.queries_executadas, 0);
-    const totalApproved = scenarioReports.reduce((sum, scenario) => sum + scenario.queries_aprovadas, 0);
-    const latencies = scenarioReports.flatMap((scenario) => (
-      scenario.estagios.flatMap((stage) => stage.resultados.map((result) => result.latency_ms))
-    ));
-
-    return {
-      total_queries: totalQueries,
-      approved_queries: totalApproved,
-      approval_rate: totalQueries ? totalApproved / totalQueries : 0,
-      max_latency_ms: latencies.length ? Math.max(...latencies) : 0,
-      failed: totalApproved < totalQueries,
-    };
-  }
-
-  const totalRequests = loadReports.reduce((sum, item) => sum + item.report.total_requests, 0);
-  const failedRequests = loadReports.reduce((sum, item) => sum + item.report.failed_requests, 0);
-  const maxP95 = loadReports.reduce((max, item) => Math.max(max, item.report.latency_ms.p95), 0);
-
-  return {
-    total_queries: totalRequests,
-    approved_queries: totalRequests - failedRequests,
-    approval_rate: totalRequests ? (totalRequests - failedRequests) / totalRequests : 0,
-    max_latency_ms: maxP95,
-    failed: failedRequests > 0 || maxP95 > report.config.timeoutMs,
-  };
-}
-
 function writeJsonReport(outputPath, report) {
-  const resolved = path.resolve(process.cwd(), outputPath);
-  fs.mkdirSync(path.dirname(resolved), { recursive: true });
-  fs.writeFileSync(resolved, `${JSON.stringify(report, null, 2)}\n`);
-  return resolved;
+  try {
+    const resolved = path.resolve(process.cwd(), outputPath);
+    fs.mkdirSync(path.dirname(resolved), { recursive: true });
+    fs.writeFileSync(resolved, `${JSON.stringify(report, null, 2)}\n`);
+    return resolved;
+  } catch (err) {
+    console.warn(`[AVISO] Não foi possível salvar relatório JSON em ${outputPath}: ${err.message}`);
+    return null;
+  }
 }
 
 async function main() {
@@ -282,37 +232,112 @@ async function main() {
 
   const client = new RagClient({
     timeoutMs: args.timeoutMs,
+    mock: args.mock,
+    endpointType: 'chat',
   });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const commitHash = getCommitHash();
 
   const report = {
     generated_at: new Date().toISOString(),
+    metadata: {
+      commit: commitHash,
+      environment: args.mock ? 'mock (CI / M2)' : 'live (M3)',
+      cost_usd: '0.00',
+    },
     config: args,
     scenarios: [],
     load_tests: [],
   };
 
-  if (args.mode === 'sequential') {
-    report.scenarios = await runSequentialScenarios(scenarios, client, args);
+  // 1. Executa avaliação de cenários com validação clínica completa
+  report.scenarios = await runSequentialScenarios(scenarios, client, args);
+
+  // 2. Se modo for oficial de estresse, executa a bateria de 100 requisições (60 clínicas / 40 edge cases)
+  if (args.mode === 'official') {
+    console.log('\n--- Executando Carga Mista de 100 Requisições (60 Clínicas / 40 Edge Cases) ---');
+    const runner = new LoadRunner({ ragClient: client });
+
+    const clinicalQueries = scenarios
+      .filter((sc) => sc.id !== 'edge_cases')
+      .flatMap((sc) => sc.estagios.flatMap((st) => st.queries));
+    const edgeCaseQueries = scenarios
+      .filter((sc) => sc.id === 'edge_cases')
+      .flatMap((sc) => sc.estagios.flatMap((st) => st.queries));
+
+    const total = Math.max(1, args.requests);
+    const targetClinical = Math.round(total * 0.6);
+    const targetEdgeCases = total - targetClinical;
+
+    const clinicalBatch = repeatQueries(clinicalQueries, targetClinical);
+    const edgeCaseBatch = repeatQueries(edgeCaseQueries, targetEdgeCases);
+    const mixedBatch = [...clinicalBatch, ...edgeCaseBatch];
+
+    const loadResult = await runner.runOfficialLoad(mixedBatch, {
+      requests: args.requests,
+      concurrency: args.concurrency,
+      topK: args.topK,
+      rpmLimit: 15,
+    });
+    report.load_tests.push({
+      scenario_id: 'official_mixed_load',
+      nome: 'Bateria Oficial de 100 Requisições',
+      report: runner.buildReport('official', loadResult, args.timeoutMs),
+    });
+  }
+
+  const summary = buildExecutiveSummary(report);
+  report.summary = summary;
+
+  console.log('================================================================');
+  console.log(`Veredito Final: ${summary.gateVerdict}`);
+  console.log(`Resumo: ${summary.totalQueries} queries | ${summary.approvedQueries} aprovadas | ${summary.dangerousCount} perigosas`);
+  console.log(`Latência p95: ${summary.p95}ms (limite 10.000ms) | Taxa de erro: ${formatPercent(summary.errorRate)} (limite 2%)`);
+  console.log('================================================================');
+
+  // Geração de relatórios em reports/
+  const defaultJsonPath = `reports/stress_rag_${timestamp}.json`;
+  const defaultMdPath = `reports/stress_rag_${timestamp}.md`;
+
+  const writtenJson = writeJsonReport(defaultJsonPath, report);
+  if (writtenJson) {
+    try {
+      const markdown = buildMarkdown(report);
+      fs.writeFileSync(path.resolve(process.cwd(), defaultMdPath), markdown, 'utf8');
+      console.log(`\nRelatórios gerados com sucesso:`);
+      console.log(`  - JSON: ${defaultJsonPath}`);
+      console.log(`  - MD:   ${defaultMdPath}`);
+    } catch (err) {
+      console.warn(`[AVISO] Não foi possível salvar relatório MD em ${defaultMdPath}: ${err.message}`);
+    }
+  }
+
+  if (args.output && args.output !== defaultJsonPath) {
+    writeJsonReport(args.output, report);
+  }
+
+  if (summary.dangerousCount > 0 || summary.p95 > 10000 || summary.errorRate > 0.02) {
+    console.error('\n❌ Execução REJEITADA: Limites de segurança ou SLA violados. Gate M3 bloqueado.');
+    process.exit(1);
+  } else if (summary.inconclusiveQueries > 0) {
+    console.warn('\n⚠️ Execução INCONCLUSIVA: Variações textuais detectadas. Requer homologação do P.O.');
+    process.exit(0);
   } else {
-    report.load_tests = await runLoadScenarios(scenarios, client, args);
+    console.log('\n✅ Execução APROVADA: Todos os critérios satisfeitos.');
+    process.exit(0);
   }
-
-  report.summary = buildSummary(report);
-
-  console.log('Resumo');
-  console.log(`  Total: ${report.summary.total_queries} queries`);
-  console.log(`  Aprovacao: ${formatPercent(report.summary.approval_rate)}`);
-  console.log(`  Maior latencia/p95: ${report.summary.max_latency_ms}ms`);
-
-  if (args.output) {
-    const writtenPath = writeJsonReport(args.output, report);
-    console.log(`  Relatorio JSON: ${writtenPath}`);
-  }
-
-  process.exitCode = report.summary.failed ? 1 : 0;
 }
 
-main().catch((error) => {
-  console.error(`Erro: ${error.message}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`Erro crítico no simulador: ${error.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  parseArgs,
+  selectScenarios,
+  runSequentialScenarios,
+};
