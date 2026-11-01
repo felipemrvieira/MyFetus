@@ -151,6 +151,54 @@ class LoadRunner {
     return Promise.all(scheduled);
   }
 
+  /**
+   * Executa a bateria de carga oficial do P.O. Rui Pontes:
+   * 100 requisições, concorrência 3, com pacing Free Tier (15 RPM) em modo live.
+   */
+  async runOfficialLoad(queries, {
+    requests = 100,
+    concurrency = 3,
+    rpmLimit = 15,
+    topK = 5,
+  } = {}) {
+    const total = Math.max(1, requests);
+    const limiter = createConcurrencyLimiter(concurrency);
+    const batch = repeatQueries(queries, total);
+    const results = [];
+
+    // Se estiver em modo mock, não precisa esperar entre requests
+    const isMock = Boolean(this.ragClient.mock);
+    // Intervalo mínimo global entre requisições para respeitar a cota Free Tier (<= 14 RPM)
+    const minIntervalMs = isMock ? 2 : Math.ceil(60000 / Math.max(1, rpmLimit - 1));
+    let lastRequestTime = 0;
+
+    const waitForSlot = async () => {
+      if (isMock) return;
+      const now = Date.now();
+      const nextAllowed = Math.max(now, lastRequestTime + minIntervalMs);
+      const waitMs = nextAllowed - now;
+      lastRequestTime = nextAllowed;
+      if (waitMs > 0) {
+        await this.sleepImpl(waitMs);
+      }
+    };
+
+    let currentIndex = 0;
+    const workers = Array.from({ length: concurrency }, async () => {
+      while (currentIndex < batch.length) {
+        const index = currentIndex;
+        currentIndex += 1;
+
+        await waitForSlot();
+        const res = await limiter(() => this.executeQuery(batch[index], topK));
+        results[index] = res;
+      }
+    });
+
+    await Promise.all(workers);
+    return results;
+  }
+
   buildReport(mode, results, durationMs, baselineScore = null) {
     const latencies = results.map((result) => result.latency_ms).filter(Number.isFinite);
     const successful = results.filter((result) => result.success);
@@ -162,23 +210,35 @@ class LoadRunner {
         : null
     );
 
+    const p50 = percentile(latencies, 50);
+    const p95 = percentile(latencies, 95);
+    const p99 = percentile(latencies, 99);
+    const errorRate = results.length ? (results.length - successful.length) / results.length : 0;
+
+    const meetsSla = p95 <= 10000 && errorRate <= 0.02;
+
     return {
       mode,
       total_requests: results.length,
       successful_requests: successful.length,
       failed_requests: results.length - successful.length,
-      error_rate: results.length ? (results.length - successful.length) / results.length : 0,
+      error_rate: errorRate,
       throughput_qps: results.length / durationSeconds,
       duration_ms: Math.round(durationMs),
       latency_ms: {
-        p50: percentile(latencies, 50),
-        p95: percentile(latencies, 95),
-        p99: percentile(latencies, 99),
+        p50,
+        p95,
+        p99,
         average: Math.round(average(latencies)),
         max: latencies.length ? Math.max(...latencies) : 0,
       },
       average_relevance: averageRelevance,
       relevance_degradation: relevanceDegradation,
+      meets_sla: meetsSla,
+      sla_limits: {
+        max_p95_ms: 10000,
+        max_error_rate: 0.02,
+      },
       results,
     };
   }
@@ -191,6 +251,8 @@ class LoadRunner {
     requestsPerSecond = 5,
     durationSeconds = 10,
     maxConcurrency = requestsPerSecond,
+    requests = 100,
+    rpmLimit = 15,
     baselineScore = null,
   } = {}) {
     if (!Array.isArray(queries) || queries.length === 0) {
@@ -211,6 +273,13 @@ class LoadRunner {
         requestsPerSecond,
         durationSeconds,
         maxConcurrency,
+        topK,
+      });
+    } else if (mode === 'official' || mode === 'load') {
+      results = await this.runOfficialLoad(queries, {
+        requests,
+        concurrency,
+        rpmLimit,
         topK,
       });
     } else {
