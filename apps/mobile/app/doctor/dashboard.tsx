@@ -30,6 +30,7 @@ type Patient = {
   patient_name: string;
   birthdate: string;     // Vamos usar para calcular risco
   semanas_gestacao: number | null; // Vem da subquery
+  alert_level?: 'red' | 'yellow' | 'green' | null;
 };
 
 export default function DashboardScreen() {
@@ -41,9 +42,16 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Função para calcular idade e definir risco
-  const getStatus = (birthdate: string) => {
-    if (!birthdate) return 'normal';
+  // Função para determinar nível de risco (alertas em exames ou idade)
+  const getRiskInfo = (patient: Patient) => {
+    if (patient.alert_level === 'red') {
+      return { status: 'risco', label: 'Gravidez de Risco (Exames / Crítico)' };
+    }
+    if (patient.alert_level === 'yellow') {
+      return { status: 'risco', label: 'Gravidez de Risco (Alerta em Exames)' };
+    }
+    const birthdate = patient.birthdate;
+    if (!birthdate) return { status: 'normal', label: 'Acompanhamento Normal' };
     const hoje = new Date();
     const nasc = new Date(birthdate);
     let idade = hoje.getFullYear() - nasc.getFullYear();
@@ -51,8 +59,11 @@ export default function DashboardScreen() {
     if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
       idade--;
     }
-    // Regra: Acima de 35 anos é risco 
-    return idade >= 35 || idade <= 15 ? 'risco' : 'normal';
+    const ageRisk = idade >= 35 || idade <= 15;
+    return {
+      status: ageRisk ? 'risco' : 'normal',
+      label: ageRisk ? 'Gravidez de Risco (Idade)' : 'Acompanhamento Normal',
+    };
   };
 
   const loadData = useCallback(async () => {
@@ -104,7 +115,8 @@ export default function DashboardScreen() {
   };
 
   const renderPatientCard = ({ item }: { item: Patient }) => {
-    const status = getStatus(item.birthdate);
+    const { status, label } = getRiskInfo(item);
+    const hasActiveExamAlert = item.alert_level === 'red' || item.alert_level === 'yellow';
     
     return (
       <TouchableOpacity
@@ -121,20 +133,20 @@ export default function DashboardScreen() {
               : 'Gestação não iniciada'}
           </Text>
           
-          <Text style={styles.patientNotification}>
-            {status === 'risco' ? 'Gravidez de Risco (Idade)' : 'Acompanhamento Normal'}
+          <Text style={[styles.patientNotification, hasActiveExamAlert && { color: item.alert_level === 'red' ? '#e74c3c' : '#f39c12', fontWeight: '600' }]}>
+            {label}
           </Text>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <TouchableOpacity
             onPress={() => handleAlertPress(item.pregnant_id)}
-            style={styles.alertButton}
+            style={[styles.alertButton, hasActiveExamAlert && { backgroundColor: item.alert_level === 'red' ? '#fdedec' : '#fef9e7' }]}
           >
             <Ionicons
               name="pulse-outline"
               size={22}
-              color="#886aea"
+              color={item.alert_level === 'red' ? '#e74c3c' : item.alert_level === 'yellow' ? '#f39c12' : '#886aea'}
             />
           </TouchableOpacity>
           <Ionicons

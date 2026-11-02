@@ -71,7 +71,11 @@ const getPregnants = async (req, res) => {
     SELECT p.id AS pregnant_id, p.user_id, u.name AS patient_name, u.birthdate,
       (SELECT weeks FROM pregnancies preg
         WHERE preg.pregnant_id = p.id
-        ORDER BY preg.created_at DESC LIMIT 1) AS semanas_gestacao
+        ORDER BY preg.created_at DESC LIMIT 1) AS semanas_gestacao,
+      (SELECT severity FROM alert_events ae
+        WHERE ae.pregnant_id = p.id AND ae.status IN ('open', 'acknowledged')
+        ORDER BY CASE ae.severity WHEN 'red' THEN 1 WHEN 'yellow' THEN 2 ELSE 3 END ASC, ae.last_seen_at DESC
+        LIMIT 1) AS alert_level
       FROM pregnants p
       JOIN users u ON p.user_id = u.id`;
 

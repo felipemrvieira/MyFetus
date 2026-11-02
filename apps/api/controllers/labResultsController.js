@@ -1,5 +1,6 @@
 /**
- * Revisão médica dos resultados laboratoriais extraídos (E2-04, #61).
+ * Revisão médica dos resultados laboratoriais extraídos (E2-04, #61) e
+ * disparo das regras de risco para valores aceitos (E2-07, #100).
  *
  * Só o médico vinculado à gestante lê e decide. O administrador não revisa
  * resultado clínico (decisão do P.O. em 29/10/2026), então as rotas aceitam
@@ -11,6 +12,8 @@ const { audit } = require('../services/auditService');
 const { doctorCanAccessPregnant } = require('../utils/clinicalAccess');
 const { sendInternalError } = require('../utils/httpErrors');
 const { LabResultError, createLabResultService } = require('../services/labResultService');
+const { syncLabResultRisk } = require('../services/labResultRiskService');
+const logger = require('../utils/logger');
 
 const labResults = createLabResultService({ crypto: cryptoService });
 
@@ -129,6 +132,29 @@ function reviewLabResult(action) {
           new_status: outcome.result.status,
         },
       });
+
+      // E2-07: Valores aceitos disparam regras de risco e sincronizam alert_events
+      try {
+        const riskOutcome = await syncLabResultRisk(client, outcome.result, { userId: req.user.id });
+        if (riskOutcome?.status === 'alert_created') {
+          audit(req, {
+            action: 'ALERT_TRIGGERED_FROM_LAB_RESULT',
+            resource: 'alert_events',
+            resource_id: String(riskOutcome.event?.id || labResultId),
+            detail: {
+              analyte_id: outcome.analyteId,
+              rule_id: riskOutcome.ruleId,
+              severity: riskOutcome.severity,
+            },
+          });
+        }
+      } catch (riskError) {
+        logger.error('Erro ao sincronizar regras de risco do resultado laboratorial', {
+          error: riskError.message,
+          labResultId,
+        });
+      }
+
       return res.json({ result: outcome.result });
     } catch (error) {
       if (error instanceof LabResultError) {
