@@ -41,6 +41,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   idade_materna: 'Idade Materna',
   pressao_arterial: 'Pressão Arterial',
   glicemia: 'Glicemia',
+  hemoglobina: 'Hemoglobina',
+  proteinuria: 'Proteinúria',
   imc: 'IMC',
   altura_uterina: 'Altura Uterina',
   frequencia_cardiaca_fetal: 'FC Fetal',
