@@ -88,6 +88,13 @@ function mapMatch(match) {
     documento_id: metadata.documentId || null,
     idioma: metadata.language || null,
     tipo_documento: metadata.documentType || null,
+    // Identificação pública da fonte (manifesto), usada nas citações do chat (E4-04).
+    titulo: metadata.title || null,
+    emissor: metadata.issuer || null,
+    edicao: metadata.edition || null,
+    ano: metadata.year ?? null,
+    url: metadata.sourceUrl || null,
+    versao_manifesto: metadata.manifestVersion || null,
   };
 }
 

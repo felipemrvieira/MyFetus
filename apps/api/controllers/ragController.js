@@ -17,6 +17,20 @@ const { ensureCanAccessPregnant } = require('../utils/clinicalAccess');
 const { runClinicalAgentGraph } = require('../services/agents/clinicalGraph');
 const { sanitizeForLLM } = require('../utils/piiSanitizer');
 const { audit } = require('../services/auditService');
+const { SAFE_MESSAGES } = require('../services/agents/guardrailService');
+const {
+  buildCitations,
+  manifestVersions,
+  selectTraceableChunks,
+} = require('../services/ragCitationService');
+
+function legacySources(trechos) {
+  return trechos.map((trecho) => ({
+    fonte: trecho.fonte,
+    secao: trecho.secao,
+    relevancia: trecho.relevancia,
+  }));
+}
 
 /**
  * Busca os trechos mais relevantes no Pinecone para uma query.
@@ -163,8 +177,14 @@ const askClinicalChat = async (req, res) => {
     // Remove identificadores pessoais antes de mandar a pergunta para o LLM externo.
     const sanitizedQuery = sanitizeForLLM(query);
 
-    const trechos = await retrieveChunks(sanitizedQuery, topK, {});
-    const resposta = await generationService.generateAnswer(sanitizedQuery, trechos);
+    // Só trechos rastreáveis (documento + página ou seção) vão ao modelo e viram citação (E4-04).
+    const recuperados = await retrieveChunks(sanitizedQuery, topK, {});
+    const trechos = selectTraceableChunks(recuperados);
+    const semFonte = trechos.length === 0;
+    const resposta = semFonte
+      ? SAFE_MESSAGES.no_source
+      : await generationService.generateAnswer(sanitizedQuery, trechos);
+    const citacoes = buildCitations(trechos);
     audit(req, {
       action: 'RAG_CHAT_QUERIED',
       resource: 'rag',
@@ -173,6 +193,12 @@ const askClinicalChat = async (req, res) => {
         topK,
         sanitized_query: sanitizedQuery,
         sources: trechos.map((trecho) => trecho.fonte),
+        citations: citacoes.map(({ documento_id, pagina, secao }) => ({ documento_id, pagina, secao })),
+        discarded_untraceable: recuperados.length - trechos.length,
+        no_source: semFonte,
+        manifest_versions: manifestVersions(citacoes),
+        model: semFonte ? null : generationService.GEMINI_MODEL,
+        prompt_version: semFonte ? null : generationService.RAG_CHAT_PROMPT_VERSION,
       },
     });
 
@@ -180,11 +206,9 @@ const askClinicalChat = async (req, res) => {
       source: 'rag-v2-gemini',
       query: query,
       resposta,
-      fontes: trechos.map(trecho => ({
-        fonte: trecho.fonte,
-        secao: trecho.secao,
-        relevancia: trecho.relevancia
-      })),
+      sem_fonte: semFonte,
+      citacoes,
+      fontes: legacySources(trechos),
       tempo_ms: Date.now() - startTime
     });
   } catch (error) {
@@ -251,11 +275,8 @@ const askClinicalAgentsChat = async (req, res) => {
       ambiguity_reason: state.ambiguity_reason,
       maternal_analysis: state.maternal_analysis,
       fetal_analysis: state.fetal_analysis,
-      fontes: state.sources.map((trecho) => ({
-        fonte: trecho.fonte,
-        secao: trecho.secao,
-        relevancia: trecho.relevancia,
-      })),
+      citacoes: buildCitations(selectTraceableChunks(state.sources)),
+      fontes: legacySources(state.sources),
       tempo_ms: Date.now() - startTime,
     });
   } catch (error) {
