@@ -129,11 +129,13 @@ const pushTokensRoutes = require('./routes/pushTokens');
 const alertEventsRoutes = require('./routes/alertEvents');
 const clinicalRiskRoutes = require('./routes/clinicalRisk');
 const labResultsRoutes = require('./routes/labResults');
+const fhirExportsRoutes = require('./routes/fhirExports');
 app.use('/api/daily-entries', dailyEntriesRoutes);
 app.use('/api/notifications', pushTokensRoutes);
 app.use('/api/alert-events', alertEventsRoutes);
 app.use('/api/clinical-risk', clinicalRiskRoutes);
 app.use('/api/lab-results', labResultsRoutes);
+app.use('/api/exports', fhirExportsRoutes);
 
 // Documentacao OpenAPI/Swagger (E1-09): contrato em apps/api/openapi.yaml.
 const docsRoutes = require('./routes/docs');

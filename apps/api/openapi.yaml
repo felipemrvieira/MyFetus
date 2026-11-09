@@ -41,6 +41,7 @@ tags:
   - name: Auditoria
   - name: Crescimento
   - name: Historico
+  - name: Exportacoes
 
 paths:
   /health:
@@ -1899,6 +1900,35 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  # ------------------------------------------------------------ Exportacoes
+  /api/exports/pregnancies/{pregnancyId}/fhir:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    get:
+      tags: [Exportacoes]
+      summary: Exporta um Bundle FHIR R4 experimental da gestacao
+      operationId: getExperimentalFhirExport
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, gestante, medico]
+      description: |
+        Gera um Bundle `collection` experimental, sem envio à RNDS. O Patient usa somente
+        um identificador interno pseudonimizado; não exporta nome, e-mail, senha ou token.
+        O Bundle contém Observations de pressão arterial, peso e glicemia disponíveis na
+        gestação, com dados do diário, histórico de peso e resultados laboratoriais aceitos.
+      responses:
+        '200':
+          description: Bundle FHIR R4 experimental.
+          content:
+            application/fhir+json:
+              schema: { $ref: '#/components/schemas/FhirBundle' }
+            application/json:
+              schema: { $ref: '#/components/schemas/FhirBundle' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   # --------------------------------------------------------------- Diario
   /api/daily-entries:
     post:
@@ -3576,3 +3606,30 @@ components:
         weight_kg: { type: number, exclusiveMinimum: 0, maximum: 500 }
         measured_at: { type: string, format: date, description: Padrao - data atual. }
         notes: { type: string, maxLength: 2000 }
+
+    FhirBundle:
+      type: object
+      required: [resourceType, id, identifier, type, timestamp, entry]
+      properties:
+        resourceType: { type: string, const: Bundle }
+        id: { type: string, example: fhir-export-12 }
+        meta:
+          type: object
+          additionalProperties: true
+        identifier:
+          type: object
+          required: [system, value]
+          properties:
+            system: { type: string, format: uri }
+            value: { type: string, example: R4-experimental-v1 }
+        type: { type: string, const: collection }
+        timestamp: { type: string, format: date-time }
+        entry:
+          type: array
+          items:
+            type: object
+            required: [resource]
+            properties:
+              resource:
+                type: object
+                additionalProperties: true
