@@ -1,6 +1,12 @@
 const { randomUUID } = require('node:crypto');
 
+const { evaluateDailyAlarms } = require('./dailyAlarmRuleService');
+
 const SEVERITIES = new Set(['yellow', 'red']);
+const DAILY_ALARM_MESSAGES = Object.freeze({
+  red: 'Isso pode ser um sinal de alarme. Procure agora a maternidade ou um serviço de urgência, ou ligue 192 (SAMU).',
+  yellow: 'Registro do diário que precisa de avaliação da equipe de saúde.',
+});
 const SOURCES = new Set(['daily_entry', 'lab_result', 'risk_engine']);
 
 class AlertEventValidationError extends Error {
@@ -125,23 +131,19 @@ async function autoCloseNormalAlert(db, { pregnancyId, ruleId, severity = 'yello
   return result.rows.map(serializeAlertEvent);
 }
 
-function dailyEntryAlerts(entry, { pregnancyId, pregnantId, sourceId }) {
+function dailyEntryAlerts(entry, { pregnancyId, pregnantId, sourceId, weeks = null }) {
   const alerts = [];
-  const symptoms = Array.isArray(entry.alarm_symptoms) ? entry.alarm_symptoms : [];
-  for (const symptom of symptoms) {
+  // E3-07: regras de alarme vêm do catálogo único (dailyAlarmRuleService).
+  const evaluation = evaluateDailyAlarms(entry, { weeks });
+  for (const item of evaluation.triggered) {
+    const orientation = item.severity === 'red'
+      ? DAILY_ALARM_MESSAGES.red
+      : DAILY_ALARM_MESSAGES.yellow;
     alerts.push({
       pregnancy_id: pregnancyId, pregnant_id: pregnantId,
-      rule_id: `daily_${symptom}`, severity: 'red', source_type: 'daily_entry', source_id: sourceId,
-      message: 'Isso pode ser um sinal de alarme. Procure agora a maternidade ou um serviço de urgência, ou ligue 192 (SAMU).',
-      signal_codes: [symptom],
-    });
-  }
-  if (entry.reduced_fetal_movements === true) {
-    alerts.push({
-      pregnancy_id: pregnancyId, pregnant_id: pregnantId,
-      rule_id: 'daily_reduced_fetal_movements', severity: 'red', source_type: 'daily_entry', source_id: sourceId,
-      message: 'Isso pode ser um sinal de alarme. Procure agora a maternidade ou um serviço de urgência, ou ligue 192 (SAMU).',
-      signal_codes: ['reduced_fetal_movements'],
+      rule_id: item.rule_id, severity: item.severity, source_type: 'daily_entry', source_id: sourceId,
+      message: orientation,
+      signal_codes: [...item.signal_codes, `rule_version:${item.version}`],
     });
   }
   if (Number(entry.systolic) >= 160 || Number(entry.diastolic) >= 110) {

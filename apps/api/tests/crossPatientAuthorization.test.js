@@ -63,6 +63,16 @@ const clientMock = {
       return { rows: patient ? [{ ...patient }] : [] };
     }
 
+    if (sql.includes('FROM alert_events')) {
+      return {
+        rows: [{
+          id: 900, alert_key: 'k', pregnancy_id: Number(params[0]), pregnant_id: 1,
+          rule_id: 'E3-07.bleeding', severity: 'red', status: 'open', source_type: 'daily_entry',
+          source_id: 'entry-a', message: 'x', signal_codes: ['sangramento'],
+        }],
+      };
+    }
+
     if (sql.includes('fetal_biometry_history')) {
       return { rows: [{ id: 1, pregnancy_id: Number(params[0]) }] };
     }
@@ -90,6 +100,7 @@ Module.prototype.require = function (request) {
 
 const pregnantRoutes = require('../routes/pregnants');
 const clinicalHistoryRoutes = require('../routes/clinicalHistory');
+const alertEventsRoutes = require('../routes/alertEvents');
 
 function tokenFor(user) {
   return `Bearer ${jwt.sign(user, process.env.JWT_SECRET)}`;
@@ -100,6 +111,7 @@ function createApp() {
   app.use(express.json());
   app.use('/api/pregnants', pregnantRoutes);
   app.use('/api/history', clinicalHistoryRoutes);
+  app.use('/api/alert-events', alertEventsRoutes);
   return app;
 }
 
@@ -162,5 +174,28 @@ test.describe('autorização cruzada entre gestantes', () => {
 
     const allowed = await get('/api/pregnants/1/alerts', { id: 303, role: 'medico' });
     assert.equal(allowed.status, 200);
+  });
+
+  test('E3-07: alerta da gestante A não aparece para médico sem vínculo com A', async () => {
+    const denied = await get('/api/alert-events/pregnancies/22', { id: 303, role: 'medico' });
+    assert.equal(denied.status, 403);
+    assert.equal(
+      queryLog.some(({ sql }) => sql.includes('FROM alert_events')),
+      false,
+      'alert_events de B não deve ser consultado após a negativa'
+    );
+
+    const otherDoctor = await get('/api/alert-events/pregnancies/11', { id: 404, role: 'medico' });
+    assert.equal(otherDoctor.status, 403);
+
+    const allowed = await get('/api/alert-events/pregnancies/11', { id: 303, role: 'medico' });
+    assert.equal(allowed.status, 200);
+    const body = await allowed.json();
+    assert.equal(body.events[0].rule_id, 'E3-07.bleeding');
+  });
+
+  test('E3-07: gestante B não lê alertas da gestante A', async () => {
+    const response = await get('/api/alert-events/pregnancies/11', { id: 202, role: 'gestante' });
+    assert.equal(response.status, 403);
   });
 });

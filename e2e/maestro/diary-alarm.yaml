@@ -1,0 +1,60 @@
+appId: com.myfetus.app
+
+---
+
+# E3-07: gestante registra sinal de alarme no diário e vê a orientação imediata.
+# Roda depois de mobile-smoke.yaml, que já criou a gestação da fixture sintética.
+- launchApp:
+    clearState: true
+
+- tapOn:
+    id: e2e-login-email
+- inputText: ${E2E_PATIENT_EMAIL}
+- tapOn:
+    id: e2e-login-password
+- inputText: ${E2E_PASSWORD}
+- tapOn:
+    id: e2e-login-submit
+- assertVisible: "Meu Bebê"
+
+- openLink: myfetus://diario
+- assertVisible: "Diário da gestação"
+
+# Sinal vermelho: sangramento.
+- tapOn: "Sangramento"
+- tapOn:
+    id: daily-save
+- assertVisible:
+    id: daily-alarm-red
+- assertVisible: "Procure atendimento agora"
+- assertVisible:
+    id: daily-alarm-call-192
+- assertVisible: ".*não substitui.*"
+- tapOn:
+    id: daily-alarm-dismiss
+- assertNotVisible:
+    id: daily-alarm-red
+
+# Febre medida >= 38 °C também é vermelho.
+- tapOn:
+    id: daily-temperature
+- inputText: "38.4"
+- hideKeyboard
+- tapOn:
+    id: daily-save
+- assertVisible:
+    id: daily-alarm-red
+- tapOn:
+    id: daily-alarm-dismiss
+
+# Registro sem sinal: confirmação simples, sem aviso e sem garantia de "tudo bem".
+- tapOn:
+    id: daily-weight
+- inputText: "68"
+- hideKeyboard
+- tapOn:
+    id: daily-save
+- assertVisible: "O registro foi salvo."
+- assertNotVisible:
+    id: daily-alarm-red
+- tapOn: "OK"

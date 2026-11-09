@@ -16,6 +16,7 @@ const {
   validateDailyEntryByGestationalAge,
 } = require('../services/dailyEntryRuleService');
 const { buildDailyRiskFeed } = require('../services/dailyRiskFeedService');
+const { buildAlarmAuditDetail, evaluateDailyAlarms } = require('../services/dailyAlarmRuleService');
 const {
   autoCloseNormalAlert,
   dailyEntryAlerts,
@@ -36,14 +37,40 @@ function encryptEntry(entry) {
   return cryptoService.encryptRecord(toEncryptedFields(entry), 'daily_entries');
 }
 
-async function syncDailyAlerts(entry, { pregnancyId, pregnantId, sourceId }) {
-  const alerts = dailyEntryAlerts(entry, { pregnancyId, pregnantId, sourceId });
-  for (const alert of alerts) await upsertAlertEvent(client, alert);
+async function syncDailyAlerts(entry, { pregnancyId, pregnantId, sourceId, weeks = null }) {
+  const alerts = dailyEntryAlerts(entry, { pregnancyId, pregnantId, sourceId, weeks });
+  const events = [];
+  for (const alert of alerts) events.push((await upsertAlertEvent(client, alert)).event);
   if (!alerts.some(alert => alert.rule_id === 'daily_blood_pressure')) {
     await autoCloseNormalAlert(client, { pregnancyId, ruleId: 'daily_blood_pressure', severity: 'yellow' });
     await autoCloseNormalAlert(client, { pregnancyId, ruleId: 'daily_blood_pressure', severity: 'red' });
   }
-  return alerts;
+  // Alarmes E3-07 não são fechados automaticamente: só o médico encerra, com justificativa.
+  return events;
+}
+
+// E3-07: resposta imediata para a gestante. Não depende de push (E5-03) nem de IA.
+function buildAlarmResponse(evaluation) {
+  return {
+    level: evaluation.level,
+    catalog_version: evaluation.catalog_version,
+    orientation: evaluation.orientation,
+    triggered: evaluation.triggered.map(({ rule_id, version, severity }) => ({ rule_id, version, severity })),
+    pending: evaluation.pending,
+  };
+}
+
+function auditAlarm(req, { entryKey, pregnancyId, evaluation, events }) {
+  if (evaluation.level === 'green') return;
+  audit(req, {
+    action: 'DAILY_ALARM_TRIGGERED',
+    resource: 'daily_entries',
+    resource_id: entryKey,
+    detail: buildAlarmAuditDetail(evaluation, {
+      pregnancyId,
+      alertEventIds: events.map(event => event.id),
+    }),
+  });
 }
 
 async function findPregnancyWithWeeks(pregnancyId) {
@@ -76,9 +103,9 @@ async function createDailyEntry(req, res) {
       `INSERT INTO daily_entries (
         entry_key, pregnant_id, pregnancy_id, entry_date, timezone,
         alarm_symptoms, other_symptoms, free_text, systolic, diastolic,
-        weight_kg, glucose_mg_dl, reduced_fetal_movements,
+        weight_kg, glucose_mg_dl, reduced_fetal_movements, temperature_c,
         created_by_user_id, encryption_key_version
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *`,
       [
         entryKey,
@@ -94,17 +121,23 @@ async function createDailyEntry(req, res) {
         encrypted.weight_kg,
         encrypted.glucose_mg_dl,
         encrypted.reduced_fetal_movements,
+        encrypted.temperature_c,
         req.user.id,
         cryptoService.getCurrentVersion(),
       ]
     );
     const created = cryptoService.decryptRecord(result.rows[0], 'daily_entries');
     const createdSerialized = serializeEntry(created);
-    await syncDailyAlerts(createdSerialized, {
+    const weeks = ruleContext.weeks;
+    const events = await syncDailyAlerts(createdSerialized, {
       pregnancyId,
       pregnantId: currentPregnancy.pregnant_id,
       sourceId: entryKey,
+      weeks,
     });
+    const evaluation = evaluateDailyAlarms(createdSerialized, { weeks });
+    const alarm = buildAlarmResponse(evaluation);
+    auditAlarm(req, { entryKey, pregnancyId, evaluation, events });
     audit(req, {
       action: 'DAILY_ENTRY_CREATED',
       resource: 'daily_entries',
@@ -114,6 +147,7 @@ async function createDailyEntry(req, res) {
     return res.status(201).json({
       ...createdSerialized,
       gestational_rule_context: ruleContext,
+      alarm,
     });
   } catch (error) {
     return handleError(res, error);
@@ -144,6 +178,8 @@ async function listDailyRiskFeed(req, res) {
   try {
     const pregnancyId = validateId(req.params.pregnancyId, 'pregnancy_id');
     if (!(await ensureCanAccessPregnancy(req, res, pregnancyId))) return;
+    const pregnancy = await findPregnancyWithWeeks(pregnancyId);
+    const { weeks } = buildDailyEntryRuleContext(pregnancy || {});
     const result = await client.query(
       `SELECT * FROM daily_entries
        WHERE pregnancy_id = $1 AND is_current = TRUE
@@ -162,9 +198,9 @@ async function listDailyRiskFeed(req, res) {
     });
     return res.json({
       pregnancy_id: pregnancyId,
-      entries: buildDailyRiskFeed(entries),
+      entries: buildDailyRiskFeed(entries, { weeks }),
       policy: {
-        evaluated_fields: ['alarm_symptoms', 'reduced_fetal_movements', 'systolic', 'diastolic'],
+        evaluated_fields: ['alarm_symptoms', 'reduced_fetal_movements', 'systolic', 'diastolic', 'temperature_c'],
         history_only_fields: ['weight_kg', 'glucose_mg_dl', 'other_symptoms', 'free_text'],
       },
     });
@@ -212,8 +248,8 @@ async function updateDailyEntry(req, res) {
         entry_key, pregnant_id, pregnancy_id, entry_date, timezone, version,
         previous_version_id, alarm_symptoms, other_symptoms, free_text,
         systolic, diastolic, weight_kg, glucose_mg_dl, reduced_fetal_movements,
-        created_by_user_id, encryption_key_version
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        temperature_c, created_by_user_id, encryption_key_version
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *`,
       [
         entryKey,
@@ -231,6 +267,7 @@ async function updateDailyEntry(req, res) {
         encrypted.weight_kg,
         encrypted.glucose_mg_dl,
         encrypted.reduced_fetal_movements,
+        encrypted.temperature_c,
         req.user.id,
         cryptoService.getCurrentVersion(),
       ]
@@ -238,11 +275,15 @@ async function updateDailyEntry(req, res) {
     await db.query('COMMIT');
     const updated = cryptoService.decryptRecord(result.rows[0], 'daily_entries');
     const updatedSerialized = serializeEntry(updated);
-    await syncDailyAlerts(updatedSerialized, {
+    const events = await syncDailyAlerts(updatedSerialized, {
       pregnancyId: currentRow.pregnancy_id,
       pregnantId: currentRow.pregnant_id,
       sourceId: entryKey,
+      weeks: ruleContext.weeks,
     });
+    const evaluation = evaluateDailyAlarms(updatedSerialized, { weeks: ruleContext.weeks });
+    const alarm = buildAlarmResponse(evaluation);
+    auditAlarm(req, { entryKey, pregnancyId: currentRow.pregnancy_id, evaluation, events });
     audit(req, {
       action: 'DAILY_ENTRY_UPDATED',
       resource: 'daily_entries',
@@ -252,6 +293,7 @@ async function updateDailyEntry(req, res) {
     return res.json({
       ...updatedSerialized,
       gestational_rule_context: ruleContext,
+      alarm,
     });
   } catch (error) {
     try { await db.query('ROLLBACK'); } catch {}

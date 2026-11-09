@@ -17,7 +17,7 @@ function buildDailyEntryRuleContext(pregnancy = {}) {
     multiple_pregnancy: multiple,
     weekly_rules_enabled: weeks !== null && weeks >= MIN_WEEK_RULE_START,
     reduced_fetal_movements_enabled: weeks !== null && weeks >= MOVEMENT_WEEK_START,
-    signals_that_evaluate: ['alarm_symptoms', 'reduced_fetal_movements', 'systolic', 'diastolic'],
+    signals_that_evaluate: ['alarm_symptoms', 'reduced_fetal_movements', 'systolic', 'diastolic', 'temperature_c'],
   };
 }
 

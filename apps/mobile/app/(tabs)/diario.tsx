@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,9 +17,11 @@ import { useSession } from '@/contexts/SessionContext';
 import { api } from '../../utils/apiClient';
 import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 import type {
+  DailyAlarm,
   DailyAlarmSymptom,
   DailyEntry,
   DailyEntryInput,
+  DailyEntryWithAlarm,
   DailyOtherSymptom,
 } from '../../types/api.types';
 
@@ -71,6 +74,9 @@ export default function DiarioScreen() {
   const [diastolic, setDiastolic] = useState('');
   const [weight, setWeight] = useState('');
   const [glucose, setGlucose] = useState('');
+  const [temperature, setTemperature] = useState('');
+  const [alarm, setAlarm] = useState<DailyAlarm | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const [reducedMovements, setReducedMovements] = useState<boolean | null>(null);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -115,8 +121,9 @@ export default function DiarioScreen() {
     diastolic.trim().length > 0 ||
     weight.trim().length > 0 ||
     glucose.trim().length > 0 ||
+    temperature.trim().length > 0 ||
     reducedMovements !== null
-  ), [alarmSymptoms, otherSymptoms, freeText, systolic, diastolic, weight, glucose, reducedMovements]);
+  ), [alarmSymptoms, otherSymptoms, freeText, systolic, diastolic, weight, glucose, temperature, reducedMovements]);
 
   function toggleValue<T extends string>(value: T, current: T[], setValue: (next: T[]) => void) {
     setValue(current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
@@ -131,6 +138,7 @@ export default function DiarioScreen() {
     setDiastolic('');
     setWeight('');
     setGlucose('');
+    setTemperature('');
     setReducedMovements(null);
     setEditingKey(null);
   }
@@ -145,6 +153,7 @@ export default function DiarioScreen() {
     setDiastolic(entry.diastolic === null ? '' : String(entry.diastolic));
     setWeight(entry.weight_kg === null ? '' : String(entry.weight_kg));
     setGlucose(entry.glucose_mg_dl === null ? '' : String(entry.glucose_mg_dl));
+    setTemperature(entry.temperature_c === null || entry.temperature_c === undefined ? '' : String(entry.temperature_c));
     setReducedMovements(entry.reduced_fetal_movements);
   }
 
@@ -165,18 +174,26 @@ export default function DiarioScreen() {
       diastolic: parseNumber(diastolic),
       weight_kg: parseNumber(weight),
       glucose_mg_dl: parseNumber(glucose),
+      temperature_c: parseNumber(temperature),
       reduced_fetal_movements: reducedMovements === null ? undefined : reducedMovements,
     };
     try {
       setSaving(true);
-      if (editingKey) {
-        await api.put(`/daily-entries/${editingKey}`, payload);
-      } else {
-        await api.post('/daily-entries', payload);
-      }
+      const wasEditing = Boolean(editingKey);
+      const response = wasEditing
+        ? await api.put(`/daily-entries/${editingKey}`, payload)
+        : await api.post('/daily-entries', payload);
+      const savedAlarm = (response.data as DailyEntryWithAlarm)?.alarm ?? null;
       resetForm();
       await loadDiary();
-      Alert.alert('Diário atualizado', editingKey ? 'A correção foi salva mantendo o histórico.' : 'O registro foi salvo.');
+      // E3-07: com sinal de alarme, a orientação substitui a confirmação simples.
+      if (savedAlarm && savedAlarm.level !== 'green' && savedAlarm.orientation) {
+        setAlarm(savedAlarm);
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
+      } else {
+        setAlarm(null);
+        Alert.alert('Diário atualizado', wasEditing ? 'A correção foi salva mantendo o histórico.' : 'O registro foi salvo.');
+      }
     } catch {
       Alert.alert('Não foi salvo', 'Verifique sua conexão e tente novamente. Nenhum registro parcial foi criado.');
     } finally {
@@ -190,9 +207,30 @@ export default function DiarioScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Diário da gestação</Text>
         <Text style={styles.subtitle}>Registre como você está hoje. Os dados ficam ligados à sua gestação.</Text>
+
+        {alarm?.orientation ? (
+          <View
+            testID={alarm.level === 'red' ? 'daily-alarm-red' : 'daily-alarm-yellow'}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="assertive"
+            style={[styles.alarmCard, alarm.level === 'red' ? styles.alarmCardRed : styles.alarmCardYellow]}
+          >
+            <Text style={styles.alarmTitle}>{alarm.level === 'red' ? 'Procure atendimento agora' : 'Fale com sua equipe de saúde'}</Text>
+            <Text testID="daily-alarm-message" style={styles.alarmText}>{alarm.orientation.patient}</Text>
+            <Text style={styles.alarmDisclaimer}>{alarm.orientation.disclaimer}</Text>
+            {alarm.level === 'red' ? (
+              <Pressable testID="daily-alarm-call-192" accessibilityRole="button" accessibilityLabel="Ligar para o SAMU, 192" onPress={() => void Linking.openURL('tel:192')} style={styles.alarmCallButton}>
+                <Text style={styles.alarmCallText}>Ligar 192 (SAMU)</Text>
+              </Pressable>
+            ) : null}
+            <Pressable testID="daily-alarm-dismiss" accessibilityRole="button" accessibilityLabel="Entendi, fechar aviso" onPress={() => setAlarm(null)} style={styles.cancelButton}>
+              <Text style={styles.cancelText}>Entendi</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {error ? (
           <View style={styles.errorCard}>
@@ -233,6 +271,7 @@ export default function DiarioScreen() {
             </View>
             <Field label="Peso (kg)" value={weight} onChange={setWeight} testID="daily-weight" />
             <Field label="Glicemia (mg/dL)" value={glucose} onChange={setGlucose} testID="daily-glucose" />
+            <Field label="Temperatura (°C)" value={temperature} onChange={setTemperature} testID="daily-temperature" />
 
             {gestationalWeeks !== null && gestationalWeeks >= 28 ? (
               <View style={styles.movementCard}>
@@ -280,6 +319,7 @@ function summarize(entry: DailyEntry): string {
   if (entry.systolic !== null || entry.diastolic !== null) values.push(`PA: ${entry.systolic ?? '-'} / ${entry.diastolic ?? '-'}`);
   if (entry.weight_kg !== null) values.push(`Peso: ${entry.weight_kg} kg`);
   if (entry.glucose_mg_dl !== null) values.push(`Glicemia: ${entry.glucose_mg_dl} mg/dL`);
+  if (entry.temperature_c !== null && entry.temperature_c !== undefined) values.push(`Temperatura: ${entry.temperature_c} °C`);
   if (entry.reduced_fetal_movements !== null) values.push(`Mexeu menos: ${entry.reduced_fetal_movements ? 'sim' : 'não'}`);
   if (entry.free_text) values.push(entry.free_text);
   return values.join(' · ') || 'Sem detalhes informados';
@@ -320,4 +360,12 @@ const styles = StyleSheet.create({
   errorText: { color: '#8e2d25', fontSize: 14, marginBottom: 10 },
   secondaryButton: { alignItems: 'center', borderColor: ACCESSIBLE_COLORS.primary, borderRadius: 20, borderWidth: 1, padding: 10 },
   secondaryButtonText: { color: ACCESSIBLE_COLORS.primary, fontWeight: '600' },
+  alarmCard: { borderRadius: 12, borderWidth: 2, padding: 16, marginBottom: 16 },
+  alarmCardRed: { backgroundColor: '#fff1f0', borderColor: '#b42318' },
+  alarmCardYellow: { backgroundColor: '#fffaeb', borderColor: '#b54708' },
+  alarmTitle: { color: '#7a1a12', fontSize: 19, fontWeight: '700', marginBottom: 8 },
+  alarmText: { color: ACCESSIBLE_COLORS.body, fontSize: 16, lineHeight: 22, marginBottom: 8 },
+  alarmDisclaimer: { color: ACCESSIBLE_COLORS.muted, fontSize: 13, lineHeight: 18, marginBottom: 12 },
+  alarmCallButton: { alignItems: 'center', backgroundColor: '#b42318', borderRadius: 24, minHeight: 50, justifyContent: 'center' },
+  alarmCallText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 });
