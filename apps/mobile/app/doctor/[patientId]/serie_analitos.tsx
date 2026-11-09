@@ -24,23 +24,31 @@ export default function SerieAnalitosScreen() {
   const [loading, setLoading] = useState(true);
   const [seriesData, setSeriesData] = useState<AnalyteSeriesResponse | null>(null);
 
-  const fetchSeries = useCallback(async (analyte: AnalyteTab) => {
-    if (!patientId) return;
-    setLoading(true);
-    try {
-      const response = await api.get(`/lab-results/pregnant/${patientId}/series/${analyte}`);
-      setSeriesData(response.data);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao carregar série do analito';
-      Alert.alert('Erro', msg);
-    } finally {
-      setLoading(false);
-    }
+  const fetchSeries = useCallback((analyte: AnalyteTab) => {
+    if (!patientId) return Promise.resolve();
+    return api
+      .get<AnalyteSeriesResponse>(`/lab-results/pregnant/${patientId}/series/${analyte}`)
+      .then((response) => {
+        setSeriesData(response.data);
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Erro ao carregar série do analito';
+        Alert.alert('Erro', msg);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [patientId]);
 
   useEffect(() => {
     fetchSeries(selectedAnalyte);
   }, [fetchSeries, selectedAnalyte]);
+
+  const handleTabChange = (analyte: AnalyteTab) => {
+    if (analyte === selectedAnalyte) return;
+    setLoading(true);
+    setSelectedAnalyte(analyte);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -49,7 +57,7 @@ export default function SerieAnalitosScreen() {
         <View style={styles.selectorContainer} accessible={true} accessibilityRole="radiogroup">
           <TouchableOpacity
             style={[styles.tabButton, selectedAnalyte === 'hemoglobin' && styles.tabButtonActive]}
-            onPress={() => setSelectedAnalyte('hemoglobin')}
+            onPress={() => handleTabChange('hemoglobin')}
             accessibilityRole="radio"
             accessibilityState={{ selected: selectedAnalyte === 'hemoglobin' }}
             accessibilityLabel="Selecionar Hemoglobina"
@@ -63,7 +71,7 @@ export default function SerieAnalitosScreen() {
 
           <TouchableOpacity
             style={[styles.tabButton, selectedAnalyte === 'fasting_glucose' && styles.tabButtonActive]}
-            onPress={() => setSelectedAnalyte('fasting_glucose')}
+            onPress={() => handleTabChange('fasting_glucose')}
             accessibilityRole="radio"
             accessibilityState={{ selected: selectedAnalyte === 'fasting_glucose' }}
             accessibilityLabel="Selecionar Glicemia de Jejum"

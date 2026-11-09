@@ -10,7 +10,7 @@ router.use(rateLimit(createClinicalLimiterOptions()));
 const requireDoctor = [authenticateToken, requireRole('medico')];
 
 router.get('/documents/:documentId', requireDoctor, controller.getDocumentLabResults);
-router.get('/pregnant/:pregnantId/series/:analyteId', requireDoctor, controller.getLabResultSeries);
+router.get('/pregnant/:id/series/:analyteId', requireDoctor, controller.getLabResultSeries);
 router.get('/:id/history', requireDoctor, controller.getLabResultHistory);
 router.post('/:id/accept', requireDoctor, controller.acceptLabResult);
 router.post('/:id/correct', requireDoctor, controller.correctLabResult);

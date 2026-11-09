@@ -168,8 +168,8 @@ function reviewLabResult(action) {
 
 async function getLabResultSeries(req, res) {
   try {
-    const pregnantId = positiveId(req.params.pregnantId);
-    if (!pregnantId) return res.status(400).json({ error: 'pregnantId inválido ou ausente' });
+    const pregnantId = positiveId(req.params.id);
+    if (!pregnantId) return res.status(400).json({ error: 'id ou pregnantId inválido ou ausente' });
 
     const analyteId = req.params.analyteId;
     if (!analyteId || typeof analyteId !== 'string') {
