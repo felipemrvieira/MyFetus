@@ -184,6 +184,19 @@ Lista todos os eventos registrados.
 
 Registra novos marcos (ultrassom, exames etc.).
 
+🧪 Exportação FHIR experimental
+
+➤ GET /api/exports/pregnancies/:pregnancyId/fhir
+
+Gera um Bundle FHIR R4 `collection` com Patient pseudonimizado e Observations de pressão
+arterial, peso e glicemia disponíveis no diário, histórico de peso e resultados laboratoriais
+aceitos/corrigidos. O endpoint exige o mesmo controle de acesso clínico do prontuário, não
+envia dados à RNDS e não exporta nome, e-mail, senha ou token.
+
+O contrato HTTP está em `openapi.yaml` e a versão do export é `R4-experimental-v1`. Antes de
+qualquer integração produtiva, ainda precisam ser confirmados pelo P.O. os códigos oficiais,
+o intervalo de exportação, o validador FHIR e a política de consentimento específica.
+
 🛠 Desenvolvimento (sem Docker)
 1️⃣ Instalar dependências
 cd backend
