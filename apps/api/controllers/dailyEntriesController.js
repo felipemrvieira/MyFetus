@@ -21,6 +21,7 @@ const {
   dailyEntryAlerts,
   upsertAlertEvent,
 } = require('../services/alertEventService');
+const { syncDailyWeight } = require('../services/clinicalHistoryService');
 
 function handleError(res, error) {
   if (error instanceof DailyEntryValidationError) {
@@ -58,6 +59,7 @@ async function findPregnancyWithWeeks(pregnancyId) {
 }
 
 async function createDailyEntry(req, res) {
+  let db;
   try {
     const pregnancyId = validateId(req.body?.pregnancy_id, 'pregnancy_id');
     const pregnancy = await ensureCanAccessPregnancy(req, res, pregnancyId);
@@ -72,7 +74,9 @@ async function createDailyEntry(req, res) {
     );
     const encrypted = encryptEntry(entry);
     const entryKey = buildEntryKey();
-    const result = await client.query(
+    db = await client.connect();
+    await db.query('BEGIN');
+    const result = await db.query(
       `INSERT INTO daily_entries (
         entry_key, pregnant_id, pregnancy_id, entry_date, timezone,
         alarm_symptoms, other_symptoms, free_text, systolic, diastolic,
@@ -100,6 +104,17 @@ async function createDailyEntry(req, res) {
     );
     const created = cryptoService.decryptRecord(result.rows[0], 'daily_entries');
     const createdSerialized = serializeEntry(created);
+    await syncDailyWeight(db, {
+      pregnancyId,
+      measuredAt: createdSerialized.entry_date,
+      weightKg: createdSerialized.weight_kg,
+      sourceDailyEntryKey: createdSerialized.entry_key,
+      sourceDailyEntryVersion: createdSerialized.version,
+      userId: req.user.id,
+    });
+    await db.query('COMMIT');
+    db.release();
+    db = null;
     await syncDailyAlerts(createdSerialized, {
       pregnancyId,
       pregnantId: currentPregnancy.pregnant_id,
@@ -116,6 +131,10 @@ async function createDailyEntry(req, res) {
       gestational_rule_context: ruleContext,
     });
   } catch (error) {
+    if (db) {
+      try { await db.query('ROLLBACK'); } catch {}
+      db.release();
+    }
     return handleError(res, error);
   }
 }
@@ -173,11 +192,53 @@ async function listDailyRiskFeed(req, res) {
   }
 }
 
+async function listDailyMetrics(req, res) {
+  try {
+    const pregnancyId = validateId(req.params.pregnancyId, 'pregnancy_id');
+    if (!(await ensureCanAccessPregnancy(req, res, pregnancyId))) return;
+    const result = await client.query(
+      `SELECT * FROM daily_entries
+       WHERE pregnancy_id = $1 AND is_current = TRUE
+       ORDER BY entry_date ASC, id ASC
+       LIMIT 500`,
+      [pregnancyId]
+    );
+    const entries = result.rows.map((row) => serializeEntry(
+      cryptoService.decryptRecord(row, 'daily_entries')
+    ));
+    return res.json({
+      pregnancy_id: pregnancyId,
+      weight: entries
+        .filter((entry) => entry.weight_kg !== null)
+        .map(({ entry_date, weight_kg, entry_key, version }) => ({
+          entry_date, weight_kg, source: 'daily_entry', entry_key, version,
+        })),
+      blood_pressure: entries
+        .filter((entry) => entry.systolic !== null || entry.diastolic !== null)
+        .map(({ entry_date, systolic, diastolic, entry_key, version }) => ({
+          entry_date, systolic, diastolic, source: 'daily_entry', entry_key, version,
+        })),
+      glucose: entries
+        .filter((entry) => entry.glucose_mg_dl !== null)
+        .map(({ entry_date, glucose_mg_dl, entry_key, version }) => ({
+          entry_date, glucose_mg_dl, source: 'daily_entry', entry_key, version,
+        })),
+      policy: {
+        clinical_interpretation: 'Os valores sao exibidos como registros do diario; limiares e interpretacao pertencem ao motor de risco.',
+        source: 'daily_entries',
+      },
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+}
+
 async function updateDailyEntry(req, res) {
   const entryKey = String(req.params.entryKey || '').trim();
   if (!entryKey || entryKey.length > 80) return res.status(400).json({ error: 'entry_key invalido' });
-  const db = client;
+  let db;
   try {
+    db = await client.connect();
     await db.query('BEGIN');
     const currentResult = await db.query(
       `SELECT * FROM daily_entries
@@ -235,9 +296,19 @@ async function updateDailyEntry(req, res) {
         cryptoService.getCurrentVersion(),
       ]
     );
-    await db.query('COMMIT');
     const updated = cryptoService.decryptRecord(result.rows[0], 'daily_entries');
     const updatedSerialized = serializeEntry(updated);
+    await syncDailyWeight(db, {
+      pregnancyId: currentRow.pregnancy_id,
+      measuredAt: updatedSerialized.entry_date,
+      weightKg: updatedSerialized.weight_kg,
+      sourceDailyEntryKey: updatedSerialized.entry_key,
+      sourceDailyEntryVersion: updatedSerialized.version,
+      userId: req.user.id,
+    });
+    await db.query('COMMIT');
+    db.release();
+    db = null;
     await syncDailyAlerts(updatedSerialized, {
       pregnancyId: currentRow.pregnancy_id,
       pregnantId: currentRow.pregnant_id,
@@ -254,7 +325,10 @@ async function updateDailyEntry(req, res) {
       gestational_rule_context: ruleContext,
     });
   } catch (error) {
-    try { await db.query('ROLLBACK'); } catch {}
+    if (db) {
+      try { await db.query('ROLLBACK'); } catch {}
+      db.release();
+    }
     return handleError(res, error);
   }
 }
@@ -262,6 +336,7 @@ async function updateDailyEntry(req, res) {
 module.exports = {
   createDailyEntry,
   listDailyEntries,
+  listDailyMetrics,
   listDailyRiskFeed,
   updateDailyEntry,
 };

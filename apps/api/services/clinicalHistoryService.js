@@ -222,6 +222,56 @@ async function createMaternalWeight(
   return inserted.rows[0];
 }
 
+async function syncDailyWeight(
+  db,
+  {
+    pregnancyId: pregnancyIdValue,
+    measuredAt,
+    weightKg,
+    sourceDailyEntryKey,
+    sourceDailyEntryVersion,
+    userId,
+  }
+) {
+  const pregnancyId = validatePregnancyId(pregnancyIdValue);
+  if (weightKg === null || weightKg === undefined) return null;
+  const normalizedWeight = requirePositiveNumber(weightKg, 'weight_kg');
+  if (normalizedWeight > 500) {
+    throw new HistoryValidationError('weight_kg deve ser menor ou igual a 500');
+  }
+  if (typeof sourceDailyEntryKey !== 'string' || !sourceDailyEntryKey.trim()) {
+    throw new HistoryValidationError('source_daily_entry_key invalido');
+  }
+  const version = Number(sourceDailyEntryVersion);
+  if (!Number.isInteger(version) || version <= 0) {
+    throw new HistoryValidationError('source_daily_entry_version invalido');
+  }
+  const normalizedDate = validateMeasuredAt(measuredAt);
+  const inserted = await db.query(
+    `
+    INSERT INTO maternal_weight_history (
+      pregnancy_id, measured_at, weight_kg, notes, created_by_user_id,
+      source_daily_entry_key, source_daily_entry_version
+    )
+    VALUES ($1, COALESCE($2::date, CURRENT_DATE), $3, $4, $5, $6, $7)
+    ON CONFLICT (source_daily_entry_key, source_daily_entry_version)
+      WHERE source_daily_entry_key IS NOT NULL
+    DO NOTHING
+    RETURNING *
+    `,
+    [
+      pregnancyId,
+      normalizedDate,
+      normalizedWeight,
+      'Origem: diario da gestante',
+      userId,
+      sourceDailyEntryKey.trim(),
+      version,
+    ]
+  );
+  return inserted.rows[0] || null;
+}
+
 async function listFetalBiometries(db, pregnancyIdValue, query) {
   const pregnancyId = validatePregnancyId(pregnancyIdValue);
   const filters = parseHistoryFilters(query);
@@ -254,6 +304,7 @@ module.exports = {
   HistoryValidationError,
   createFetalBiometry,
   createMaternalWeight,
+  syncDailyWeight,
   listFetalBiometries,
   listMaternalWeights,
   parseHistoryFilters,
