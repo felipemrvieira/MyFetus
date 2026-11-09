@@ -2054,6 +2054,12 @@ paths:
       security: [{ bearerAuth: [] }]
       x-roles: [admin, medico]
       description: O reconhecimento registra ciência e não encerra o alerta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertEventJustificationRequest'
       responses:
         '200':
           description: Alerta reconhecido.
@@ -2061,6 +2067,36 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AlertEvent' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/alert-events/{alertId}/history:
+    parameters:
+      - name: alertId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Alertas]
+      summary: Lista o histórico de decisões de um alerta
+      operationId: listAlertEventHistory
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      responses:
+        '200':
+          description: Histórico imutável do alerta.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [alert_id, history]
+                properties:
+                  alert_id: { type: integer }
+                  history:
+                    type: array
+                    items: { $ref: '#/components/schemas/AlertEventHistory' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -3134,6 +3170,26 @@ components:
         acknowledged_at: { type: [string, 'null'], format: date-time }
         closed_at: { type: [string, 'null'], format: date-time }
         close_reason: { type: [string, 'null'] }
+
+    AlertEventJustificationRequest:
+      type: object
+      required: [justification]
+      additionalProperties: false
+      properties:
+        justification: { type: string, minLength: 3, maxLength: 1000 }
+
+    AlertEventHistory:
+      type: object
+      required: [id, alert_event_id, action, status, created_at]
+      properties:
+        id: { type: integer }
+        alert_event_id: { type: integer }
+        action: { type: string, enum: [acknowledged, closed] }
+        previous_status: { type: [string, 'null'], enum: [open, acknowledged, closed, null] }
+        status: { type: string, enum: [open, acknowledged, closed] }
+        actor_id: { type: [integer, 'null'] }
+        justification: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
 
     Pregnancy:
       type: object
