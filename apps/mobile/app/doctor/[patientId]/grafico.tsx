@@ -13,7 +13,13 @@ import { api } from '../../../utils/apiClient';
 import NutritionalGrowthChart from '../../../components/NutritionalGrowthChart';
 import UterineHeightChart from '../../../components/UterineHeightChart';
 import PatientVsPopulationComparison from '../../../components/PatientVsPopulationComparison';
+import DailyMetricsChart from '../../../components/DailyMetricsChart';
 import { getIMCPopulationAverage, getAlturaUterinaPopulationAverage } from '../../../utils/growthChartData';
+
+type DailyMetrics = {
+  weight: { entry_date: string; weight_kg: number }[];
+  blood_pressure: { entry_date: string; systolic: number | null; diastolic: number | null }[];
+};
 
 export default function GraficoScreen() {
   const router = useRouter();
@@ -23,6 +29,7 @@ export default function GraficoScreen() {
   const [week, setWeek] = useState(0);
   const [imc, setImc] = useState(0);
   const [alturaUterina, setAlturaUterina] = useState(0);
+  const [dailyMetrics, setDailyMetrics] = useState<DailyMetrics>({ weight: [], blood_pressure: [] });
 
   useEffect(() => {
     if (!patientId) return;
@@ -40,6 +47,11 @@ export default function GraficoScreen() {
         if (data.latest_pregnancy) {
           setWeek(Number(data.latest_pregnancy.weeks) || 0);
           setAlturaUterina(Number(data.latest_pregnancy.altura_uterina) || 0);
+          const metrics = await api.get(`/daily-entries/pregnancies/${data.latest_pregnancy.id}/metrics`);
+          setDailyMetrics({
+            weight: metrics.data.weight || [],
+            blood_pressure: metrics.data.blood_pressure || [],
+          });
         }
       } catch (error) {
         Alert.alert('Erro', error instanceof Error ? error.message : 'Erro de rede');
@@ -79,6 +91,11 @@ export default function GraficoScreen() {
           unit="cm"
           patientValue={alturaUterina}
           averageValue={getAlturaUterinaPopulationAverage(week)}
+        />
+
+        <DailyMetricsChart
+          weight={dailyMetrics.weight}
+          bloodPressure={dailyMetrics.blood_pressure}
         />
 
         <TouchableOpacity style={styles.button} onPress={handleNext}>
