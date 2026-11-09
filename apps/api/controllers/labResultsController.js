@@ -142,12 +142,12 @@ function reviewLabResult(action) {
 
 async function getLabResultSeries(req, res) {
   try {
-    const pregnantId = positiveId(req.query.pregnant_id);
-    if (!pregnantId) return res.status(400).json({ error: 'pregnant_id inválido ou ausente' });
+    const pregnantId = positiveId(req.params.pregnantId);
+    if (!pregnantId) return res.status(400).json({ error: 'pregnantId inválido ou ausente' });
 
-    const analyteId = req.query.analyte_id;
+    const analyteId = req.params.analyteId;
     if (!analyteId || typeof analyteId !== 'string') {
-      return res.status(400).json({ error: 'analyte_id obrigatório' });
+      return res.status(400).json({ error: 'analyteId obrigatório' });
     }
 
     if (!(await ensureLinkedDoctor(req, res, pregnantId))) return;

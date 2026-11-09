@@ -28,12 +28,7 @@ export default function SerieAnalitosScreen() {
     if (!patientId) return;
     setLoading(true);
     try {
-      const response = await api.get('/lab-results/series', {
-        params: {
-          pregnant_id: patientId,
-          analyte_id: analyte,
-        },
-      });
+      const response = await api.get(`/lab-results/pregnant/${patientId}/series/${analyte}`);
       setSeriesData(response.data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao carregar série do analito';

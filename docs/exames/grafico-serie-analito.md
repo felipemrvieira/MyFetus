@@ -33,10 +33,10 @@ Depende da E2-04 (#61, revisão médica de analitos).
 
 ## API
 
-- **Rota**: `GET /api/lab-results/series`
-- **Query Params**:
-  * `pregnant_id` (obrigatório, inteiro positivo)
-  * `analyte_id` (obrigatório: `hemoglobin` ou `glucose` / `fasting_glucose`)
+- **Rota**: `GET /api/lab-results/pregnant/:pregnantId/series/:analyteId`
+- **Path Params**:
+  * `pregnantId` (obrigatório, inteiro positivo)
+  * `analyteId` (obrigatório: `hemoglobin` ou `glucose` / `fasting_glucose`)
 - **Resposta**: `LabResultSeriesResponse` (OpenAPI 3.1)
 
 ## Arquitetura e Componentes

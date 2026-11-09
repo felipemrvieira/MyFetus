@@ -2152,7 +2152,7 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/lab-results/series:
+  /api/lab-results/pregnant/{pregnantId}/series/{analyteId}:
     get:
       tags: [Exames]
       summary: Série temporal de um analito ao longo da gestação (E2-06)
@@ -2163,13 +2163,13 @@ paths:
       security: [{ bearerAuth: [] }]
       x-roles: [medico]
       parameters:
-        - name: pregnant_id
-          in: query
+        - name: pregnantId
+          in: path
           required: true
           schema: { type: integer, minimum: 1 }
           description: ID da gestante
-        - name: analyte_id
-          in: query
+        - name: analyteId
+          in: path
           required: true
           schema:
             type: string

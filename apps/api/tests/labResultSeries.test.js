@@ -320,8 +320,8 @@ test.describe('Rota HTTP GET /api/lab-results/series', () => {
     ];
   });
 
-  async function fetchSeries(token, query = '') {
-    const response = await fetch(`${baseUrl}/series${query}`, {
+  async function fetchSeries(token, path = '/pregnant/10/series/hemoglobin') {
+    const response = await fetch(`${baseUrl}${path}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -332,34 +332,32 @@ test.describe('Rota HTTP GET /api/lab-results/series', () => {
   }
 
   test('sem token responde 401', async () => {
-    const { status } = await fetchSeries(null, '?pregnant_id=10&analyte_id=hemoglobin');
+    const { status } = await fetchSeries(null, '/pregnant/10/series/hemoglobin');
     assert.strictEqual(status, 401);
   });
 
   test('gestante e admin respondem 403 (apenas médico vinculado)', async () => {
-    const r1 = await fetchSeries(PREGNANT, '?pregnant_id=10&analyte_id=hemoglobin');
+    const r1 = await fetchSeries(PREGNANT, '/pregnant/10/series/hemoglobin');
     assert.strictEqual(r1.status, 403);
 
-    const r2 = await fetchSeries(ADMIN, '?pregnant_id=10&analyte_id=hemoglobin');
+    const r2 = await fetchSeries(ADMIN, '/pregnant/10/series/hemoglobin');
     assert.strictEqual(r2.status, 403);
   });
 
   test('médico sem vínculo responde 403', async () => {
-    const { status, body } = await fetchSeries(UNLINKED_DOCTOR, '?pregnant_id=10&analyte_id=hemoglobin');
+    const { status, body } = await fetchSeries(UNLINKED_DOCTOR, '/pregnant/10/series/hemoglobin');
     assert.strictEqual(status, 403);
     assert.match(body.error, /não vinculado/i);
   });
 
-  test('parâmetros ausentes respondem 400', async () => {
-    const r1 = await fetchSeries(LINKED_DOCTOR, '?analyte_id=hemoglobin');
-    assert.strictEqual(r1.status, 400);
-
-    const r2 = await fetchSeries(LINKED_DOCTOR, '?pregnant_id=10');
-    assert.strictEqual(r2.status, 400);
+  test('parâmetro pregnantId inválido responde 400', async () => {
+    const r = await fetchSeries(LINKED_DOCTOR, '/pregnant/abc/series/hemoglobin');
+    assert.strictEqual(r.status, 400);
+    assert.match(r.body.error, /pregnantId inválido/i);
   });
 
   test('médico vinculado acessa série e gera auditoria sem PII clínica', async () => {
-    const { status, body } = await fetchSeries(LINKED_DOCTOR, '?pregnant_id=10&analyte_id=hemoglobin');
+    const { status, body } = await fetchSeries(LINKED_DOCTOR, '/pregnant/10/series/hemoglobin');
     assert.strictEqual(status, 200);
     assert.strictEqual(body.analyte.id, 'hemoglobin');
     assert.strictEqual(body.points.length, 1);
