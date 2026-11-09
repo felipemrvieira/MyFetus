@@ -1,0 +1,137 @@
+{
+  "datasetId": "blind-validation",
+  "datasetVersion": "1.0.0",
+  "protocolVersion": "1.0.0",
+  "status": "nao_preenchido",
+  "notes": "Gabarito clínico às cegas. Preenchido só pelo avaliador clínico, a partir da ficha de classificação, sem acesso ao motor, ao catálogo ou à matriz de cobertura. Fechar (status preenchido + data + avaliador) e versionar ANTES de qualquer execução do motor (E3-09.2).",
+  "allowedClassifications": [
+    "verde",
+    "amarelo",
+    "vermelho",
+    "inconclusivo"
+  ],
+  "evaluator": null,
+  "filledAt": null,
+  "cases": [
+    {
+      "id": "BV-01",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-02",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-03",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-04",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-05",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-06",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-07",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-08",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-09",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-10",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-11",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-12",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-13",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-14",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-15",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-16",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-17",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-18",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-19",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    },
+    {
+      "id": "BV-20",
+      "classificacao": null,
+      "faltamDados": null,
+      "justificativa": null
+    }
+  ]
+}
