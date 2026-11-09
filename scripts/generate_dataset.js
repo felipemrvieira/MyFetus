@@ -261,19 +261,22 @@ function degradeCanvas(canvas, rng) {
 
 async function writeScannedPdf(lines, targetPath, rng) {
   const { createCanvas } = loadCanvas();
-  const canvas = createCanvas(1240, 1754);
+  // Keep the source image at the same resolution used by the OCR extractor
+  // (A4 at scale 3). This avoids upscaling a low-resolution fixture on CI,
+  // where small differences in font rasterization can materially affect OCR.
+  const canvas = createCanvas(1785, 2526);
   const context = canvas.getContext('2d');
 
   context.fillStyle = '#fffdf6';
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = '#1a1a1a';
 
-  let y = 160;
+  let y = 230;
   lines.forEach((line, index) => {
     const isTitle = index === 0 || index === 1;
-    context.font = `${isTitle ? 'bold ' : ''}${isTitle ? 34 : 24}px Arial`;
-    context.fillText(line || ' ', 110, y);
-    y += isTitle ? 58 : 42;
+    context.font = `${isTitle ? 'bold ' : ''}${isTitle ? 49 : 35}px DejaVu Sans`;
+    context.fillText(line || ' ', 158, y);
+    y += isTitle ? 84 : 61;
   });
 
   degradeCanvas(canvas, rng);
