@@ -124,6 +124,7 @@ const ENCRYPTED_FIELDS = Object.freeze({
     'weight_kg',
     'glucose_mg_dl',
     'reduced_fetal_movements',
+    'temperature_c',
   ]),
 });
 

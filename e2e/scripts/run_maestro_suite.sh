@@ -25,3 +25,10 @@ maestro --no-ansi test \
   --env="E2E_EXAM_NAME=${E2E_EXAM_NAME}" \
   --env="E2E_REPORT_TEXT=${E2E_REPORT_TEXT}" \
   e2e/maestro/mobile-smoke.yaml
+
+maestro --no-ansi test \
+  --format=JUNIT \
+  --output="$output_dir/maestro-diary-alarm-results.xml" \
+  --env="E2E_PATIENT_EMAIL=${E2E_PATIENT_EMAIL}" \
+  --env="E2E_PASSWORD=${E2E_PASSWORD}" \
+  e2e/maestro/diary-alarm.yaml

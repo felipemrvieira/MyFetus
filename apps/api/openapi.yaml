@@ -1873,10 +1873,10 @@ paths:
               weight_kg: 68.4
       responses:
         '201':
-          description: Entrada criada na versão 1.
+          description: Entrada criada na versão 1. O campo alarm traz a orientação imediata (E3-07).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DailyEntry' }
+              schema: { $ref: '#/components/schemas/DailyEntryWithAlarm' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -2050,10 +2050,10 @@ paths:
             schema: { $ref: '#/components/schemas/DailyEntryInput' }
       responses:
         '200':
-          description: Nova versão da entrada.
+          description: Nova versão da entrada, com a orientação recalculada (E3-07).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DailyEntry' }
+              schema: { $ref: '#/components/schemas/DailyEntryWithAlarm' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -2493,7 +2493,42 @@ components:
         diastolic: { type: number, minimum: 30, maximum: 160 }
         weight_kg: { type: number, minimum: 30, maximum: 250 }
         glucose_mg_dl: { type: number, minimum: 20, maximum: 600 }
+        temperature_c: { type: number, minimum: 34, maximum: 43, description: 'Temperatura em °C. A partir de 38 °C gera alarme (E3-07).' }
         reduced_fetal_movements: { type: boolean, description: Disponível a partir de 28 semanas. }
+    DailyAlarm:
+      type: object
+      description: 'E3-07. Orientação imediata para a gestante. Gerada de forma determinística, sem IA e sem depender de push.'
+      required: [level, catalog_version, orientation, triggered, pending]
+      properties:
+        level: { type: string, enum: [green, yellow, red] }
+        catalog_version: { type: string }
+        orientation:
+          type: [object, 'null']
+          required: [id, patient, disclaimer]
+          properties:
+            id: { type: string, enum: [seek_care_now_v1, seek_evaluation_v1] }
+            patient: { type: string }
+            disclaimer: { type: string }
+        triggered:
+          type: array
+          items:
+            type: object
+            required: [rule_id, version, severity]
+            properties:
+              rule_id: { type: string, example: E3-07.fever_38 }
+              version: { type: integer, minimum: 1 }
+              severity: { type: string, enum: [yellow, red] }
+        pending:
+          type: array
+          items: { type: string, enum: [blood_pressure_missing, temperature_missing, gestational_age_unknown] }
+    DailyEntryWithAlarm:
+      allOf:
+        - $ref: '#/components/schemas/DailyEntry'
+        - type: object
+          required: [alarm]
+          properties:
+            gestational_rule_context: { type: object, additionalProperties: true }
+            alarm: { $ref: '#/components/schemas/DailyAlarm' }
     DailyEntry:
       allOf:
         - $ref: '#/components/schemas/DailyEntryInput'
@@ -2522,8 +2557,12 @@ components:
             required: [code, level, message]
             properties:
               code: { type: string }
+              rule_version: { type: integer, minimum: 1 }
               level: { type: string, enum: [yellow, red] }
               message: { type: string }
+        pending:
+          type: array
+          items: { type: string }
         history:
           type: object
           additionalProperties: true

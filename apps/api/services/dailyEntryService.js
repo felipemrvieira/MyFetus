@@ -92,6 +92,7 @@ function normalizePayload(payload = {}, gestationalWeeks) {
     weight_kg: optionalNumber(payload.weight_kg, 'weight_kg', { min: 30, max: 250 }),
     glucose_mg_dl: optionalNumber(payload.glucose_mg_dl, 'glucose_mg_dl', { min: 20, max: 600 }),
     reduced_fetal_movements: optionalBoolean(payload.reduced_fetal_movements, 'reduced_fetal_movements'),
+    temperature_c: optionalNumber(payload.temperature_c, 'temperature_c', { min: 34, max: 43 }),
   };
 
   const hasData = entry.alarm_symptoms.length > 0 ||
@@ -101,7 +102,8 @@ function normalizePayload(payload = {}, gestationalWeeks) {
     entry.diastolic !== null ||
     entry.weight_kg !== null ||
     entry.glucose_mg_dl !== null ||
-    entry.reduced_fetal_movements !== null;
+    entry.reduced_fetal_movements !== null ||
+    entry.temperature_c !== null;
 
   if (!hasData) {
     throw new DailyEntryValidationError('informe pelo menos um dado do diario');
@@ -119,6 +121,7 @@ function toEncryptedFields(entry) {
     weight_kg: entry.weight_kg,
     glucose_mg_dl: entry.glucose_mg_dl,
     reduced_fetal_movements: entry.reduced_fetal_movements,
+    temperature_c: entry.temperature_c,
   };
 }
 
@@ -155,6 +158,7 @@ function serializeEntry(row) {
     created_by_user_id: row.created_by_user_id,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    temperature_c: row.temperature_c === null || row.temperature_c === undefined || row.temperature_c === '' ? null : Number(row.temperature_c),
   };
 }
 
