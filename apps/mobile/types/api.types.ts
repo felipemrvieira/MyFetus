@@ -129,6 +129,7 @@ export interface DailyEntryInput {
   weight_kg?: number;
   glucose_mg_dl?: number;
   reduced_fetal_movements?: boolean;
+  temperature_c?: number;
 }
 
 export interface DailyEntry {
@@ -146,10 +147,26 @@ export interface DailyEntry {
   diastolic: number | null;
   weight_kg: number | null;
   glucose_mg_dl: number | null;
+  temperature_c: number | null;
   reduced_fetal_movements: boolean | null;
   created_by_user_id: number;
   created_at: string;
   updated_at: string;
+}
+
+// E3-07: orientação imediata devolvida pela API ao salvar o diário.
+export type DailyAlarmLevel = 'green' | 'yellow' | 'red';
+
+export interface DailyAlarm {
+  level: DailyAlarmLevel;
+  catalog_version: string;
+  orientation: { id: string; patient: string; disclaimer: string } | null;
+  triggered: { rule_id: string; version: number; severity: 'yellow' | 'red' }[];
+  pending: ('blood_pressure_missing' | 'temperature_missing' | 'gestational_age_unknown')[];
+}
+
+export interface DailyEntryWithAlarm extends DailyEntry {
+  alarm: DailyAlarm;
 }
 
 // ==========================================

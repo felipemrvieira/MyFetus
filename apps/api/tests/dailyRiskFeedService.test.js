@@ -13,7 +13,7 @@ test('sinais de alarme e pressão entram no feed, glicemia e peso ficam no hist�
     glucose_mg_dl: 130,
   });
   assert.equal(result.level, 'red');
-  assert.deepEqual(result.signals.map(signal => signal.code), ['alarm_sangramento', 'blood_pressure_elevated']);
+  assert.deepEqual(result.signals.map(signal => signal.code), ['E3-07.bleeding', 'blood_pressure_elevated']);
   assert.equal(result.history.weight_kg, 70);
   assert.equal(result.history.glucose_mg_dl, 130);
 });
@@ -26,4 +26,10 @@ test('feed ordena entradas por data e não cria alerta para peso/glicemia isolad
   assert.deepEqual(result.map(entry => entry.entry_key), ['new', 'old']);
   assert.equal(result[0].level, 'green');
   assert.deepEqual(result[0].signals, []);
+});
+
+test('feed usa a IG para classificar contrações', () => {
+  const entry = { entry_key: 'c', entry_date: '2026-11-08', version: 1, alarm_symptoms: ['contracoes'] };
+  assert.equal(buildDailyRiskFeed([entry], { weeks: 34 })[0].level, 'red');
+  assert.equal(buildDailyRiskFeed([entry], { weeks: 38 })[0].level, 'yellow');
 });

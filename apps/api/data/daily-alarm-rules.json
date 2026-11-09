@@ -1,0 +1,36 @@
+{
+  "catalogVersion": "1.0.0",
+  "issue": "E3-07",
+  "reviewedAt": null,
+  "decisionStatus": "pending_clinical_approval",
+  "source": "docs/regras-de-risco.md#sinais-de-alarme-do-diário-e3-07",
+  "thresholds": {
+    "feverCelsius": 38,
+    "pretermWeeks": 37,
+    "movementsFromWeeks": 28,
+    "highBloodPressure": { "systolic": 140, "diastolic": 90 }
+  },
+  "orientations": {
+    "seek_care_now_v1": {
+      "level": "red",
+      "patient": "Isso pode ser um sinal de alarme. Procure agora a maternidade ou um serviço de urgência, ou ligue 192 (SAMU).",
+      "disclaimer": "Este aviso não substitui o atendimento de emergência local nem a avaliação de um profissional de saúde."
+    },
+    "seek_evaluation_v1": {
+      "level": "yellow",
+      "patient": "Este registro precisa ser avaliado pela sua equipe de saúde. Se os sintomas piorarem, procure a maternidade ou ligue 192 (SAMU).",
+      "disclaimer": "Este aviso não substitui o atendimento de emergência local nem a avaliação de um profissional de saúde."
+    }
+  },
+  "rules": [
+    { "id": "E3-07.bleeding", "version": 1, "severity": "red", "signal": "sangramento" },
+    { "id": "E3-07.fluid_loss", "version": 1, "severity": "red", "signal": "perda_liquido" },
+    { "id": "E3-07.headache_high_bp", "version": 1, "severity": "red", "signal": "cefaleia_intensa + PA >= 140/90" },
+    { "id": "E3-07.headache_unconfirmed", "version": 1, "severity": "yellow", "signal": "cefaleia_intensa sem PA alta", "assumption": true },
+    { "id": "E3-07.fever_38", "version": 1, "severity": "red", "signal": "temperature_c >= 38" },
+    { "id": "E3-07.fever_unmeasured", "version": 1, "severity": "yellow", "signal": "febre marcada sem temperatura", "assumption": true },
+    { "id": "E3-07.preterm_contractions", "version": 1, "severity": "red", "signal": "contracoes com IG < 37 ou IG desconhecida", "assumption": "IG desconhecida tratada como vermelho" },
+    { "id": "E3-07.term_contractions", "version": 1, "severity": "yellow", "signal": "contracoes com IG >= 37", "assumption": true },
+    { "id": "E3-07.reduced_movements", "version": 1, "severity": "red", "signal": "reduced_fetal_movements (a partir de 28 semanas)" }
+  ]
+}
