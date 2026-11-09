@@ -33,6 +33,7 @@ const migrations = [
   ['17_alert_events.sql', 'migration_alert_events.sql'],
   ['18_lab_results.sql', 'migration_lab_results.sql'],
   ['19_device_push_tokens.sql', 'migration_device_push_tokens.sql'],
+  ['19_alert_event_history.sql', 'migration_alert_event_history.sql'],
 ];
 
 function required(name) {
