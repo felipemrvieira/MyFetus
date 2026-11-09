@@ -1,0 +1,35 @@
+{
+  "datasetVersion": "1.0.0",
+  "audience": "equipe técnica — NÃO mostrar ao avaliador antes de o gabarito estar fechado",
+  "notes": "Desenho de cobertura dos casos cegos: o que cada caso exercita no catálogo congelado. Não é gabarito clínico nem saída do motor; quem decide a classificação esperada é o avaliador clínico, às cegas.",
+  "caseTypes": {
+    "normal": "todos os parâmetros dentro das faixas do catálogo",
+    "limite": "um parâmetro exatamente no limiar de uma regra ou imediatamente abaixo dele",
+    "combinacao": "mais de um parâmetro de atenção no mesmo caso",
+    "ausencia": "campo obrigatório de uma categoria ausente",
+    "alto_risco": "parâmetro claramente na faixa de uma regra vermelha",
+    "conflitante": "dado sem resposta única pelo catálogo; candidato a inconclusivo"
+  },
+  "cases": [
+    {"id": "BV-01", "type": "limite", "targets": [{"ruleId": "blood_pressure_elevated", "field": "systolic", "value": 140, "relation": "no_limite"}]},
+    {"id": "BV-02", "type": "normal", "targets": []},
+    {"id": "BV-03", "type": "alto_risco", "targets": [{"ruleId": "current_pregnancy_acute", "field": "currentPregnancyFlags", "value": "fluid_loss", "relation": "contem"}]},
+    {"id": "BV-04", "type": "ausencia", "targets": [{"ruleId": "fasting_glucose_attention", "field": "glucoseValue", "relation": "ausente"}, {"ruleId": "fasting_glucose_attention", "field": "glucoseType", "relation": "ausente"}]},
+    {"id": "BV-05", "type": "limite", "targets": [{"ruleId": "fetal_heart_rate_low", "field": "fetalHeartRate", "value": 109, "relation": "abaixo_do_limite"}, {"ruleId": "fetal_heart_rate_low", "field": "gestationalWeeks", "value": 20, "relation": "no_limite"}]},
+    {"id": "BV-06", "type": "combinacao", "targets": [{"ruleId": "maternal_age_35_or_more", "field": "maternalAge", "value": 38, "relation": "acima_do_limite"}, {"ruleId": "bmi_outside_healthy_range", "field": "prePregnancyBmi", "value": 31.0, "relation": "acima_do_limite"}, {"ruleId": "family_history_present", "field": "familyHistory", "value": true, "relation": "igual"}]},
+    {"id": "BV-07", "type": "limite", "targets": [{"ruleId": "fasting_glucose_attention", "field": "glucoseValue", "value": 91, "relation": "abaixo_do_limite"}]},
+    {"id": "BV-08", "type": "alto_risco", "targets": [{"ruleId": "blood_pressure_severe", "field": "systolic", "value": 170, "relation": "acima_do_limite"}, {"ruleId": "blood_pressure_severe", "field": "diastolic", "value": 112, "relation": "acima_do_limite"}]},
+    {"id": "BV-09", "type": "conflitante", "targets": [{"ruleId": "fetal_heart_rate_low", "field": "gestationalWeeks", "value": 18, "relation": "abaixo_do_limite"}, {"ruleId": "fetal_heart_rate_low", "field": "fetalHeartRate", "value": 100, "relation": "abaixo_do_limite"}]},
+    {"id": "BV-10", "type": "normal", "targets": []},
+    {"id": "BV-11", "type": "limite", "targets": [{"ruleId": "gestational_age_41_or_more", "field": "gestationalWeeks", "value": 41, "relation": "no_limite"}]},
+    {"id": "BV-12", "type": "ausencia", "targets": [{"ruleId": "blood_pressure_elevated", "field": "systolic", "relation": "ausente"}, {"ruleId": "blood_pressure_elevated", "field": "diastolic", "relation": "ausente"}]},
+    {"id": "BV-13", "type": "combinacao", "targets": [{"ruleId": "current_pregnancy_acute", "field": "currentPregnancyFlags", "value": "bleeding", "relation": "contem"}, {"ruleId": "blood_pressure_elevated", "field": "systolic", "value": 145, "relation": "acima_do_limite"}]},
+    {"id": "BV-14", "type": "limite", "targets": [{"ruleId": "bmi_outside_healthy_range", "field": "prePregnancyBmi", "value": 25.0, "relation": "no_limite"}]},
+    {"id": "BV-15", "type": "conflitante", "targets": [{"ruleId": "casual_glucose_attention", "field": "glucoseValue", "value": 150, "relation": "abaixo_do_limite"}]},
+    {"id": "BV-16", "type": "alto_risco", "targets": [{"ruleId": "gestational_age_42_or_more", "field": "gestationalWeeks", "value": 42, "relation": "no_limite"}]},
+    {"id": "BV-17", "type": "limite", "targets": [{"ruleId": "blood_pressure_elevated", "field": "systolic", "value": 139, "relation": "abaixo_do_limite"}, {"ruleId": "blood_pressure_elevated", "field": "diastolic", "value": 89, "relation": "abaixo_do_limite"}]},
+    {"id": "BV-18", "type": "normal", "targets": []},
+    {"id": "BV-19", "type": "ausencia", "targets": [{"ruleId": "fundal_height_outside_curve", "field": "fundalHeightPercentile", "relation": "ausente"}]},
+    {"id": "BV-20", "type": "combinacao", "targets": [{"ruleId": "maternal_age_15_or_less", "field": "maternalAge", "value": 15, "relation": "no_limite"}, {"ruleId": "current_pregnancy_other", "field": "currentPregnancyFlags", "value": "urinary_infection", "relation": "contem"}, {"ruleId": "vaccination_pending", "field": "vaccinationStatus", "value": "pending", "relation": "igual"}]}
+  ]
+}
