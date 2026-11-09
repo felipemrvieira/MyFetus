@@ -6,6 +6,7 @@ const {
   AlertEventValidationError,
   acknowledgeAlert,
   closeAlert,
+  listAlertHistory,
   serializeAlertEvent,
 } = require('../services/alertEventService');
 
@@ -55,12 +56,27 @@ async function acknowledge(req, res) {
   try {
     const alertId = Number(req.params.alertId);
     if (!(await ensureAlertAccess(req, res, alertId))) return;
-    const result = await acknowledgeAlert(client, alertId, req.user.id);
+    const result = await acknowledgeAlert(client, alertId, req.user.id, req.body?.justification);
     if (!result) return res.status(404).json({ error: 'Alerta não encontrado ou já encerrado' });
-    audit(req, { action: 'ALERT_ACKNOWLEDGED', resource: 'alert_events', resource_id: String(result.id), detail: { status: result.status } });
+    audit(req, {
+      action: 'ALERT_ACKNOWLEDGED',
+      resource: 'alert_events',
+      resource_id: String(result.id),
+      detail: { status: result.status, justification_provided: true },
+    });
     return res.json(result);
   } catch (error) {
     return validationError(res, error) || sendInternalError(res);
+  }
+}
+
+async function history(req, res) {
+  try {
+    const alertId = Number(req.params.alertId);
+    if (!(await ensureAlertAccess(req, res, alertId))) return;
+    return res.json({ alert_id: alertId, history: await listAlertHistory(client, alertId) });
+  } catch (error) {
+    return sendInternalError(res);
   }
 }
 
@@ -77,4 +93,4 @@ async function close(req, res) {
   }
 }
 
-module.exports = { acknowledge, close, listAlertEvents };
+module.exports = { acknowledge, close, history, listAlertEvents };

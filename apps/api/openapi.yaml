@@ -2022,6 +2022,76 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/notifications/devices:
+    post:
+      tags: [Usuarios]
+      summary: Registra ou reativa um token de notificacao do dispositivo
+      operationId: registerPushToken
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, platform]
+              properties:
+                token: { type: string, minLength: 10, maxLength: 4096 }
+                platform: { type: string, enum: [ios, android, web] }
+      responses:
+        '201':
+          description: Token registrado sem devolver o valor do token.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PushTokenDevice' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Usuarios]
+      summary: Revoga um token de notificacao do dispositivo
+      operationId: revokePushToken
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, minLength: 10, maxLength: 4096 }
+      responses:
+        '200':
+          description: Token revogado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PushTokenDevice' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/daily-entries/pregnancies/{pregnancyId}/metrics:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    get:
+      tags: [Diario]
+      summary: Lista as séries brutas de peso, pressão e glicemia do diário
+      operationId: listDailyMetrics
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante, medico, admin]
+      description: Valores para gráficos e histórico, sem aplicar limiares clínicos na apresentação.
+      responses:
+        '200':
+          description: Séries do diário com origem e versão da entrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DailyMetrics' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /api/alert-events/pregnancies/{pregnancyId}:
     parameters:
       - $ref: '#/components/parameters/PregnancyIdPath'
@@ -2063,6 +2133,12 @@ paths:
       security: [{ bearerAuth: [] }]
       x-roles: [admin, medico]
       description: O reconhecimento registra ciência e não encerra o alerta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertEventJustificationRequest'
       responses:
         '200':
           description: Alerta reconhecido.
@@ -2070,6 +2146,36 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AlertEvent' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/alert-events/{alertId}/history:
+    parameters:
+      - name: alertId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Alertas]
+      summary: Lista o histórico de decisões de um alerta
+      operationId: listAlertEventHistory
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      responses:
+        '200':
+          description: Histórico imutável do alerta.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [alert_id, history]
+                properties:
+                  alert_id: { type: integer }
+                  history:
+                    type: array
+                    items: { $ref: '#/components/schemas/AlertEventHistory' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -2893,6 +2999,18 @@ components:
             created_by_user_id: { type: integer }
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
+    PushTokenDevice:
+      type: object
+      required: [id, user_id, platform, enabled]
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        platform: { type: string, enum: [ios, android, web] }
+        enabled: { type: boolean }
+        last_seen_at: { type: string, format: date-time }
+        revoked_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     DailyRiskFeedEntry:
       type: object
       required: [entry_key, entry_date, version, level, signals, history]
@@ -2913,6 +3031,56 @@ components:
         history:
           type: object
           additionalProperties: true
+
+    DailyMetrics:
+      type: object
+      required: [pregnancy_id, weight, blood_pressure, glucose, policy]
+      properties:
+        pregnancy_id: { type: integer }
+        weight:
+          type: array
+          items: { $ref: '#/components/schemas/DailyWeightMetric' }
+        blood_pressure:
+          type: array
+          items: { $ref: '#/components/schemas/DailyBloodPressureMetric' }
+        glucose:
+          type: array
+          items: { $ref: '#/components/schemas/DailyGlucoseMetric' }
+        policy:
+          type: object
+          required: [clinical_interpretation, source]
+          properties:
+            clinical_interpretation: { type: string }
+            source: { type: string, enum: [daily_entries] }
+    DailyMetricSource:
+      type: object
+      required: [entry_date, source, entry_key, version]
+      properties:
+        entry_date: { type: string, format: date }
+        source: { type: string, enum: [daily_entry] }
+        entry_key: { type: string }
+        version: { type: integer, minimum: 1 }
+    DailyWeightMetric:
+      allOf:
+        - $ref: '#/components/schemas/DailyMetricSource'
+        - type: object
+          required: [weight_kg]
+          properties:
+            weight_kg: { type: number }
+    DailyBloodPressureMetric:
+      allOf:
+        - $ref: '#/components/schemas/DailyMetricSource'
+        - type: object
+          properties:
+            systolic: { type: [number, 'null'] }
+            diastolic: { type: [number, 'null'] }
+    DailyGlucoseMetric:
+      allOf:
+        - $ref: '#/components/schemas/DailyMetricSource'
+        - type: object
+          required: [glucose_mg_dl]
+          properties:
+            glucose_mg_dl: { type: number }
 
     ClinicalObservation:
       type: object
@@ -3093,6 +3261,26 @@ components:
         acknowledged_at: { type: [string, 'null'], format: date-time }
         closed_at: { type: [string, 'null'], format: date-time }
         close_reason: { type: [string, 'null'] }
+
+    AlertEventJustificationRequest:
+      type: object
+      required: [justification]
+      additionalProperties: false
+      properties:
+        justification: { type: string, minLength: 3, maxLength: 1000 }
+
+    AlertEventHistory:
+      type: object
+      required: [id, alert_event_id, action, status, created_at]
+      properties:
+        id: { type: integer }
+        alert_event_id: { type: integer }
+        action: { type: string, enum: [acknowledged, closed] }
+        previous_status: { type: [string, 'null'], enum: [open, acknowledged, closed, null] }
+        status: { type: string, enum: [open, acknowledged, closed] }
+        actor_id: { type: [integer, 'null'] }
+        justification: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
 
     Pregnancy:
       type: object
