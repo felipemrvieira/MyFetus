@@ -5,6 +5,7 @@ const {
   createMaternalWeight,
   listFetalBiometries,
   parseHistoryFilters,
+  syncDailyWeight,
 } = require('../services/clinicalHistoryService');
 
 async function run() {
@@ -47,14 +48,26 @@ async function run() {
   assert.strictEqual(db.calls[1].values[2], 68.4);
   assertions += 2;
 
+  await syncDailyWeight(db, {
+    pregnancyId: 7,
+    measuredAt: '2026-06-16',
+    weightKg: 68.8,
+    sourceDailyEntryKey: 'daily-key-1',
+    sourceDailyEntryVersion: 1,
+    userId: 3,
+  });
+  assert.ok(db.calls[2].text.includes('ON CONFLICT (source_daily_entry_key, source_daily_entry_version)'));
+  assert.equal(db.calls[2].values[2], 68.8);
+  assertions += 2;
+
   await listFetalBiometries(db, 7, {
     from: '2026-01-01',
     to: '2026-06-30',
     order: 'desc',
     limit: '25',
   });
-  assert.ok(db.calls[2].text.includes('ORDER BY measured_at DESC'));
-  assert.deepStrictEqual(db.calls[2].values, [
+  assert.ok(db.calls[3].text.includes('ORDER BY measured_at DESC'));
+  assert.deepStrictEqual(db.calls[3].values, [
     7,
     '2026-01-01',
     '2026-06-30',

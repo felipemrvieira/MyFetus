@@ -2039,6 +2039,26 @@ paths:
               schema: { $ref: '#/components/schemas/PushTokenDevice' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/daily-entries/pregnancies/{pregnancyId}/metrics:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    get:
+      tags: [Diario]
+      summary: Lista as séries brutas de peso, pressão e glicemia do diário
+      operationId: listDailyMetrics
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante, medico, admin]
+      description: Valores para gráficos e histórico, sem aplicar limiares clínicos na apresentação.
+      responses:
+        '200':
+          description: Séries do diário com origem e versão da entrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DailyMetrics' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
@@ -2981,6 +3001,56 @@ components:
         history:
           type: object
           additionalProperties: true
+
+    DailyMetrics:
+      type: object
+      required: [pregnancy_id, weight, blood_pressure, glucose, policy]
+      properties:
+        pregnancy_id: { type: integer }
+        weight:
+          type: array
+          items: { $ref: '#/components/schemas/DailyWeightMetric' }
+        blood_pressure:
+          type: array
+          items: { $ref: '#/components/schemas/DailyBloodPressureMetric' }
+        glucose:
+          type: array
+          items: { $ref: '#/components/schemas/DailyGlucoseMetric' }
+        policy:
+          type: object
+          required: [clinical_interpretation, source]
+          properties:
+            clinical_interpretation: { type: string }
+            source: { type: string, enum: [daily_entries] }
+    DailyMetricSource:
+      type: object
+      required: [entry_date, source, entry_key, version]
+      properties:
+        entry_date: { type: string, format: date }
+        source: { type: string, enum: [daily_entry] }
+        entry_key: { type: string }
+        version: { type: integer, minimum: 1 }
+    DailyWeightMetric:
+      allOf:
+        - $ref: '#/components/schemas/DailyMetricSource'
+        - type: object
+          required: [weight_kg]
+          properties:
+            weight_kg: { type: number }
+    DailyBloodPressureMetric:
+      allOf:
+        - $ref: '#/components/schemas/DailyMetricSource'
+        - type: object
+          properties:
+            systolic: { type: [number, 'null'] }
+            diastolic: { type: [number, 'null'] }
+    DailyGlucoseMetric:
+      allOf:
+        - $ref: '#/components/schemas/DailyMetricSource'
+        - type: object
+          required: [glucose_mg_dl]
+          properties:
+            glucose_mg_dl: { type: number }
 
     ClinicalObservation:
       type: object
