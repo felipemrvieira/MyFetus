@@ -231,6 +231,16 @@ export default function ExamesScreen() {
               </View>
             ))}
 
+            <TouchableOpacity
+              testID="e2e-view-analyte-series"
+              accessibilityRole="button"
+              accessibilityLabel="Ver evolução dos analitos laboratoriais"
+              style={styles.seriesButton}
+              onPress={() => router.push(`/doctor/${patientId}/serie_analitos`)}
+            >
+              <Text style={styles.seriesButtonText}>📈 Ver evolução dos analitos (Hb e Glicemia)</Text>
+            </TouchableOpacity>
+
             <Text style={styles.addTitle}>Exames Enviados pela Paciente</Text>
             <Text style={styles.helperText}>Selecione um exame para escrever o relatório.</Text>
 
@@ -396,6 +406,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
     backgroundColor: '#fff',
+  },
+  seriesButton: {
+    backgroundColor: '#EDE7F6',
+    borderWidth: 1.5,
+    borderColor: '#7E57C2',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 6,
+  },
+  seriesButtonText: {
+    color: '#4A148C',
+    fontSize: 15,
+    fontWeight: '700',
   },
   reviewButtonText: {
     color: '#5B3FB8',

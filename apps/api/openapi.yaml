@@ -2152,6 +2152,42 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/lab-results/series:
+    get:
+      tags: [Exames]
+      summary: Série temporal de um analito ao longo da gestação (E2-06)
+      description: |
+        Retorna a evolução longitudinal de hemoglobina ou glicemia de jejum com
+        base exclusivamente em resultados laboratoriais aceitos ou corrigidos.
+        Acesso restrito ao médico vinculado à gestante.
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      parameters:
+        - name: pregnant_id
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+          description: ID da gestante
+        - name: analyte_id
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [hemoglobin, glucose, fasting_glucose]
+          description: Analito clínico com série autorizada (hemoglobina ou glicemia de jejum)
+      responses:
+        '200':
+          description: Série temporal e pontos para plotagem com acessibilidade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabResultSeriesResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /api/lab-results/{id}/history:
     parameters:
       - $ref: '#/components/parameters/LabResultIdPath'
@@ -2810,6 +2846,76 @@ components:
         reason: { type: [string, 'null'] }
         reviewed_by_user_id: { type: [integer, 'null'] }
         created_at: { type: string, format: date-time }
+
+    LabResultSeriesResponse:
+      type: object
+      required: [analyte, points, unit_conflict, trend, accessibility_rows, disclaimer]
+      properties:
+        analyte:
+          type: object
+          required: [id, name, unit, threshold]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            unit: { type: string }
+            threshold:
+              type: object
+              required: [value, unit, label, direction]
+              properties:
+                value: { type: number }
+                unit: { type: string }
+                label: { type: string }
+                direction: { type: string, enum: [min, max] }
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabResultSeriesPoint'
+        unit_conflict:
+          type: boolean
+          description: Indica se houve resultados em unidades divergentes omitidos da curva principal.
+        trend:
+          type: object
+          required: [has_enough_points, direction, message]
+          properties:
+            has_enough_points: { type: boolean }
+            direction: { type: string, enum: [stable, rising, falling, insufficient_data] }
+            message: { type: string }
+        accessibility_rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabResultSeriesAccessibilityRow'
+        disclaimer:
+          type: string
+          example: 'Histórico para acompanhamento clínico. Não é diagnóstico.'
+
+    LabResultSeriesPoint:
+      type: object
+      required: [id, observed_at, observed_at_label, value, unit, is_out_of_reference, is_out_of_threshold]
+      properties:
+        id: { type: integer }
+        document_id: { type: integer }
+        observed_at: { type: string, format: date }
+        observed_at_label: { type: string, example: '15/02/2026' }
+        gestational_age_weeks: { type: [number, 'null'], example: 12.4 }
+        gestational_age_label: { type: [string, 'null'], example: '12 sem 3 d' }
+        value: { type: number }
+        unit: { type: string }
+        reference_low: { type: [number, 'null'] }
+        reference_high: { type: [number, 'null'] }
+        is_out_of_reference: { type: boolean }
+        is_out_of_threshold: { type: boolean }
+
+    LabResultSeriesAccessibilityRow:
+      type: object
+      required: [id, date, gestational_age, value_label, reference_range, status_description, unit_conflict]
+      properties:
+        id: { type: integer }
+        date: { type: string }
+        gestational_age: { type: string }
+        value_label: { type: string }
+        reference_range: { type: string }
+        status_description: { type: string }
+        unit_conflict: { type: boolean }
 
     LabResultAcceptRequest:
       type: object

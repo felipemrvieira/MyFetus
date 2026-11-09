@@ -11,6 +11,7 @@ const { audit } = require('../services/auditService');
 const { doctorCanAccessPregnant } = require('../utils/clinicalAccess');
 const { sendInternalError } = require('../utils/httpErrors');
 const { LabResultError, createLabResultService } = require('../services/labResultService');
+const labResultSeriesService = require('../services/labResultSeriesService');
 
 const labResults = createLabResultService({ crypto: cryptoService });
 
@@ -139,9 +140,47 @@ function reviewLabResult(action) {
   };
 }
 
+async function getLabResultSeries(req, res) {
+  try {
+    const pregnantId = positiveId(req.query.pregnant_id);
+    if (!pregnantId) return res.status(400).json({ error: 'pregnant_id inválido ou ausente' });
+
+    const analyteId = req.query.analyte_id;
+    if (!analyteId || typeof analyteId !== 'string') {
+      return res.status(400).json({ error: 'analyte_id obrigatório' });
+    }
+
+    if (!(await ensureLinkedDoctor(req, res, pregnantId))) return;
+
+    const series = await labResultSeriesService.getAnalyteSeries(client, {
+      pregnantId,
+      analyteId,
+      crypto: cryptoService,
+    });
+
+    audit(req, {
+      action: 'LAB_RESULTS_SERIES_VIEWED',
+      resource: 'lab_results',
+      resource_id: pregnantId,
+      detail: {
+        pregnant_id: pregnantId,
+        analyte_id: series.analyte.id,
+      },
+    });
+
+    return res.json(series);
+  } catch (error) {
+    if (error instanceof LabResultError) {
+      return res.status(error.status).json(labResultErrorBody(error));
+    }
+    return sendInternalError(res, error, 'Erro ao carregar série temporal do analito');
+  }
+}
+
 module.exports = {
   acceptLabResult: reviewLabResult('accept'),
   correctLabResult: reviewLabResult('correct'),
+  getLabResultSeries,
   getDocumentLabResults,
   getLabResultHistory,
   rejectLabResult: reviewLabResult('reject'),

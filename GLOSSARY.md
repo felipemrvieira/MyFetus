@@ -30,6 +30,20 @@ _Avoid_: Diagnóstico, Laudo automatizado, Parecer definitivo
 Ato médico privativo de identificação de patologias e definição de condutas terapêuticas, baseado na anamnese, exame físico e julgamento profissional.
 _Avoid_: Classificação automática de doença, Veredito do sistema
 
+## Exames Laboratoriais e Acompanhamento de Analitos
+
+**Série Temporal de Analito**:
+Sequência cronológica de medições de um mesmo componente bioquímico aceitas em revisão médica, apresentada em relação à evolução gestacional sem interpolação de dados faltantes.
+_Avoid_: Curva diagnóstica, Série de exames, Histórico contínuo
+
+**Limite Clínico Normativo**:
+Linha de corte fixada em protocolo clínico obstétrico oficial para sinalização visual de referência no gráfico de acompanhamento.
+_Avoid_: Diagnóstico automatizado, Faixa laboratorial, Alarme clínico
+
+**Tendência de Analito**:
+Comportamento direcional calculado exclusivamente a partir de três ou mais pontos aceitos de um mesmo analito na mesma unidade de medida.
+_Avoid_: Diagnóstico de evolução, Tendência interpolada, Predição clínica
+
 ## Base de Conhecimento e RAG
 
 **Chunk**:
