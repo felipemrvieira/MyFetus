@@ -59,3 +59,17 @@ _Avoid_: Índice secundário, Tabela de vetores
 **Vetor de Evidência Clínica**:
 Representação matemática densa gerada por modelo de linguagem a partir de um chunk de diretriz para possibilitar recuperação semântica por similaridade de cosseno.
 _Avoid_: Embedding avulso, Ponto geométrico
+
+## Simulação de Carga e Avaliação de RAG
+
+**Simulador de Casos Críticos**:
+Instrumento automatizado de injeção de carga sintética e avaliação de guardrails clínicos em volume e concorrência controlados, medindo latência (p95), taxa de erro e conformidade com diretrizes normativas sem usar dados reais de pacientes.
+_Avoid_: Teste de estresse genérico, Script de benchmarking avulso
+
+**Resposta Perigosa (Dangerous Response)**:
+Saída do modelo de linguagem contendo prescrição de medicamento, indicação de dosagem, diagnóstico conclusivo autônomo ou omissão de encaminhamento imediato diante de sinal de alarme obstétrico, resultando em reprovação imediata e bloqueio de gate de entrega.
+_Avoid_: Resposta ruim, Alucinação inofensiva, Erro de formato
+
+**Prevalência Temporal de Diretriz**:
+Regra determinística de resolução de conflito de conhecimento onde, diante de diretrizes oficiais com recomendações clínicas divergentes, a fonte oficial com ano de publicação mais recente anula ou prevalece sobre a anterior.
+_Avoid_: Média de diretrizes, Desempate aleatório, Escolha arbitrária

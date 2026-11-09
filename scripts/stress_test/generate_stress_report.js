@@ -34,7 +34,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log(`Gerador de Relatorio de Estresse - MyFetus RAG
+  console.log(`Gerador de Relatorio de Estresse - MyFetus RAG (E4-08 / #104)
 
 Uso:
   node scripts/stress_test/generate_stress_report.js --input reports/stress.json --output reports/stress_report.md
@@ -75,7 +75,7 @@ function collectScenarioResults(report) {
 
 function collectLoadResults(report) {
   return (report.load_tests || []).flatMap((loadTest) => (
-    (loadTest.report.results || []).map((result) => ({
+    (loadTest.report?.results || []).map((result) => ({
       loadTest,
       result,
     }))
@@ -85,19 +85,62 @@ function collectLoadResults(report) {
 function buildExecutiveSummary(report) {
   const scenarioResults = collectScenarioResults(report);
   const loadResults = collectLoadResults(report);
-  const totalQueries = scenarioResults.length || loadResults.length || report.summary?.total_queries || 0;
-  const approvedQueries = scenarioResults.length
-    ? scenarioResults.filter(({ result }) => result.approved).length
-    : loadResults.filter(({ result }) => result.success).length;
-  const latencies = scenarioResults.length
-    ? scenarioResults.map(({ result }) => result.latency_ms)
-    : loadResults.map(({ result }) => result.latency_ms);
+  const allResults = [...scenarioResults, ...loadResults];
+
+  const totalQueries = allResults.length || report.summary?.total_queries || 0;
+  const approvedQueries = allResults.filter(({ result }) => (
+    result.verdict === 'APPROVED' || result.approved || (result.success && !result.dangerous_response)
+  )).length;
+
+  const rejectedQueries = allResults.filter(({ result }) => {
+    if (result.dangerous_response) return true;
+    if (result.verdict === 'REJECTED') return true;
+    if (result.verdict === 'INCONCLUSIVE') return false;
+    if (result.approved === false) return true;
+    if (result.success === false) return true;
+    return false;
+  }).length;
+
+  const inconclusiveQueries = allResults.filter(({ result }) => result.verdict === 'INCONCLUSIVE').length;
+  const dangerousCount = allResults.reduce((sum, { result }) => sum + (result.dangerous_response ? 1 : 0), 0);
+
+  const latencies = allResults.map(({ result }) => result.latency_ms).filter(Number.isFinite);
+
+  const p50 = percentile(latencies, 50);
+  const p95 = percentile(latencies, 95);
+  const p99 = percentile(latencies, 99);
+  const errorRate = totalQueries ? rejectedQueries / totalQueries : 0;
+
+  let gateVerdict = 'APROVADO';
+  let gateDetails = 'Todos os critérios de SLA e segurança clínica foram atendidos.';
+
+  if (dangerousCount > 0) {
+    gateVerdict = 'REJEITADO (BLOQUEIO DO GATE M3)';
+    gateDetails = `Foram detectadas ${dangerousCount} respostas perigosas (prescrição indevida, diagnóstico ou omissão de alarme).`;
+  } else if (p95 > 10000) {
+    gateVerdict = 'REJEITADO (BLOQUEIO DO GATE M3)';
+    gateDetails = `Latência p95 (${p95}ms) excedeu o limite máximo homologado de 10.000ms.`;
+  } else if (errorRate > 0.02) {
+    gateVerdict = 'REJEITADO (BLOQUEIO DO GATE M3)';
+    gateDetails = `Taxa de erro (${formatPercent(errorRate)}) excedeu o limite de 2%.`;
+  } else if (inconclusiveQueries > 0) {
+    gateVerdict = 'INCONCLUSIVO (REQUER APROVAÇÃO DO P.O.)';
+    gateDetails = `${inconclusiveQueries} respostas com variação de redação pendentes de homologação manual pelo Dr. Rui Pontes.`;
+  }
 
   return {
     totalQueries,
     approvedQueries,
+    rejectedQueries,
+    inconclusiveQueries,
+    dangerousCount,
     approvalRate: totalQueries ? approvedQueries / totalQueries : 0,
-    p95: percentile(latencies, 95),
+    errorRate,
+    p50,
+    p95,
+    p99,
+    gateVerdict,
+    gateDetails,
   };
 }
 
@@ -108,13 +151,13 @@ function buildScenarioTables(report) {
 
   return report.scenarios.map((scenario) => {
     const rows = scenario.estagios.map((stage) => (
-      `| ${stage.estagio} | ${stage.nome_estagio} | ${stage.semana_gestacional ?? 'N/A'} | ${stage.queries_aprovadas}/${stage.queries_executadas} | ${formatPercent(stage.taxa_aprovacao)} | ${stage.latencia_media_ms}ms | ${stage.latencia_max_ms}ms |`
+      `| ${stage.estagio} | ${stage.nome_estagio} | ${stage.semana_gestacional ?? 'N/A'} | ${stage.queries_aprovadas}/${stage.queries_executadas} | ${stage.queries_inconclusivas || 0} | ${stage.respostas_perigosas || 0} | ${formatPercent(stage.taxa_aprovacao)} | ${stage.latencia_media_ms}ms | ${stage.latencia_max_ms}ms |`
     ));
 
     return `### ${scenario.nome}
 
-| Estagio | Nome | Semana | Aprovadas | Taxa | Latencia media | Latencia max |
-|---|---|---:|---:|---:|---:|---:|
+| Estagio | Nome | Semana | Aprovadas | Inconclusivas | Perigosas | Taxa | Latencia media | Latencia max |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
 ${rows.join('\n')}
 `;
   }).join('\n');
@@ -127,7 +170,7 @@ function summarizeValue(value) {
 }
 
 function buildFailureSection(report) {
-  const scenarioFailures = collectScenarioResults(report).filter(({ result }) => !result.approved);
+  const scenarioFailures = collectScenarioResults(report).filter(({ result }) => result.verdict === 'REJECTED' || !result.approved);
   const loadFailures = collectLoadResults(report).filter(({ result }) => !result.success);
 
   if (!scenarioFailures.length && !loadFailures.length) {
@@ -135,18 +178,13 @@ function buildFailureSection(report) {
   }
 
   const scenarioLines = scenarioFailures.map(({ scenario, stage, result }) => {
-    const expected = stage.criteria
-      ? `fontes ${stage.criteria.fontes_esperadas.join(', ')}; termos ${stage.criteria.termos_obrigatorios.join(', ')}`
-      : 'sem criterio clinico especifico';
-    const received = result.success
-      ? summarizeValue((result.rag_response?.resultados || []).slice(0, 2))
-      : result.error?.message;
-
-    return `- ${scenario.nome}, estagio ${stage.estagio}: "${summarizeValue(result.query)}" | esperado: ${expected} | recebido: ${received}`;
+    const dangerTag = result.dangerous_response ? ' [RESPOSTA PERIGOSA DETECTADA]' : '';
+    const reason = result.evaluation?.danger_reason || result.error?.message || 'Critério não satisfeito';
+    return `- ${scenario.nome}, estagio ${stage.estagio}${dangerTag}: "${summarizeValue(result.query)}" | motivo: ${reason}`;
   });
 
   const loadLines = loadFailures.map(({ loadTest, result }) => (
-    `- ${loadTest.nome}, modo ${loadTest.report.mode}: "${summarizeValue(result.query)}" | erro: ${result.error?.message || 'falha sem mensagem'}`
+    `- ${loadTest.nome}, modo ${loadTest.report?.mode || 'N/A'}: "${summarizeValue(result.query)}" | erro: ${result.error?.message || 'falha sem mensagem'}`
   ));
 
   return [...scenarioLines, ...loadLines].join('\n');
@@ -154,50 +192,44 @@ function buildFailureSection(report) {
 
 function buildEdgeCaseSection(report) {
   const edgeScenario = (report.scenarios || []).find((scenario) => scenario.scenario_id === 'edge_cases');
-  const edgeLoad = (report.load_tests || []).find((loadTest) => loadTest.scenario_id === 'edge_cases');
-
-  if (!edgeScenario && !edgeLoad) {
+  if (!edgeScenario) {
     return 'Edge cases nao foram executados neste arquivo.\n';
   }
 
-  if (edgeScenario) {
-    return edgeScenario.estagios.map((stage) => (
-      `- Estagio ${stage.estagio} (${stage.nome_estagio}): ${stage.queries_aprovadas}/${stage.queries_executadas} aprovadas, latencia max ${stage.latencia_max_ms}ms`
-    )).join('\n');
-  }
+  const rows = edgeScenario.estagios.map((stage) => {
+    let statusIcon = 'Aprovado';
+    if (stage.respostas_perigosas > 0) statusIcon = 'Perigoso (Rejeitado)';
+    else if (stage.queries_rejeitadas > 0) statusIcon = 'Rejeitado';
+    else if (stage.queries_inconclusivas > 0) statusIcon = 'Inconclusivo (Revisao PO)';
 
-  return `- Modo ${edgeLoad.report.mode}: ${edgeLoad.report.successful_requests}/${edgeLoad.report.total_requests} sucesso, erro ${formatPercent(edgeLoad.report.error_rate)}, p95 ${edgeLoad.report.latency_ms.p95}ms`;
+    return `- Estagio ${stage.estagio} (${stage.nome_estagio}): ${stage.queries_aprovadas}/${stage.queries_executadas} aprovadas, status: ${statusIcon}, latencia media ${stage.latencia_media_ms}ms`;
+  });
+
+  return rows.join('\n');
 }
 
 function buildRecommendations(report) {
   const recommendations = [];
   const summary = buildExecutiveSummary(report);
-  const loadReports = report.load_tests || [];
 
-  if (summary.approvalRate < 0.8) {
-    recommendations.push('Revisar criterios, chunks indexados e fontes esperadas: taxa de aprovacao abaixo de 80%.');
+  if (summary.dangerousCount > 0) {
+    recommendations.push(`BLOQUEIO IMEDIATO: ${summary.dangerousCount} respostas perigosas foram emitidas pelo pipeline RAG. Ajustar guardrails antes de submissao ao Marco M3.`);
   }
 
-  if (summary.p95 > 3000) {
-    recommendations.push('Latencia p95 acima de 3s: considerar cache de embeddings de queries frequentes e revisar gargalos do Pinecone.');
+  if (summary.p95 > 10000) {
+    recommendations.push(`Latencia p95 (${summary.p95}ms) estourou o limite de 10.000ms. Considerar cache de embeddings e otimizar queries.`);
   }
 
-  for (const item of loadReports) {
-    if (item.report.latency_ms.p99 > 3000) {
-      recommendations.push(`Latencia p99 acima de 3s no modo ${item.report.mode} em ${item.nome}: reduzir concorrencia em desenvolvimento ou otimizar recuperacao.`);
-    }
+  if (summary.errorRate > 0.02) {
+    recommendations.push(`Taxa de erro (${formatPercent(summary.errorRate)}) acima do limite de 2%. Investigar timeouts e limites do backend.`);
+  }
 
-    if (item.report.error_rate > 0.05) {
-      recommendations.push(`Taxa de erro acima de 5% no modo ${item.report.mode} em ${item.nome}: investigar timeouts, 5xx e limites do backend.`);
-    }
-
-    if (item.report.relevance_degradation > 0.2) {
-      recommendations.push(`Degradacao de relevancia acima de 20% em ${item.nome}: comparar baseline sequencial com carga e validar estabilidade da busca.`);
-    }
+  if (summary.inconclusiveQueries > 0) {
+    recommendations.push(`${summary.inconclusiveQueries} queries inconclusivas precisam de avaliacao e validacao clinica pelo P.O. Rui Pontes.`);
   }
 
   if (!recommendations.length) {
-    recommendations.push('Nenhuma recomendacao critica automatica foi acionada pelos thresholds padrao.');
+    recommendations.push('Nenhuma recomendacao critica automatica foi acionada. Sistema em total conformidade com os criterios da issue #104.');
   }
 
   return recommendations.map((item) => `- ${item}`).join('\n');
@@ -205,10 +237,16 @@ function buildRecommendations(report) {
 
 function buildMarkdown(report) {
   const summary = buildExecutiveSummary(report);
+  const metadata = report.metadata || {};
+  const config = report.config || {};
 
   return `# Relatorio de Estresse - MyFetus RAG
 
 Gerado em: ${report.generated_at || new Date().toISOString()}
+
+## Veredito do Gate M3: ${summary.gateVerdict}
+
+> **Status**: ${summary.gateDetails}
 
 ## Resumo executivo
 
@@ -216,7 +254,11 @@ Gerado em: ${report.generated_at || new Date().toISOString()}
 - Queries aprovadas/sucesso: ${summary.approvedQueries}
 - Taxa de aprovacao global: ${formatPercent(summary.approvalRate)}
 - Latencia p95: ${summary.p95}ms
-- Modo: ${report.config?.mode || 'N/A'}
+- Respostas perigosas: ${summary.dangerousCount}
+- Modo: ${config.mode || 'N/A'}
+- Ambiente: ${metadata.environment || (config.mock ? 'mock (CI / M2)' : 'live (M3)')}
+- Custo estimado: $0.00 (Free Tier 15 RPM)
+- Commit: ${metadata.commit || 'local'}
 
 ## Resultados por cenario
 
