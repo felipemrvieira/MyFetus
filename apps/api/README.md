@@ -193,6 +193,11 @@ arterial, peso e glicemia disponíveis no diário, histórico de peso e resultad
 aceitos/corrigidos. O endpoint exige o mesmo controle de acesso clínico do prontuário, não
 envia dados à RNDS e não exporta nome, e-mail, senha ou token.
 
+Como `lab_results` ainda não possui vínculo direto com `pregnancy_id`, resultados laboratoriais
+são omitidos quando a gestante possui múltiplas gestações; o Bundle informa essa limitação em
+uma extensão. Isso evita misturar resultados entre gestações até que o modelo de dados seja
+refinado.
+
 O contrato HTTP está em `openapi.yaml` e a versão do export é `R4-experimental-v1`. Antes de
 qualquer integração produtiva, ainda precisam ser confirmados pelo P.O. os códigos oficiais,
 o intervalo de exportação, o validador FHIR e a política de consentimento específica.

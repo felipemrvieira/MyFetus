@@ -40,8 +40,15 @@ function parseDate(value) {
   if (typeof value !== 'string') return null;
   const match = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
   if (!match) return null;
-  const date = new Date(`${match[1]}T00:00:00.000Z`);
-  return Number.isNaN(date.getTime()) ? null : match[1];
+  const [year, month, day] = match[1].split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) return null;
+  return match[1];
 }
 
 function resourceId(prefix, sourceId) {
@@ -120,7 +127,14 @@ function buildPatientResource(pregnancyId) {
   };
 }
 
-function buildFhirBundle({ pregnancyId, dailyEntries = [], maternalWeights = [], labResults = [], now = new Date() }) {
+function buildFhirBundle({
+  pregnancyId,
+  dailyEntries = [],
+  maternalWeights = [],
+  labResults = [],
+  warnings = [],
+  now = new Date(),
+}) {
   const patient = buildPatientResource(pregnancyId);
   const subjectReference = `Patient/${patient.id}`;
   const observations = [];
@@ -196,7 +210,7 @@ function buildFhirBundle({ pregnancyId, dailyEntries = [], maternalWeights = [],
     }
   }
 
-  return {
+  const bundle = {
     resourceType: 'Bundle',
     id: `fhir-export-${pregnancyId}`,
     meta: {
@@ -214,6 +228,13 @@ function buildFhirBundle({ pregnancyId, dailyEntries = [], maternalWeights = [],
     timestamp: new Date(now).toISOString(),
     entry: [{ resource: patient }, ...observations.map((resource) => ({ resource }))],
   };
+  if (warnings.length > 0) {
+    bundle.extension = warnings.map((warning) => ({
+      url: `${FHIR_SYSTEM}/StructureDefinition/export-warning`,
+      valueCode: warning,
+    }));
+  }
+  return bundle;
 }
 
 async function getFhirExport(db, { pregnancyId: pregnancyIdValue, crypto, now }) {
@@ -226,6 +247,12 @@ async function getFhirExport(db, { pregnancyId: pregnancyIdValue, crypto, now })
   if (!pregnancy) {
     throw new FhirExportError('Gestacao nao encontrada', 404, 'PREGNANCY_NOT_FOUND');
   }
+
+  const pregnanciesResult = await db.query(
+    `SELECT id FROM pregnancies WHERE pregnant_id = $1 ORDER BY id ASC`,
+    [pregnancy.pregnant_id]
+  );
+  const labResultsHaveSafePregnancyScope = pregnanciesResult.rows.length <= 1;
 
   const [dailyResult, weightsResult, labsResult] = await Promise.all([
     db.query(
@@ -240,20 +267,29 @@ async function getFhirExport(db, { pregnancyId: pregnancyIdValue, crypto, now })
        ORDER BY measured_at ASC, id ASC LIMIT 500`,
       [pregnancy.id]
     ),
-    db.query(
+    labResultsHaveSafePregnancyScope ? db.query(
       `SELECT * FROM lab_results
        WHERE pregnant_id = $1
          AND analyte_id IN ('glucose', 'fasting_glucose')
          AND status IN ('accepted', 'corrected')
        ORDER BY observed_at ASC, id ASC LIMIT 500`,
       [pregnancy.pregnant_id]
-    ),
+    ) : Promise.resolve({ rows: [] }),
   ]);
 
   const dailyEntries = dailyResult.rows.map((row) => crypto.decryptRecord(row, 'daily_entries'));
   const maternalWeights = weightsResult.rows;
   const labResults = labsResult.rows.map((row) => crypto.decryptRecord(row, 'lab_results'));
-  return buildFhirBundle({ pregnancyId: pregnancy.id, dailyEntries, maternalWeights, labResults, now });
+  return buildFhirBundle({
+    pregnancyId: pregnancy.id,
+    dailyEntries,
+    maternalWeights,
+    labResults,
+    warnings: labResultsHaveSafePregnancyScope
+      ? []
+      : ['lab-results-omitted-multiple-pregnancies'],
+    now,
+  });
 }
 
 module.exports = {
