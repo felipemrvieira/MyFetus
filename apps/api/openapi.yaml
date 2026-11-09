@@ -1992,6 +1992,55 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/notifications/devices:
+    post:
+      tags: [Usuarios]
+      summary: Registra ou reativa um token de notificacao do dispositivo
+      operationId: registerPushToken
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, platform]
+              properties:
+                token: { type: string, minLength: 10, maxLength: 4096 }
+                platform: { type: string, enum: [ios, android, web] }
+      responses:
+        '201':
+          description: Token registrado sem devolver o valor do token.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PushTokenDevice' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Usuarios]
+      summary: Revoga um token de notificacao do dispositivo
+      operationId: revokePushToken
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, minLength: 10, maxLength: 4096 }
+      responses:
+        '200':
+          description: Token revogado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PushTokenDevice' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /api/daily-entries/pregnancies/{pregnancyId}/metrics:
     parameters:
       - $ref: '#/components/parameters/PregnancyIdPath'
@@ -2920,6 +2969,18 @@ components:
             created_by_user_id: { type: integer }
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
+    PushTokenDevice:
+      type: object
+      required: [id, user_id, platform, enabled]
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        platform: { type: string, enum: [ios, android, web] }
+        enabled: { type: boolean }
+        last_seen_at: { type: string, format: date-time }
+        revoked_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     DailyRiskFeedEntry:
       type: object
       required: [entry_key, entry_date, version, level, signals, history]
