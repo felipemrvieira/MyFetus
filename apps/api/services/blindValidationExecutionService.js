@@ -367,6 +367,7 @@ function verifyBlindValidationRound({
 module.exports = {
   BlindValidationError,
   DEFAULT_ENGINE_PATH,
+  ROUND_ID_PATTERN,
   executeBlindValidationRound,
   validateFilledGabarito,
   verifyBlindValidationRound,
