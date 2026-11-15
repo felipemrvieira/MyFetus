@@ -87,3 +87,45 @@ _Avoid_: Resposta ruim, Alucinação inofensiva, Erro de formato
 **Prevalência Temporal de Diretriz**:
 Regra determinística de resolução de conflito de conhecimento onde, diante de diretrizes oficiais com recomendações clínicas divergentes, a fonte oficial com ano de publicação mais recente anula ou prevalece sobre a anterior.
 _Avoid_: Média de diretrizes, Desempate aleatório, Escolha arbitrária
+
+## Validação Cega do Motor de Risco
+
+**Validação Cega**:
+Avaliação comparativa entre a classificação do motor de risco e o julgamento de um avaliador clínico sobre casos sintéticos, realizada sem que o avaliador tenha acesso às regras, limiares ou saídas do motor antes do fechamento do gabarito.
+_Avoid_: Teste aberto, Validação regulatória, Auditoria em produção
+
+**Gabarito Clínico**:
+Conjunto fechado e assinado de classificações esperadas e justificativas produzidas pelo avaliador clínico antes de qualquer execução do motor na rodada.
+_Avoid_: Gabarito provisório, Saída esperada do sistema
+
+**Caso Inconclusivo**:
+Caso sintético sem resposta clínica única pelo protocolo, excluído do denominador da meta de concordância e registrado separadamente para revisão.
+_Avoid_: Erro técnico, Caso inválido, Rodada inconclusiva
+
+**Rodada Inválida**:
+Execução de validação que viola os critérios mínimos do protocolo, como excesso de casos inconclusivos ou insuficiência de casos conclusivos, impedindo o uso do resultado para aprovação.
+_Avoid_: Caso inconclusivo, Falha de servidor
+
+**Falso Negativo Crítico**:
+Divergência em que o gabarito clínico classifica o caso como urgente (vermelho) e o motor atribui gravidade inferior, constituindo bloqueio absoluto da rodada independentemente da concordância global.
+_Avoid_: Erro leve, Alerta perdido, Divergência comum
+
+**Divergência de Pendência de Dados**:
+Discordância exclusiva sobre a ausência de dados obrigatórios quando a gravidade geral atribuída pelo motor coincide com a do gabarito clínico, contabilizada como não-concordante sem equivaler a falso negativo ou falso positivo clínico.
+_Avoid_: Falso negativo clínico, Caso normal
+
+**Categoria Clínica de Risco**:
+Domínio obstétrico avaliado pelo conjunto de regras clínicas (como pressão arterial, glicemia ou frequência cardíaca fetal).
+_Avoid_: Tipo de caso, Grupo de teste
+
+**Tipo de Caso do Protocolo**:
+Classificação estrutural de um caso sintético segundo o desenho da amostra de validação (normal, limite, combinação, ausência, alto risco ou conflitante).
+_Avoid_: Categoria clínica, Regra de risco
+
+**Rodada de Validação**:
+Execução imutável, reproduzível e identificada de todo o conjunto de casos sobre uma versão congelada de motor e catálogo, preservada em histórico para comparação entre iterações.
+_Avoid_: Execução avulsa, Sobrescrita de resultado
+
+**Deliberação do P.O.**:
+Decisão formal do Product Owner e médico responsável sobre uma divergência ou rodada de validação (`aprovado`, `corrigir` ou `inconclusivo`), distinta da classificação automática emitida pelo motor.
+_Avoid_: Decisão do motor, Veredito automatizado
