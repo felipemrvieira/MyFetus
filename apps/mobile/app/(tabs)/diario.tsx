@@ -28,9 +28,10 @@ import type {
 const ALARM_SYMPTOMS = [
   ['sangramento', 'Sangramento'],
   ['perda_liquido', 'Perda de líquido'],
-  ['cefaleia_intensa', 'Dor de cabeça intensa'],
+  ['cefaleia_intensa', 'Dor de cabeça forte, visão embaçada ou inchaço repentino'],
   ['febre', 'Febre'],
-  ['contracoes', 'Contrações'],
+  ['contracoes', 'Contrações regulares ou dor forte na barriga'],
+  ['desmaio_convulsao', 'Desmaio ou convulsão'],
 ] as const;
 
 const OTHER_SYMPTOMS = [

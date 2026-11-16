@@ -6,6 +6,7 @@ const ALARM_SYMPTOMS = Object.freeze([
   'cefaleia_intensa',
   'febre',
   'contracoes',
+  'desmaio_convulsao',
 ]);
 
 const OTHER_SYMPTOMS = Object.freeze([

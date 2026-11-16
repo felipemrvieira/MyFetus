@@ -4,7 +4,7 @@ const { evaluateDailyAlarms } = require('./dailyAlarmRuleService');
 
 const SEVERITIES = new Set(['yellow', 'red']);
 const DAILY_ALARM_MESSAGES = Object.freeze({
-  red: 'Isso pode ser um sinal de alarme. Procure agora a maternidade ou um serviço de urgência, ou ligue 192 (SAMU).',
+  red: 'Procure agora a maternidade ou ligue 192 (SAMU). Este aviso não substitui avaliação profissional.',
   yellow: 'Registro do diário que precisa de avaliação da equipe de saúde.',
 });
 const SOURCES = new Set(['daily_entry', 'lab_result', 'risk_engine']);

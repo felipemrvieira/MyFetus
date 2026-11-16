@@ -14,17 +14,6 @@ function finiteOrNull(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function hasHighBloodPressure(systolic, diastolic) {
-  const high = finiteOrNull(systolic);
-  const low = finiteOrNull(diastolic);
-  return (high !== null && high >= thresholds.highBloodPressure.systolic) ||
-    (low !== null && low >= thresholds.highBloodPressure.diastolic);
-}
-
-function hasBloodPressure(systolic, diastolic) {
-  return finiteOrNull(systolic) !== null || finiteOrNull(diastolic) !== null;
-}
-
 function trigger(ruleId, signalCodes) {
   const rule = RULES[ruleId];
   if (!rule) throw new Error(`regra de alarme desconhecida: ${ruleId}`);
@@ -40,42 +29,28 @@ function evaluateDailyAlarms(entry = {}, { weeks = null } = {}) {
   const gestationalWeeks = finiteOrNull(weeks);
   const temperature = finiteOrNull(entry.temperature_c);
   const triggered = [];
-  const pending = [];
 
   if (symptoms.has('sangramento')) triggered.push(trigger('E3-07.bleeding', ['sangramento']));
   if (symptoms.has('perda_liquido')) triggered.push(trigger('E3-07.fluid_loss', ['perda_liquido']));
 
+  // O cliente aprovou cada sinal como urgente, sem depender de PA, IG ou medida.
   if (symptoms.has('cefaleia_intensa')) {
-    if (hasHighBloodPressure(entry.systolic, entry.diastolic)) {
-      triggered.push(trigger('E3-07.headache_high_bp', ['cefaleia_intensa', 'blood_pressure_high']));
-    } else {
-      // Suposição: sem PA alta (ou sem PA), orienta avaliação e não descarta risco.
-      triggered.push(trigger('E3-07.headache_unconfirmed', ['cefaleia_intensa']));
-      if (!hasBloodPressure(entry.systolic, entry.diastolic)) pending.push('blood_pressure_missing');
-    }
+    triggered.push(trigger('E3-07.severe_headache', ['cefaleia_intensa']));
   }
 
-  if (temperature !== null && temperature >= thresholds.feverCelsius) {
-    triggered.push(trigger('E3-07.fever_38', ['temperature_c']));
-  } else if (symptoms.has('febre') && temperature === null) {
-    // Suposição: febre relatada sem medida não é descartada.
-    triggered.push(trigger('E3-07.fever_unmeasured', ['febre']));
-    pending.push('temperature_missing');
+  if (symptoms.has('febre') || (temperature !== null && temperature >= thresholds.feverCelsius)) {
+    triggered.push(trigger('E3-07.fever', symptoms.has('febre') ? ['febre'] : ['temperature_c']));
+  }
+
+  if (symptoms.has('desmaio_convulsao')) {
+    triggered.push(trigger('E3-07.fainting_or_seizure', ['desmaio_convulsao']));
   }
 
   if (symptoms.has('contracoes')) {
-    if (gestationalWeeks === null) {
-      // Suposição: IG desconhecida é tratada como pré-termo (conservador).
-      triggered.push(trigger('E3-07.preterm_contractions', ['contracoes']));
-      pending.push('gestational_age_unknown');
-    } else if (gestationalWeeks < thresholds.pretermWeeks) {
-      triggered.push(trigger('E3-07.preterm_contractions', ['contracoes']));
-    } else {
-      triggered.push(trigger('E3-07.term_contractions', ['contracoes']));
-    }
+    triggered.push(trigger('E3-07.contractions_or_abdominal_pain', ['contracoes']));
   }
 
-  if (entry.reduced_fetal_movements === true) {
+  if (entry.reduced_fetal_movements === true && gestationalWeeks !== null && gestationalWeeks >= thresholds.movementsFromWeeks) {
     // O diário já rejeita o campo antes de 28 semanas (dailyEntryRuleService).
     triggered.push(trigger('E3-07.reduced_movements', ['reduced_fetal_movements']));
   }
@@ -83,12 +58,12 @@ function evaluateDailyAlarms(entry = {}, { weeks = null } = {}) {
   const level = triggered.some((item) => item.severity === 'red')
     ? 'red'
     : triggered.some((item) => item.severity === 'yellow') ? 'yellow' : 'green';
-  const orientationId = level === 'red' ? 'seek_care_now_v1' : level === 'yellow' ? 'seek_evaluation_v1' : null;
+  const orientationId = level === 'red' ? 'seek_care_now_v1' : null;
   const orientation = orientationId
     ? { id: orientationId, patient: catalog.orientations[orientationId].patient, disclaimer: catalog.orientations[orientationId].disclaimer }
     : null;
 
-  return { catalog_version: catalog.catalogVersion, level, triggered, orientation, pending };
+  return { catalog_version: catalog.catalogVersion, level, triggered, orientation, pending: [] };
 }
 
 // Detalhe da auditoria: regra (id@versão), dado (códigos de sinal) e orientação exibida.
@@ -111,5 +86,4 @@ module.exports = {
   DAILY_ALARM_CATALOG_VERSION: catalog.catalogVersion,
   DAILY_ALARM_RULE_IDS: Object.freeze(Object.keys(RULES)),
   evaluateDailyAlarms,
-  hasHighBloodPressure,
 };

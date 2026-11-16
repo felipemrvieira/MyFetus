@@ -114,7 +114,7 @@ export interface CreatePregnancyRequest {
   ig_ultrassonografia: string;
 }
 
-export type DailyAlarmSymptom = 'sangramento' | 'perda_liquido' | 'cefaleia_intensa' | 'febre' | 'contracoes';
+export type DailyAlarmSymptom = 'sangramento' | 'perda_liquido' | 'cefaleia_intensa' | 'febre' | 'contracoes' | 'desmaio_convulsao';
 export type DailyOtherSymptom = 'enjoo' | 'azia' | 'dor_costas' | 'inchaco_leve' | 'cansaco';
 
 export interface DailyEntryInput {
@@ -162,7 +162,7 @@ export interface DailyAlarm {
   catalog_version: string;
   orientation: { id: string; patient: string; disclaimer: string } | null;
   triggered: { rule_id: string; version: number; severity: 'yellow' | 'red' }[];
-  pending: ('blood_pressure_missing' | 'temperature_missing' | 'gestational_age_unknown')[];
+  pending: string[];
 }
 
 export interface DailyEntryWithAlarm extends DailyEntry {

@@ -28,8 +28,8 @@ test('feed ordena entradas por data e não cria alerta para peso/glicemia isolad
   assert.deepEqual(result[0].signals, []);
 });
 
-test('feed usa a IG para classificar contrações', () => {
+test('feed mantém contrações urgentes independentemente da IG', () => {
   const entry = { entry_key: 'c', entry_date: '2026-11-08', version: 1, alarm_symptoms: ['contracoes'] };
   assert.equal(buildDailyRiskFeed([entry], { weeks: 34 })[0].level, 'red');
-  assert.equal(buildDailyRiskFeed([entry], { weeks: 38 })[0].level, 'yellow');
+  assert.equal(buildDailyRiskFeed([entry], { weeks: 38 })[0].level, 'red');
 });

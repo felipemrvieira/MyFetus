@@ -3,12 +3,10 @@ const { evaluateDailyAlarms } = require('./dailyAlarmRuleService');
 const ALARM_LABELS = Object.freeze({
   'E3-07.bleeding': 'Sangramento',
   'E3-07.fluid_loss': 'Perda de líquido',
-  'E3-07.headache_high_bp': 'Dor de cabeça intensa com pressão alta',
-  'E3-07.headache_unconfirmed': 'Dor de cabeça intensa (sem pressão alta registrada)',
-  'E3-07.fever_38': 'Febre (≥ 38 °C)',
-  'E3-07.fever_unmeasured': 'Febre relatada sem temperatura',
-  'E3-07.preterm_contractions': 'Contrações antes de 37 semanas',
-  'E3-07.term_contractions': 'Contrações a partir de 37 semanas',
+  'E3-07.severe_headache': 'Dor de cabeça forte, visão embaçada ou inchaço repentino',
+  'E3-07.fever': 'Febre',
+  'E3-07.contractions_or_abdominal_pain': 'Contrações regulares ou dor forte na barriga',
+  'E3-07.fainting_or_seizure': 'Desmaio ou convulsão',
   'E3-07.reduced_movements': 'Relato de bebê mexendo menos',
 });
 

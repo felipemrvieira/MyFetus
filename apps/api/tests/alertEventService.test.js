@@ -80,7 +80,7 @@ test('alerta E3-07 guarda origem, versão da regra e mensagem de atendimento', (
   const [alert] = dailyEntryAlerts({ temperature_c: 38.4 }, {
     pregnancyId: 10, pregnantId: 20, sourceId: 'entry-3', weeks: 20,
   });
-  assert.equal(alert.rule_id, 'E3-07.fever_38');
+  assert.equal(alert.rule_id, 'E3-07.fever');
   assert.equal(alert.severity, 'red');
   assert.equal(alert.source_type, 'daily_entry');
   assert.equal(alert.source_id, 'entry-3');
@@ -96,11 +96,11 @@ test('mesmo evento repetido gera o mesmo rule_id/severidade (base da idempotênc
   assert.deepEqual(first.map(a => [a.rule_id, a.severity]), second.map(a => [a.rule_id, a.severity]));
 });
 
-test('cefaleia sem PA alta não gera alerta vermelho ao médico', () => {
+test('cefaleia aprovada gera alerta vermelho mesmo sem PA alta', () => {
   const alerts = dailyEntryAlerts({ alarm_symptoms: ['cefaleia_intensa'], systolic: 118, diastolic: 76 }, {
     pregnancyId: 10, pregnantId: 20, sourceId: 'entry-6', weeks: 25,
   });
-  assert.deepEqual(alerts.map(a => [a.rule_id, a.severity]), [['E3-07.headache_unconfirmed', 'yellow']]);
+  assert.deepEqual(alerts.map(a => [a.rule_id, a.severity]), [['E3-07.severe_headache', 'red']]);
 });
 
 test('pressão de atenção não é confundida com urgência', () => {

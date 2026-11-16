@@ -256,7 +256,7 @@ Convenção de Gravidade:
 
 ## Sinais de alarme do diário (E3-07)
 
-**Status:** implementado; textos e casos-limite **pendentes de aprovação clínica do P.O.**
+**Status:** implementado; textos e casos-limite aprovados clinicamente em 15/11/2026.
 **Catálogo executável:** [`apps/api/data/daily-alarm-rules.json`](../apps/api/data/daily-alarm-rules.json) (versão `1.0.0`)
 **Avaliador:** [`apps/api/services/dailyAlarmRuleService.js`](../apps/api/services/dailyAlarmRuleService.js) — função pura, determinística, sem IA e sem depender de push.
 
@@ -266,33 +266,27 @@ Quando a gestante salva ou corrige uma entrada do diário, a API avalia as regra
 | :--- | :---: | :---: | :--- |
 | `E3-07.bleeding` | 1 | Vermelho | Sangramento |
 | `E3-07.fluid_loss` | 1 | Vermelho | Perda de líquido |
-| `E3-07.headache_high_bp` | 1 | Vermelho | Cefaleia intensa **e** PA sistólica ≥ 140 ou diastólica ≥ 90 |
-| `E3-07.headache_unconfirmed` | 1 | Amarelo | Cefaleia intensa sem PA alta (ou sem PA informada) — *suposição* |
-| `E3-07.fever_38` | 1 | Vermelho | `temperature_c` ≥ 38 °C |
-| `E3-07.fever_unmeasured` | 1 | Amarelo | "Febre" marcada sem temperatura — *suposição* |
-| `E3-07.preterm_contractions` | 1 | Vermelho | Contrações com IG < 37 semanas, ou IG desconhecida (*suposição*) |
-| `E3-07.term_contractions` | 1 | Amarelo | Contrações com IG ≥ 37 semanas — *suposição* |
+| `E3-07.severe_headache` | 1 | Vermelho | Dor de cabeça forte, visão embaçada ou inchaço repentino |
+| `E3-07.fever` | 1 | Vermelho | Febre marcada ou `temperature_c` ≥ 38 °C |
+| `E3-07.contractions_or_abdominal_pain` | 1 | Vermelho | Contrações regulares ou dor forte na barriga, em qualquer IG |
+| `E3-07.fainting_or_seizure` | 1 | Vermelho | Desmaio ou convulsão |
 | `E3-07.reduced_movements` | 1 | Vermelho | Relato de redução de movimentos (aceito a partir de 28 semanas) |
 
 **Orientação exibida à gestante**
 
-- Vermelho (`seek_care_now_v1`): procurar agora a maternidade ou serviço de urgência, ou ligar 192 (SAMU).
-- Amarelo (`seek_evaluation_v1`): o registro precisa de avaliação da equipe; se piorar, procurar a maternidade ou ligar 192.
-- Ambos exibem o aviso de que o app **não substitui** o atendimento de emergência local.
+- Vermelho (`seek_care_now_v1`): **"Procure agora a maternidade ou ligue 192 (SAMU). Este aviso não substitui avaliação profissional."**
 - Verde: nenhuma mensagem tranquilizadora ("está tudo bem" não é exibido).
 
 **Repetição e escalada.** O alerta é idempotente por gestação + regra + severidade: enquanto houver alerta aberto ou reconhecido, um novo registro atualiza `last_seen_at`, `source_id` e `signal_codes` em vez de duplicar. Alertas E3-07 não fecham automaticamente; somente o médico encerra, com justificativa (E3-05).
 
 **Auditoria.** Cada avaliação não verde gera `DAILY_ALARM_TRIGGERED` com `rule_ids` (`id@versão`), `signal_codes`, `pending`, `orientation_id` e `alert_event_ids`. Texto livre e valores clínicos brutos não entram no detalhe.
 
-**Dados ausentes.** Ausência de dado nunca vira verde quando há sintoma relatado; o campo `pending` informa `blood_pressure_missing`, `temperature_missing` ou `gestational_age_unknown`.
+**Dados ausentes.** A ausência de PA, temperatura ou IG não reduz a urgência de um sinal aprovado. A pressão continua sendo avaliada pelo motor próprio da regra de PA; a pergunta de movimentos só aparece a partir de 28 semanas.
 
-**Suposições pendentes de decisão do P.O. (não são decisões aprovadas)**
+**Decisões clínicas registradas**
 
-1. Texto e serviço de emergência exibidos (hoje: maternidade/urgência e 192 SAMU).
-2. Cefaleia intensa sem PA alta ou sem PA: amarelo com orientação de avaliação.
-3. Febre relatada sem temperatura: amarelo com dado pendente.
-4. Contrações com IG desconhecida: vermelho (conservador); com IG ≥ 37: amarelo.
+1. Cada sinal aprovado é urgente isoladamente, sem depender de PA ou IG.
+2. Movimentos fetais são relato sim/não a partir de 28 semanas.
+3. Com alerta aberto, o mesmo sinal atualiza o evento; após encerramento, um novo registro cria novo alerta.
+4. A gestante confirma com “Entendi” e o médico reconhece conforme E3-05.
 5. "Redução de movimentos" segue relato simples (sim/não), sem contagem.
-6. Confirmação de leitura pela gestante e reconhecimento pelo médico ficam com E3-05.
-7. O feed do médico usa a IG atual da gestação para reclassificar contrações de entradas antigas.
