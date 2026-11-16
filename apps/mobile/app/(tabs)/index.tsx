@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   View,
   StyleSheet,
   ScrollView,
@@ -16,6 +18,8 @@ import { useSession } from '@/contexts/SessionContext';
 import { FetusWeekImage } from '../../components/FetusWeekImage';
 import { AccessibleText as Text } from '../../components/AccessibleText';
 import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
+import { api } from '../../utils/apiClient';
+import { sharePregnancyReport } from '../../utils/sharePregnancyReport';
 
 const WEB_MAX_WIDTH = 430;
 
@@ -30,6 +34,7 @@ export default function HomeScreen() {
   const [babySize, setBabySize] = useState('');
   const [babyDescription, setBabyDescription] = useState('');
   const [dpp, setDPP] = useState('');
+  const [sharingReport, setSharingReport] = useState(false);
 
   useEffect(() => {
     const loadGestationData = async () => {
@@ -50,6 +55,30 @@ export default function HomeScreen() {
   const handleSignOut = async () => {
     await signOut();
     router.replace('/login');
+  };
+
+  const handleShareReport = async () => {
+    if (!user?.pregnant_id) {
+      Alert.alert('Relatório', 'Não encontramos a gestação vinculada a esta conta.');
+      return;
+    }
+    setSharingReport(true);
+    try {
+      const response = await api.get(`/pregnants/${user.pregnant_id}`);
+      const pregnancyId = Number(response.data?.latest_pregnancy?.id);
+      if (!Number.isInteger(pregnancyId) || pregnancyId <= 0) {
+        Alert.alert('Relatório', 'Cadastre uma gestação antes de gerar o relatório.');
+        return;
+      }
+      await sharePregnancyReport(pregnancyId);
+    } catch (error) {
+      Alert.alert(
+        'Relatório',
+        error instanceof Error ? error.message : 'Não foi possível compartilhar o relatório agora. Tente novamente.'
+      );
+    } finally {
+      setSharingReport(false);
+    }
   };
 
   return (
@@ -94,6 +123,23 @@ export default function HomeScreen() {
                 >
                   <FontAwesome name="download" size={18} color={ACCESSIBLE_COLORS.primary} />
                   <Text style={styles.signOutText}>Meus dados</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID="e2e-patient-share-report"
+                  accessibilityLabel="Compartilhar relatório da gestação"
+                  accessibilityRole="button"
+                  accessibilityHint="Abre o compartilhamento do sistema sem enviar automaticamente"
+                  accessibilityState={{ disabled: sharingReport, busy: sharingReport }}
+                  disabled={sharingReport}
+                  onPress={handleShareReport}
+                  style={[styles.signOutButton, sharingReport && styles.disabledButton]}
+                >
+                  {sharingReport ? (
+                    <ActivityIndicator size="small" color={ACCESSIBLE_COLORS.primary} />
+                  ) : (
+                    <FontAwesome name="share-alt" size={18} color={ACCESSIBLE_COLORS.primary} />
+                  )}
+                  <Text style={styles.signOutText}>Compartilhar relatório</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -185,6 +231,9 @@ const createStyles = (width: number, height: number) => StyleSheet.create({
   signOutText: {
     color: ACCESSIBLE_COLORS.primary,
     fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   infoContainer: {
     flexDirection: 'row',

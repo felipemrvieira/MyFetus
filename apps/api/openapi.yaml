@@ -1882,6 +1882,38 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/reports/pregnancies/{pregnancyId}/share:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    post:
+      tags: [Relatorios]
+      summary: Registra o resultado do compartilhamento pelo sistema
+      operationId: recordPregnancyReportShare
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante]
+      description: |
+        Registra somente o resultado operacional do share sheet do sistema. Não registra
+        destinatário, canal, token ou conteúdo clínico. O aplicativo não envia o arquivo
+        automaticamente por WhatsApp, e-mail ou qualquer outro canal externo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome: { type: string, enum: [SUCCESS, FAILURE] }
+                reason: { type: string, enum: [download_failed, share_unavailable, share_failed, user_cancelled] }
+      responses:
+        '204': { description: Resultado registrado. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /api/consultations/{id}:
     parameters:
       - $ref: '#/components/parameters/IdPath'

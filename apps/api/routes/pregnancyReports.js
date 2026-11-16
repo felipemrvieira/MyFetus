@@ -19,5 +19,11 @@ router.get(
   requireRole('gestante'),
   controller.getPregnancyReportPdf
 );
+router.post(
+  '/pregnancies/:pregnancyId/share',
+  authenticateToken,
+  requireRole('gestante'),
+  controller.recordPregnancyReportShare
+);
 
 module.exports = router;

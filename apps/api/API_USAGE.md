@@ -336,6 +336,7 @@ A gestante autenticada pode gerar o snapshot somente da própria gestação:
 
 - `GET /api/reports/pregnancies/:pregnancyId/snapshot`
 - `GET /api/reports/pregnancies/:pregnancyId/pdf`
+- `POST /api/reports/pregnancies/:pregnancyId/share` — registra `SUCCESS` ou `FAILURE` do share sheet, sem destinatário ou conteúdo.
 
 O snapshot é interno e não é um documento oficial. Ele congela o instante de
 geração (`generated_at`) e informa o fuso usado (`timezone`). Inclui apenas:
@@ -353,6 +354,11 @@ O endpoint `/pdf` gera o arquivo no backend e devolve `application/pdf` como
 anexo temporário protegido pela mesma autenticação. Não cria URL pública nem
 mantém o arquivo disponível depois da resposta; o cliente deve guardar a cópia
 somente em área temporária e removê-la após o uso.
+
+O app abre o share sheet do sistema e usa `POST /api/reports/pregnancies/:pregnancyId/share`
+apenas para registrar o resultado da operação (`SUCCESS` ou `FAILURE`).
+O sistema não envia automaticamente por WhatsApp, e-mail ou outro canal, e a
+auditoria não guarda destinatário, token nem conteúdo clínico.
 
 ### Doctor Patient Links (vínculo médico-gestante)
 

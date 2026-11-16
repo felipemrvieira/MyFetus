@@ -101,4 +101,44 @@ async function getPregnancyReportPdf(req, res) {
   }
 }
 
-module.exports = { getPregnancyReportPdf, getPregnancyReportSnapshot };
+async function recordPregnancyReportShare(req, res) {
+  try {
+    const pregnancyId = validateId(req.params.pregnancyId, 'pregnancy_id');
+    if (!(await ensureCanAccessPregnancy(req, res, pregnancyId))) return;
+
+    const outcome = String(req.body?.outcome || '').toUpperCase();
+    if (!['SUCCESS', 'FAILURE'].includes(outcome)) {
+      return res.status(400).json({ error: 'outcome invalido' });
+    }
+    const allowedReasons = new Set([
+      'download_failed',
+      'share_unavailable',
+      'share_failed',
+      'user_cancelled',
+    ]);
+    const reason = String(req.body?.reason || '');
+    audit(req, {
+      action: 'PREGNANCY_REPORT_SHARED',
+      resource: 'pregnancy_report',
+      resource_id: pregnancyId,
+      outcome,
+      detail: {
+        pregnancy_id: pregnancyId,
+        operation: 'system_share_sheet',
+        ...(allowedReasons.has(reason) ? { reason } : {}),
+      },
+    });
+    return res.status(204).send();
+  } catch (error) {
+    if (error instanceof PregnancyReportValidationError) {
+      return res.status(400).json({ error: clientValidationMessage(error) });
+    }
+    return res.status(500).json({ error: 'Erro ao registrar compartilhamento' });
+  }
+}
+
+module.exports = {
+  getPregnancyReportPdf,
+  getPregnancyReportSnapshot,
+  recordPregnancyReportShare,
+};
