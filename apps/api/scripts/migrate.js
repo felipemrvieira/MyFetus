@@ -35,7 +35,7 @@ const migrations = [
   ['19_device_push_tokens.sql', 'migration_device_push_tokens.sql'],
   ['19_daily_metrics_history.sql', 'migration_daily_metrics_history.sql'],
   ['19_alert_event_history.sql', 'migration_alert_event_history.sql'],
-  ['18_daily_entries_temperature.sql', 'migration_daily_entries_temperature.sql'],
+  ['20_daily_entries_temperature.sql', 'migration_daily_entries_temperature.sql'],
 ];
 
 function required(name) {
