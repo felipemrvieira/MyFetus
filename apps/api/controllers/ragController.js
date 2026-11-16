@@ -15,14 +15,19 @@ const client = require('../backend');
 const { decryptPregnantDetails } = require('../services/clinicalDataService');
 const { ensureCanAccessPregnant } = require('../utils/clinicalAccess');
 const { runClinicalAgentGraph } = require('../services/agents/clinicalGraph');
-const { sanitizeForLLM } = require('../utils/piiSanitizer');
 const { audit } = require('../services/auditService');
-const { SAFE_MESSAGES } = require('../services/agents/guardrailService');
 const {
   buildCitations,
-  manifestVersions,
   selectTraceableChunks,
 } = require('../services/ragCitationService');
+const { createRagChatService } = require('../services/ragChatService');
+
+const ragChat = createRagChatService({
+  retrieveChunks: (...args) => retrieveChunks(...args),
+  generateAnswerDetailed: (...args) => generationService.generateAnswerDetailed(...args),
+  model: generationService.GEMINI_MODEL,
+  promptVersion: generationService.RAG_CHAT_PROMPT_VERSION,
+});
 
 function legacySources(trechos) {
   return trechos.map((trecho) => ({
@@ -174,41 +179,32 @@ const askClinicalChat = async (req, res) => {
 
     const startTime = Date.now();
 
-    // Remove identificadores pessoais antes de mandar a pergunta para o LLM externo.
-    const sanitizedQuery = sanitizeForLLM(query);
-
-    // Só trechos rastreáveis (documento + página ou seção) vão ao modelo e viram citação (E4-04).
-    const recuperados = await retrieveChunks(sanitizedQuery, topK, {});
-    const trechos = selectTraceableChunks(recuperados);
-    const semFonte = trechos.length === 0;
-    const resposta = semFonte
-      ? SAFE_MESSAGES.no_source
-      : await generationService.generateAnswer(sanitizedQuery, trechos);
-    const citacoes = buildCitations(trechos);
+    // Mesmo caminho do executor do eval set (E4-06.2): só trechos rastreáveis viram citação (E4-04).
+    const result = await ragChat.answer(query, { topK });
     audit(req, {
       action: 'RAG_CHAT_QUERIED',
       resource: 'rag',
       outcome: 'SUCCESS',
       detail: {
         topK,
-        sanitized_query: sanitizedQuery,
-        sources: trechos.map((trecho) => trecho.fonte),
-        citations: citacoes.map(({ documento_id, pagina, secao }) => ({ documento_id, pagina, secao })),
-        discarded_untraceable: recuperados.length - trechos.length,
-        no_source: semFonte,
-        manifest_versions: manifestVersions(citacoes),
-        model: semFonte ? null : generationService.GEMINI_MODEL,
-        prompt_version: semFonte ? null : generationService.RAG_CHAT_PROMPT_VERSION,
+        sanitized_query: result.sanitizedQuery,
+        sources: result.trechos.map((trecho) => trecho.fonte),
+        citations: result.citacoes.map(({ documento_id, pagina, secao }) => ({ documento_id, pagina, secao })),
+        discarded_untraceable: result.recuperados.length - result.trechos.length,
+        no_source: result.semFonte,
+        manifest_versions: result.manifestVersions,
+        model: result.model,
+        prompt_version: result.promptVersion,
       },
     });
 
     return res.status(200).json({
       source: 'rag-v2-gemini',
       query: query,
-      resposta,
-      sem_fonte: semFonte,
-      citacoes,
-      fontes: legacySources(trechos),
+      resposta: result.resposta,
+      sem_fonte: result.semFonte,
+      citacoes: result.citacoes,
+      fontes: legacySources(result.trechos),
       tempo_ms: Date.now() - startTime
     });
   } catch (error) {

@@ -93,9 +93,9 @@ const mocks = {
   '../services/generationService': {
     GEMINI_MODEL: 'modelo-teste',
     RAG_CHAT_PROMPT_VERSION: 'rag-chat-v2-citacoes',
-    generateAnswer: async (query, trechos) => {
+    generateAnswerDetailed: async (query, trechos) => {
       generationCalls.push({ query, trechos });
-      return 'Procure a maternidade se houver sangramento [1].';
+      return { text: 'Procure a maternidade se houver sangramento [1].', usage: null };
     },
   },
   '../services/vectorStoreService': {},

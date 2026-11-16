@@ -115,10 +115,21 @@ function ensureDisclaimer(text) {
 // 4. FUNÇÕES DE GERAÇÃO (LLM)
 // ============================================================================
 
-// Função original (mantida)
-async function generateAnswer(query, trechos) {
+// Tokens informados pelo provedor, no formato usado pelo eval set (E4-06.2).
+function usageFromResponse(response) {
+  const usage = response?.usageMetadata || response?.usage_metadata;
+  if (!usage) return null;
+  return {
+    prompt_tokens: usage.promptTokenCount ?? null,
+    response_tokens: usage.candidatesTokenCount ?? null,
+    total_tokens: usage.totalTokenCount ?? null,
+  };
+}
+
+// Resposta do chat simples com os tokens gastos.
+async function generateAnswerDetailed(query, trechos) {
   if (!trechos || trechos.length === 0) {
-    return SAFE_MESSAGES.no_source;
+    return { text: SAFE_MESSAGES.no_source, usage: null };
   }
 
   const ai = getClient();
@@ -134,7 +145,15 @@ async function generateAnswer(query, trechos) {
 
   recordProviderUsage('rag_chat', response);
 
-  return ensureDisclaimer(response.text || 'Não consegui gerar uma resposta agora. Tente novamente em alguns instantes.');
+  return {
+    text: ensureDisclaimer(response.text || 'Não consegui gerar uma resposta agora. Tente novamente em alguns instantes.'),
+    usage: usageFromResponse(response),
+  };
+}
+
+// Função original (mantida)
+async function generateAnswer(query, trechos) {
+  return (await generateAnswerDetailed(query, trechos)).text;
 }
 
 // NOVO: Função central do Agente Materno
@@ -182,5 +201,7 @@ module.exports = {
   RAG_CHAT_PROMPT_VERSION,
   buildContext,
   generateAnswer,
+  generateAnswerDetailed,
+  usageFromResponse,
   generateMaternalAgentAnalysis, // Exportamos a nova função
 };
