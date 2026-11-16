@@ -1853,6 +1853,35 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/reports/pregnancies/{pregnancyId}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    get:
+      tags: [Relatorios]
+      summary: Gera PDF protegido do relatorio da gestacao
+      operationId: getPregnancyReportPdf
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante]
+      description: |
+        Gera o PDF no backend a partir do snapshot autorizado. A resposta e um arquivo temporario
+        protegido pela autenticacao, sem URL publica e sem cache. O documento e informativo, em
+        pt-BR, registra o fuso do snapshot e mostra "Nao informado" quando uma secao nao tem dados.
+      responses:
+        '200':
+          description: PDF protegido e temporario.
+          headers:
+            Cache-Control: { schema: { type: string }, description: A resposta nao deve ser armazenada em cache. }
+            Content-Disposition: { schema: { type: string } }
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /api/consultations/{id}:
     parameters:
       - $ref: '#/components/parameters/IdPath'

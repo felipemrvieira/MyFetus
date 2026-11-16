@@ -13,5 +13,11 @@ router.get(
   requireRole('gestante'),
   controller.getPregnancyReportSnapshot
 );
+router.get(
+  '/pregnancies/:pregnancyId/pdf',
+  authenticateToken,
+  requireRole('gestante'),
+  controller.getPregnancyReportPdf
+);
 
 module.exports = router;

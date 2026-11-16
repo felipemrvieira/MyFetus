@@ -335,6 +335,7 @@ histórico.
 A gestante autenticada pode gerar o snapshot somente da própria gestação:
 
 - `GET /api/reports/pregnancies/:pregnancyId/snapshot`
+- `GET /api/reports/pregnancies/:pregnancyId/pdf`
 
 O snapshot é interno e não é um documento oficial. Ele congela o instante de
 geração (`generated_at`) e informa o fuso usado (`timezone`). Inclui apenas:
@@ -347,6 +348,11 @@ geração (`generated_at`) e informa o fuso usado (`timezone`). Inclui apenas:
 Se uma seção não tiver dados, ela retorna `status: "not_informed"` e uma lista
 vazia. O endpoint não expõe conteúdo de outra gestante, não publica URL e usa
 `Cache-Control: no-store`.
+
+O endpoint `/pdf` gera o arquivo no backend e devolve `application/pdf` como
+anexo temporário protegido pela mesma autenticação. Não cria URL pública nem
+mantém o arquivo disponível depois da resposta; o cliente deve guardar a cópia
+somente em área temporária e removê-la após o uso.
 
 ### Doctor Patient Links (vínculo médico-gestante)
 
