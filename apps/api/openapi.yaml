@@ -42,6 +42,7 @@ tags:
   - name: Crescimento
   - name: Historico
   - name: Consultas
+  - name: Relatorios
   - name: Exportacoes
 
 paths:
@@ -1818,6 +1819,33 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Consultation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/reports/pregnancies/{pregnancyId}/snapshot:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+    get:
+      tags: [Relatorios]
+      summary: Gera snapshot autorizado da gestacao para relatorio
+      operationId: getPregnancyReportSnapshot
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante]
+      description: |
+        Retorna somente dados da própria gestação, congelados no momento da geração.
+        Exames entram apenas com status accepted ou corrected; o diário usa a janela local
+        de 30 dias; alertas open e acknowledged mantêm o estado explícito. Seção sem dados
+        retorna status not_informed. A resposta é um snapshot interno para a geração protegida do PDF.
+      responses:
+        '200':
+          description: Snapshot autorizado e sem URL pública de arquivo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PregnancyReportSnapshot' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -3873,6 +3901,37 @@ components:
         conduct: { type: string, minLength: 1, maxLength: 10000 }
         prescription_text: { type: [string, 'null'], maxLength: 5000 }
         next_return_at: { type: [string, 'null'], format: date }
+
+    PregnancyReportSection:
+      type: object
+      required: [status, items]
+      properties:
+        status: { type: string, enum: [available, not_informed] }
+        items: { type: array, items: { type: object, additionalProperties: true } }
+    PregnancyReportSnapshot:
+      type: object
+      required: [report_version, generated_at, timezone, period, patient, pregnancy, exams, diary, alerts]
+      properties:
+        report_version: { type: string, example: gestation-report-v1 }
+        generated_at: { type: string, format: date-time }
+        timezone: { type: string, example: America/Recife }
+        period:
+          type: object
+          required: [from, to]
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+        patient:
+          type: object
+          required: [pregnant_id, name, vaccines]
+          properties:
+            pregnant_id: { type: integer }
+            name: { type: [string, 'null'] }
+            vaccines: { $ref: '#/components/schemas/PregnancyReportSection' }
+        pregnancy: { type: object, additionalProperties: true }
+        exams: { $ref: '#/components/schemas/PregnancyReportSection' }
+        diary: { $ref: '#/components/schemas/PregnancyReportSection' }
+        alerts: { $ref: '#/components/schemas/PregnancyReportSection' }
 
     FhirBundle:
       type: object
