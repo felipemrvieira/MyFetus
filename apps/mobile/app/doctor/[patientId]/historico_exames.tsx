@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../../../utils/apiClient';
-import { useSession } from '@/contexts/SessionContext';
 import { downloadDocument } from '@/utils/downloadDocument';
 
 type PregnantDocument = {
@@ -25,7 +24,26 @@ type PregnantDocument = {
   report_comment: string | null;
   reviewed_at: string | null;
   download_url?: string | null;
+  latest_report?: DocumentReport | null;
 };
+
+type ReportSeverity = 'normal' | 'attention' | 'see_consultation' | 'seek_care_today';
+type DocumentReport = {
+  id: number;
+  document_id: number;
+  version: number;
+  status: 'in_review' | 'published' | 'replaced';
+  severity: ReportSeverity;
+  content: string;
+  published_at: string | null;
+};
+
+const REPORT_SEVERITIES: Array<[ReportSeverity, string]> = [
+  ['normal', 'Normal'],
+  ['attention', 'Atenção'],
+  ['see_consultation', 'Ver na consulta'],
+  ['seek_care_today', 'Procure atendimento hoje'],
+];
 
 type ExamRequest = {
   id: number;
@@ -40,13 +58,13 @@ type ExamRequest = {
 export default function ExamesScreen() {
   const router = useRouter();
   const { patientId } = useLocalSearchParams<{ patientId: string }>();
-  const { user } = useSession();
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [docs, setDocs] = useState<PregnantDocument[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [reportText, setReportText] = useState('');
-  const doctorUserId = user?.id ?? null;
+  const [reportSeverity, setReportSeverity] = useState<ReportSeverity>('normal');
+  const [selectedReport, setSelectedReport] = useState<DocumentReport | null>(null);
   const [examRequests, setExamRequests] = useState<ExamRequest[]>([]);
   const [examName, setExamName] = useState('');
   const [examInstructions, setExamInstructions] = useState('');
@@ -93,9 +111,21 @@ export default function ExamesScreen() {
     return dt.toLocaleDateString();
   }, []);
 
-  const handleSelect = useCallback((doc: PregnantDocument) => {
+  const handleSelect = useCallback(async (doc: PregnantDocument) => {
     setSelectedDocId(doc.id);
-    setReportText(doc.report_comment || '');
+    setReportText(doc.latest_report?.content || doc.report_comment || '');
+    setReportSeverity(doc.latest_report?.severity || 'normal');
+    setSelectedReport(doc.latest_report || null);
+    try {
+      const response = await api.get(`/document-reports/documents/${doc.id}`);
+      const reports = Array.isArray(response.data) ? response.data as DocumentReport[] : [];
+      const editable = reports.find((report) => report.status === 'in_review') || reports[0] || null;
+      setSelectedReport(editable);
+      setReportText(editable?.content || doc.report_comment || '');
+      setReportSeverity(editable?.severity || 'normal');
+    } catch {
+      // Mantém os metadados legados enquanto a lista versionada não estiver disponível.
+    }
   }, []);
 
   const handleSaveReport = useCallback(async () => {
@@ -107,18 +137,16 @@ export default function ExamesScreen() {
 
     setIsSaving(true);
     try {
-      const res = await api.put(`/documents/${selectedDocId}/report`, {
-        report_comment: reportText.trim(),
-        doctor_user_id: doctorUserId,
+      const created = await api.post(`/document-reports/documents/${selectedDocId}`, {
+        severity: reportSeverity,
+        content: reportText.trim(),
       });
-      const data = res.data;
-
-      const updated = data?.document;
-      if (updated?.id) {
-        setDocs((prev) => prev.map((d) => (d.id === updated.id ? { ...d, ...updated } : d)));
-      } else {
-        await fetchDocs();
-      }
+      const published = await api.post(`/document-reports/${created.data.id}/publish`);
+      const updatedReport = published.data as DocumentReport;
+      setSelectedReport(updatedReport);
+      setDocs((prev) => prev.map((d) => (
+        d.id === selectedDocId ? { ...d, latest_report: updatedReport, status: 'reviewed' } : d
+      )));
 
       Alert.alert('Sucesso', 'Relatório enviado para a paciente.');
     } catch (err) {
@@ -126,7 +154,7 @@ export default function ExamesScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, selectedDocId, reportText, doctorUserId, fetchDocs]);
+  }, [isSaving, selectedDocId, reportText, reportSeverity]);
 
   const handleCreateRequest = useCallback(async () => {
     if (isRequesting || !patientId || !examName.trim()) {
@@ -271,13 +299,29 @@ export default function ExamesScreen() {
                   onChangeText={setReportText}
                   multiline
                 />
+                <Text style={styles.meta}>Classificação da orientação</Text>
+                <View style={styles.severityRow}>
+                  {REPORT_SEVERITIES.map(([value, label]) => (
+                    <TouchableOpacity
+                      key={value}
+                      testID={`e2e-report-severity-${value}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: reportSeverity === value }}
+                      style={[styles.severityButton, reportSeverity === value && styles.severityButtonSelected]}
+                      onPress={() => setReportSeverity(value)}
+                    >
+                      <Text style={styles.severityButtonText}>{label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {!!selectedReport && <Text style={styles.meta}>Versão {selectedReport.version} · {selectedReport.status === 'in_review' ? 'Em revisão' : selectedReport.status === 'published' ? 'Publicada' : 'Substituída'}</Text>}
                 <TouchableOpacity
                   testID="e2e-save-doctor-report"
                   style={[styles.addButton, isSaving && styles.addButtonDisabled]}
                   onPress={handleSaveReport}
                   disabled={isSaving}
                 >
-                  <Text style={styles.addButtonText}>{isSaving ? 'Enviando...' : 'Enviar relatório'}</Text>
+                  <Text style={styles.addButtonText}>{isSaving ? 'Publicando...' : 'Publicar devolutiva'}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -295,7 +339,7 @@ export default function ExamesScreen() {
               </View>
               <Text style={styles.cardData}>Enviado em: {formatDate(item.uploaded_at)}</Text>
               <Text style={styles.previewText} numberOfLines={2}>
-                {item.report_comment?.trim() ? item.report_comment : 'Sem relatório ainda.'}
+                {item.latest_report?.content?.trim() || item.report_comment?.trim() || 'Sem devolutiva publicada ainda.'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -484,6 +528,27 @@ const styles = StyleSheet.create({
     color: '#444',
     marginTop: 10,
     lineHeight: 20,
+  },
+  severityRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  severityButton: {
+    borderWidth: 1,
+    borderColor: '#b8addb',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  severityButtonSelected: {
+    backgroundColor: '#d9cff5',
+    borderColor: '#886aea',
+  },
+  severityButtonText: {
+    color: '#403366',
+    fontSize: 12,
   },
   button: {
     backgroundColor: '#886aea',

@@ -110,6 +110,7 @@ const ENCRYPTED_FIELDS = Object.freeze({
   ]),
   exam_requests: Object.freeze(['exam_name', 'instructions']),
   consultations: Object.freeze(['evolution', 'conduct', 'prescription_text']),
+  document_reports: Object.freeze(['content']),
   medidas_fetais: Object.freeze([
     'ccn',
     'crl',
@@ -196,6 +197,16 @@ const CLEAR_FIELDS = Object.freeze({
     'gestational_age_weeks',
     'next_return_at',
     'finalized_at',
+    'encryption_key_version',
+  ]),
+  document_reports: Object.freeze([
+    'document_id',
+    'pregnant_id',
+    'author_user_id',
+    'version',
+    'status',
+    'supersedes_report_id',
+    'published_at',
     'encryption_key_version',
   ]),
   doctor_patient_links: Object.freeze([

@@ -217,6 +217,25 @@ curl -X POST http://localhost:3000/api/documents \
 - Atualizar metadados: PUT `/api/documents/:id` (JSON com `document_name` e/ou `document_type`)
 - Deletar: DELETE `/api/documents/:id`
 
+### Devolutiva médica versionada (E2-05)
+
+O médico com vínculo ativo cria uma versão em revisão e a publica em uma ação
+separada. A gestante só enxerga a versão publicada mais recente; versões
+anteriores permanecem no histórico como `replaced` e não são editadas ou
+apagadas.
+
+- Listar: GET `/api/document-reports/documents/:documentId`
+  - médico: histórico completo;
+  - gestante: somente a versão publicada mais recente; a abertura é auditada.
+- Criar em revisão: POST `/api/document-reports/documents/:documentId`
+  - JSON: `{ "severity": "normal|attention|see_consultation|seek_care_today", "content": "..." }`
+- Publicar: POST `/api/document-reports/:reportId/publish`
+
+Os textos de `attention` e `see_consultation` devem incluir:
+“Esta orientação não é diagnóstico nem prescrição. Procure seu serviço de
+saúde conforme orientação do médico.” Para `seek_care_today`, use:
+“Seu exame precisa de avaliação hoje. Procure a maternidade.”
+
 Para habilitar as colunas de extração em um banco existente, aplique:
 
 ```bash

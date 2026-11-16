@@ -28,6 +28,24 @@ type PregnantDocument = {
   reviewed_by_user_id: number | null;
   reviewed_at: string | null;
   download_url?: string | null;
+  latest_report?: DocumentReport | null;
+};
+
+type ReportSeverity = 'normal' | 'attention' | 'see_consultation' | 'seek_care_today';
+type DocumentReport = {
+  id: number;
+  version: number;
+  status: 'published' | 'replaced' | 'in_review';
+  severity: ReportSeverity;
+  content: string;
+  published_at: string | null;
+};
+
+const REPORT_SEVERITY_LABELS: Record<ReportSeverity, string> = {
+  normal: 'Normal',
+  attention: 'Atenção',
+  see_consultation: 'Ver na consulta',
+  seek_care_today: 'Procure atendimento hoje',
 };
 
 type ExamRequest = {
@@ -57,7 +75,19 @@ export default function ExamesTabScreen() {
     const response = await api.get(`/documents/?pregnant_id=${pregnantId}`);
     const data = response.data;
 
-    setDocs(Array.isArray(data) ? data : []);
+    const documents: PregnantDocument[] = Array.isArray(data) ? data : [];
+    const enriched = await Promise.all(documents.map(async (document) => {
+      try {
+        const reportResponse = await api.get(`/document-reports/documents/${document.id}`);
+        const reports = Array.isArray(reportResponse.data)
+          ? reportResponse.data as DocumentReport[]
+          : [];
+        return { ...document, latest_report: reports[0] || null };
+      } catch {
+        return document;
+      }
+    }));
+    setDocs(enriched);
   }, [pregnantId]);
 
   const fetchExamRequests = useCallback(async () => {
@@ -281,12 +311,16 @@ export default function ExamesTabScreen() {
             {!!item.document_type && <Text style={styles.metaText}>Tipo: {item.document_type}</Text>}
 
             <View style={styles.reportBox}>
-              <Text style={styles.reportTitle}>Relatório do médico</Text>
+              <Text style={styles.reportTitle}>Devolutiva do médico</Text>
+              {!!item.latest_report && (
+                <Text style={styles.metaText}>
+                  Classificação: {REPORT_SEVERITY_LABELS[item.latest_report.severity] || item.latest_report.severity}
+                </Text>
+              )}
               <Text style={styles.reportText}>
-                {item.report_comment?.trim()
-                  ? item.report_comment
-                  : 'Aguardando comentário do médico.'}
+                {item.latest_report?.content?.trim() || item.report_comment?.trim() || 'Aguardando devolutiva publicada.'}
               </Text>
+              {!!item.latest_report && <Text style={styles.metaText}>Versão {item.latest_report.version} · Publicada</Text>}
             </View>
 
             <TouchableOpacity
