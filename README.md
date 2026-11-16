@@ -30,6 +30,7 @@ Este README foi escrito para permitir que uma nova equipe consiga entender, conf
 - [Limitações e backlog futuro](#limitações-e-backlog-futuro)
 - [Troubleshooting](#troubleshooting)
 - [Documentação complementar](#documentação-complementar)
+- [Documentação técnica v3](#documentação-técnica-v3)
 
 ## Estado do projeto
 
@@ -1024,6 +1025,14 @@ Use esse comando com cuidado, pois ele apaga o volume local do banco.
 - Rode `npm run test:pdf-extractor` na raiz.
 - Rode `npm run extract:documents` dentro de `apps/api`.
 
+## Documentação técnica v3
+
+O guia consolidado de arquitetura, execução, segurança, testes, limitações,
+perguntas de transição e checklist de continuidade está em
+[`docs/documentacao-tecnica-v3.md`](docs/documentacao-tecnica-v3.md). O inventário
+textual de entidades e relacionamentos está em
+[`docs/er-textual-v3.md`](docs/er-textual-v3.md).
+
 ## Documentação complementar
 
 Arquivos importantes no repositório:
@@ -1041,6 +1050,7 @@ Arquivos importantes no repositório:
 | `apps/api/db/AUDITORIA_SEGURANCA.md` | Auditoria e segurança. |
 | `apps/mobile/README.md` | Informações especificas do app mobile. |
 | `scripts/stress_test/README.md` | Testes de estresse. |
+| `docs/adr/0007-servicos-externos-custo-zero.md` | Decisão sobre serviços externos gratuitos/patrocinados no ciclo acadêmico. |
 
 ## Licença e uso
 
