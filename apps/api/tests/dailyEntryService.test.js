@@ -86,3 +86,11 @@ test('serializa valores descriptografados para o contrato da API', () => {
   assert.equal(result.systolic, 120);
   assert.equal(result.reduced_fetal_movements, false);
 });
+
+test('E3-07: temperatura é aceita, validada e serializada', () => {
+  const entry = normalizePayload({ entry_date: '2026-11-08', temperature_c: 38.2 });
+  assert.equal(entry.temperature_c, 38.2);
+  assert.throws(() => normalizePayload({ entry_date: '2026-11-08', temperature_c: 50 }), DailyEntryValidationError);
+  assert.equal(serializeEntry({ temperature_c: '38.2' }).temperature_c, 38.2);
+  assert.equal(serializeEntry({ temperature_c: null }).temperature_c, null);
+});

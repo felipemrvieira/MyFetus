@@ -251,3 +251,42 @@ Convenção de Gravidade:
    * `nova`: Regra introduzida para suprir lacuna clínica (exemplo: desmembramento de glicemia em jejum e TOTG 75g; sinalização explícita de dados antropométricos ausentes).
 2. **Emissão de Decisão de Arquitetura (ADR):** As modificações que alteram limiares ou estrutura de dados devem ser formalizadas em `docs/adr/` ou no catálogo versionado antes da implementação técnica. A separação entre frequência cardíaca materna e fetal é uma dependência técnica explícita.
 3. **Desenvolvimento do Motor Executável (E3-03):** O motor de regras desacoplado e auditável será desenvolvido no épico E3-03, consumindo estritamente as regras ajustadas e removendo as regras marcadas como `removida`. Mensagens para a gestante não podem prescrever condutas nem apresentar diagnóstico.
+
+---
+
+## Sinais de alarme do diário (E3-07)
+
+**Status:** implementado; textos e casos-limite aprovados clinicamente em 15/11/2026.
+**Catálogo executável:** [`apps/api/data/daily-alarm-rules.json`](../apps/api/data/daily-alarm-rules.json) (versão `1.0.0`)
+**Avaliador:** [`apps/api/services/dailyAlarmRuleService.js`](../apps/api/services/dailyAlarmRuleService.js) — função pura, determinística, sem IA e sem depender de push.
+
+Quando a gestante salva ou corrige uma entrada do diário, a API avalia as regras abaixo, devolve a orientação no campo `alarm` da resposta e grava um evento em `alert_events` para o médico vinculado. O push (E5-03) é um canal adicional e não é fonte de verdade.
+
+| ID da regra | Versão | Gravidade | Condição |
+| :--- | :---: | :---: | :--- |
+| `E3-07.bleeding` | 1 | Vermelho | Sangramento |
+| `E3-07.fluid_loss` | 1 | Vermelho | Perda de líquido |
+| `E3-07.severe_headache` | 1 | Vermelho | Dor de cabeça forte, visão embaçada ou inchaço repentino |
+| `E3-07.fever` | 1 | Vermelho | Febre marcada ou `temperature_c` ≥ 38 °C |
+| `E3-07.contractions_or_abdominal_pain` | 1 | Vermelho | Contrações regulares ou dor forte na barriga, em qualquer IG |
+| `E3-07.fainting_or_seizure` | 1 | Vermelho | Desmaio ou convulsão |
+| `E3-07.reduced_movements` | 1 | Vermelho | Relato de redução de movimentos (aceito a partir de 28 semanas) |
+
+**Orientação exibida à gestante**
+
+- Vermelho (`seek_care_now_v1`): **"Procure agora a maternidade ou ligue 192 (SAMU). Este aviso não substitui avaliação profissional."**
+- Verde: nenhuma mensagem tranquilizadora ("está tudo bem" não é exibido).
+
+**Repetição e escalada.** O alerta é idempotente por gestação + regra + severidade: enquanto houver alerta aberto ou reconhecido, um novo registro atualiza `last_seen_at`, `source_id` e `signal_codes` em vez de duplicar. Alertas E3-07 não fecham automaticamente; somente o médico encerra, com justificativa (E3-05).
+
+**Auditoria.** Cada avaliação não verde gera `DAILY_ALARM_TRIGGERED` com `rule_ids` (`id@versão`), `signal_codes`, `pending`, `orientation_id` e `alert_event_ids`. Texto livre e valores clínicos brutos não entram no detalhe.
+
+**Dados ausentes.** A ausência de PA, temperatura ou IG não reduz a urgência de um sinal aprovado. A pressão continua sendo avaliada pelo motor próprio da regra de PA; a pergunta de movimentos só aparece a partir de 28 semanas.
+
+**Decisões clínicas registradas**
+
+1. Cada sinal aprovado é urgente isoladamente, sem depender de PA ou IG.
+2. Movimentos fetais são relato sim/não a partir de 28 semanas.
+3. Com alerta aberto, o mesmo sinal atualiza o evento; após encerramento, um novo registro cria novo alerta.
+4. A gestante confirma com “Entendi” e o médico reconhece conforme E3-05.
+5. "Redução de movimentos" segue relato simples (sim/não), sem contagem.
