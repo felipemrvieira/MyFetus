@@ -91,6 +91,8 @@ jobs:
   pdf-dataset:
     name: Synthetic PDF/OCR dataset
     runs-on: ubuntu-latest
+    env:
+      PDF_OCR_SCALE: '3'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

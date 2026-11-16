@@ -77,6 +77,9 @@ function runMigrations() {
     { id: '13_exam_requests.sql', path: 'apps/api/db/migration_exam_requests.sql' },
     { id: '14_exam_request_documents.sql', path: 'apps/api/db/migration_exam_request_documents.sql' },
     { id: '15_doctor_approval.sql', path: 'apps/api/db/migration_doctor_approval.sql' },
+    { id: '16_daily_entries.sql', path: 'apps/api/db/migration_daily_entries.sql' },
+    { id: '17_alert_events.sql', path: 'apps/api/db/migration_alert_events.sql' },
+    { id: '18_lab_results.sql', path: 'apps/api/db/migration_lab_results.sql' },
   ];
 
   // 4. Consulta quais migracoes ja constam como aplicadas

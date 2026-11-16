@@ -231,6 +231,16 @@ export default function ExamesScreen() {
               </View>
             ))}
 
+            <TouchableOpacity
+              testID="e2e-view-analyte-series"
+              accessibilityRole="button"
+              accessibilityLabel="Ver evolução dos analitos laboratoriais"
+              style={styles.seriesButton}
+              onPress={() => router.push(`/doctor/${patientId}/serie_analitos`)}
+            >
+              <Text style={styles.seriesButtonText}>📈 Ver evolução dos analitos (Hb e Glicemia)</Text>
+            </TouchableOpacity>
+
             <Text style={styles.addTitle}>Exames Enviados pela Paciente</Text>
             <Text style={styles.helperText}>Selecione um exame para escrever o relatório.</Text>
 
@@ -240,6 +250,17 @@ export default function ExamesScreen() {
                 <Text style={styles.meta}>Enviado em: {formatDate(selectedDoc.uploaded_at)}</Text>
                 <TouchableOpacity style={styles.openButton} onPress={() => openDownload(selectedDoc)}>
                   <Text style={styles.openButtonText}>Abrir exame</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID="e2e-review-lab-results"
+                  accessibilityRole="button"
+                  style={styles.reviewButton}
+                  onPress={() => router.push({
+                    pathname: '/doctor/[patientId]/revisao_exame',
+                    params: { patientId: String(patientId), documentId: String(selectedDoc.id) },
+                  } as never)}
+                >
+                  <Text style={styles.reviewButtonText}>Revisar valores extraídos</Text>
                 </TouchableOpacity>
 
                 <TextInput
@@ -374,6 +395,36 @@ const styles = StyleSheet.create({
   },
   openButtonText: {
     color: '#27ae60',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  reviewButton: {
+    borderWidth: 1,
+    borderColor: '#886aea',
+    paddingVertical: 10,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  seriesButton: {
+    backgroundColor: '#EDE7F6',
+    borderWidth: 1.5,
+    borderColor: '#7E57C2',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 6,
+  },
+  seriesButtonText: {
+    color: '#4A148C',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  reviewButtonText: {
+    color: '#5B3FB8',
     fontSize: 14,
     fontWeight: 'bold',
   },

@@ -66,6 +66,10 @@ function seed() {
       { id: 900, pregnant_id: 10, exam_request_id: 500, ...enc({ document_name: 'hemograma.pdf', document_type: 'application/pdf', extracted_text: 'Hb 12,5 g/dL', report_comment: 'Normal' }, 'pregnant_documents'), file_path: 'uploads/secret/abc.enc', file_encryption_version: 1, extraction_status: 'done', status: 'reviewed', reviewed_by_user_id: 3, uploaded_at: '2026-09-13T10:00:00Z', encryption_key_version: 1 },
       { id: 901, pregnant_id: 20, exam_request_id: 600, ...enc({ document_name: 'joana.pdf', document_type: 'application/pdf', extracted_text: 'Texto da Joana' }, 'pregnant_documents'), file_path: 'uploads/secret/def.enc', status: 'pending', uploaded_at: '2026-09-13T10:00:00Z' },
     ],
+    lab_results: [
+      { id: 1, document_id: 900, pregnant_id: 10, line_index: 0, analyte_id: 'hemoglobin', loinc: '718-7', ...enc({ raw_text: 'Hb 12,5 g/dL', original_value: 12.5, original_unit: 'g/dL', value: 12.5, unit: 'g/dL', review_reason: 'justificativa do médico' }, 'lab_results'), status: 'accepted', version: 2, reviewed_by_user_id: 3, created_at: '2026-09-13T10:05:00Z' },
+      { id: 2, document_id: 901, pregnant_id: 20, line_index: 0, analyte_id: 'hemoglobin', ...enc({ raw_text: 'Hb da Joana', value: 11 }, 'lab_results'), status: 'pending', version: 1 },
+    ],
     doctor_patient_links: [
       { id: 1, doctor_id: 3, pregnant_id: 10, status: 'active', created_at: '2026-09-05T10:00:00Z', updated_at: '2026-09-05T10:00:00Z' },
       { id: 2, doctor_id: 3, pregnant_id: 20, status: 'active', created_at: '2026-09-06T10:00:00Z', updated_at: '2026-09-06T10:00:00Z' },
@@ -173,6 +177,9 @@ test.describe('Exportação dos dados do titular (E7-02.1)', () => {
     assert.deepEqual(body.eventos.map((row) => row.descricao), ['Consulta de rotina da Maria']);
     assert.deepEqual(body.pedidos_de_exame.map((row) => row.exam_name), ['Hemograma da Maria']);
     assert.deepEqual(body.documentos.map((row) => row.extracted_text), ['Hb 12,5 g/dL']);
+    assert.deepEqual(body.resultados_de_exame.map((row) => [row.analyte_id, row.value, row.status]), [['hemoglobin', 12.5, 'accepted']]);
+    assert.equal('reviewed_by_user_id' in body.resultados_de_exame[0], false);
+    assert.equal('review_reason' in body.resultados_de_exame[0], false);
     assert.deepEqual(body.peso_materno.map((row) => row.weight_kg), [64.5]);
     assert.deepEqual(body.vinculos_medicos.map((row) => row.status), ['active']);
     assert.deepEqual(body.consentimentos.map((row) => row.purpose), ['tratamento_dados_saude']);

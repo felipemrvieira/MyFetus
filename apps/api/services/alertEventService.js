@@ -48,6 +48,61 @@ function serializeAlertEvent(row) {
   };
 }
 
+function serializeAlertEventHistory(row) {
+  return {
+    id: row.id,
+    alert_event_id: row.alert_event_id,
+    action: row.action,
+    previous_status: row.previous_status || null,
+    status: row.status,
+    actor_id: row.actor_id || null,
+    justification: row.justification || null,
+    created_at: row.created_at,
+  };
+}
+
+function validateJustification(value, message) {
+  const justification = String(value || '').trim();
+  if (justification.length < 3 || justification.length > 1000) {
+    throw new AlertEventValidationError(message);
+  }
+  return justification;
+}
+
+async function withAlertTransaction(db, callback) {
+  const connection = typeof db.connect === 'function' ? await db.connect() : db;
+  const ownsConnection = connection !== db;
+  try {
+    if (ownsConnection) await connection.query('BEGIN');
+    const result = await callback(connection);
+    if (ownsConnection) await connection.query('COMMIT');
+    return result;
+  } catch (error) {
+    if (ownsConnection) await connection.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    if (ownsConnection) connection.release();
+  }
+}
+
+async function recordAlertHistory(db, {
+  alertEventId,
+  action,
+  previousStatus,
+  status,
+  actorId,
+  justification = null,
+}) {
+  const result = await db.query(
+    `INSERT INTO alert_event_history (
+       alert_event_id, action, previous_status, status, actor_id, justification
+     ) VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [alertEventId, action, previousStatus || null, status, actorId || null, justification || null]
+  );
+  return serializeAlertEventHistory(result.rows[0]);
+}
+
 async function upsertAlertEvent(db, alert) {
   validateAlertInput(alert);
   const current = await db.query(
@@ -81,34 +136,79 @@ async function upsertAlertEvent(db, alert) {
   return { event: serializeAlertEvent(result.rows[0]), created: true };
 }
 
-async function acknowledgeAlert(db, alertId, userId) {
-  const result = await db.query(
-    `UPDATE alert_events
-     SET status = CASE WHEN status = 'open' THEN 'acknowledged' ELSE status END,
-         acknowledged_at = COALESCE(acknowledged_at, CURRENT_TIMESTAMP),
-         acknowledged_by_user_id = COALESCE(acknowledged_by_user_id, $2),
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $1 AND status IN ('open', 'acknowledged')
-     RETURNING *`,
-    [alertId, userId]
-  );
-  return result.rows[0] ? serializeAlertEvent(result.rows[0]) : null;
+async function acknowledgeAlert(db, alertId, userId, justification) {
+  const reason = validateJustification(justification, 'justificativa obrigatoria para reconhecer alerta');
+  return withAlertTransaction(db, async (connection) => {
+    const current = await connection.query(
+      'SELECT * FROM alert_events WHERE id = $1 AND status IN (\'open\', \'acknowledged\') FOR UPDATE',
+      [alertId]
+    );
+    if (!current.rows[0]) return null;
+    if (current.rows[0].status === 'acknowledged') return serializeAlertEvent(current.rows[0]);
+
+    const result = await connection.query(
+      `UPDATE alert_events
+       SET status = 'acknowledged',
+           acknowledged_at = CURRENT_TIMESTAMP,
+           acknowledged_by_user_id = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status = 'open'
+       RETURNING *`,
+      [alertId, userId]
+    );
+    if (!result.rows[0]) return null;
+    await recordAlertHistory(connection, {
+      alertEventId: result.rows[0].id,
+      action: 'acknowledged',
+      previousStatus: 'open',
+      status: 'acknowledged',
+      actorId: userId,
+      justification: reason,
+    });
+    return serializeAlertEvent(result.rows[0]);
+  });
 }
 
 async function closeAlert(db, alertId, userId, justification) {
-  const reason = String(justification || '').trim();
-  if (reason.length < 3 || reason.length > 1000) {
-    throw new AlertEventValidationError('justificativa obrigatoria para encerrar alerta');
-  }
+  const reason = validateJustification(justification, 'justificativa obrigatoria para encerrar alerta');
+  return withAlertTransaction(db, async (connection) => {
+    const current = await connection.query(
+      'SELECT * FROM alert_events WHERE id = $1 AND status IN (\'open\', \'acknowledged\') FOR UPDATE',
+      [alertId]
+    );
+    if (!current.rows[0]) return null;
+
+    const result = await connection.query(
+      `UPDATE alert_events
+       SET status = 'closed', closed_at = CURRENT_TIMESTAMP,
+           closed_by_user_id = $2, close_reason = $3, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status IN ('open', 'acknowledged')
+       RETURNING *`,
+      [alertId, userId, reason]
+    );
+    if (!result.rows[0]) return null;
+    await recordAlertHistory(connection, {
+      alertEventId: result.rows[0].id,
+      action: 'closed',
+      previousStatus: current.rows[0].status,
+      status: 'closed',
+      actorId: userId,
+      justification: reason,
+    });
+    return serializeAlertEvent(result.rows[0]);
+  });
+}
+
+async function listAlertHistory(db, alertId) {
   const result = await db.query(
-    `UPDATE alert_events
-     SET status = 'closed', closed_at = CURRENT_TIMESTAMP,
-         closed_by_user_id = $2, close_reason = $3, updated_at = CURRENT_TIMESTAMP
-     WHERE id = $1 AND status IN ('open', 'acknowledged')
-     RETURNING *`,
-    [alertId, userId, reason]
+    `SELECT id, alert_event_id, action, previous_status, status,
+            actor_id, justification, created_at
+       FROM alert_event_history
+      WHERE alert_event_id = $1
+      ORDER BY created_at ASC, id ASC`,
+    [alertId]
   );
-  return result.rows[0] ? serializeAlertEvent(result.rows[0]) : null;
+  return result.rows.map(serializeAlertEventHistory);
 }
 
 async function autoCloseNormalAlert(db, { pregnancyId, ruleId, severity = 'yellow' }) {
@@ -168,7 +268,11 @@ module.exports = {
   autoCloseNormalAlert,
   closeAlert,
   dailyEntryAlerts,
+  listAlertHistory,
+  recordAlertHistory,
   serializeAlertEvent,
+  serializeAlertEventHistory,
   upsertAlertEvent,
   validateAlertInput,
+  validateJustification,
 };

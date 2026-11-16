@@ -7,6 +7,8 @@ const { audit } = require('../services/auditService');
 const { ensureCanAccessPregnant } = require('../utils/clinicalAccess');
 const { sendInternalError } = require('../utils/httpErrors');
 
+const SEVERITY_WEIGHT = { green: 0, yellow: 1, red: 2, pending: -1 };
+
 function containsEncryptedValue(record) {
   return Object.values(record || {}).some((value) => cryptoService.isEncrypted(value));
 }
@@ -17,6 +19,13 @@ function decryptIfNeeded(row) {
   return encrypted
     ? decryptPregnantDetails(row, row.latest_pregnancy, [])
     : { ...row, all_events: [] };
+}
+
+function mapRuleToCategoryKey(ruleId) {
+  if (ruleId.startsWith('lab_hemoglobin')) return 'hemoglobina';
+  if (ruleId.startsWith('lab_glucose') || ruleId.includes('glucose')) return 'glicemia';
+  if (ruleId.startsWith('lab_urine_protein')) return 'proteinuria';
+  return null;
 }
 
 const getPatientAlerts = async (req, res) => {
@@ -60,6 +69,49 @@ const getPatientAlerts = async (req, res) => {
     const patient = decryptIfNeeded(result.rows[0]);
     const risk = evaluatePatientRisk(patient, patient.latest_pregnancy);
 
+    // E2-07: Incorpora alertas ativos gerados por exames laboratoriais (lab_results)
+    const activeAlertsResult = await client.query(
+      `SELECT * FROM alert_events
+        WHERE pregnant_id = $1 AND status IN ('open', 'acknowledged')
+        ORDER BY last_seen_at DESC`,
+      [id]
+    );
+
+    const activeEvents = activeAlertsResult.rows;
+    for (const event of activeEvents) {
+      const catKey = mapRuleToCategoryKey(event.rule_id);
+      if (catKey) {
+        const existingCat = risk.categories[catKey];
+        const newWeight = SEVERITY_WEIGHT[event.severity] || 0;
+        const currentWeight = SEVERITY_WEIGHT[existingCat?.level] || 0;
+
+        if (!existingCat || newWeight > currentWeight) {
+          risk.categories[catKey] = {
+            level: event.severity,
+            status: 'alert',
+            label: event.severity === 'red' ? 'Crítico' : 'Atenção',
+            detail: event.message,
+            missing_fields: [],
+            alerts: [{ ruleId: event.rule_id, severity: event.severity, evidence: event.message }],
+          };
+        }
+      }
+
+      // Atualiza severidade geral se o evento for mais grave
+      if (SEVERITY_WEIGHT[event.severity] > (SEVERITY_WEIGHT[risk.overall_level] || 0)) {
+        risk.overall_level = event.severity;
+      }
+    }
+
+    // Recalcula contagens com as categorias atualizadas
+    const newCounts = { green: 0, yellow: 0, red: 0, pending: 0 };
+    Object.values(risk.categories).forEach((cat) => {
+      if (!cat) return;
+      if (cat.status?.startsWith('pending_')) newCounts.pending += 1;
+      else if (newCounts[cat.level] !== undefined) newCounts[cat.level] += 1;
+    });
+    risk.alert_counts = newCounts;
+
     audit(req, {
       action: 'ALERT_ACCESSED',
       resource: 'alerts',
@@ -76,6 +128,15 @@ const getPatientAlerts = async (req, res) => {
       patient_id: id,
       patient_name: patient.patient_name,
       ...risk,
+      active_events: activeEvents.map((evt) => ({
+        id: evt.id,
+        rule_id: evt.rule_id,
+        severity: evt.severity,
+        source_type: evt.source_type,
+        source_id: evt.source_id,
+        message: evt.message,
+        last_seen_at: evt.last_seen_at,
+      })),
     });
   } catch (err) {
     logger.error('Erro ao gerar alertas', { details: err.message, pregnantId: id });

@@ -27,6 +27,7 @@ const SECTION_LABELS: Record<string, string> = {
   peso_materno: 'Registros de peso',
   pedidos_de_exame: 'Pedidos de exame',
   documentos: 'Documentos de exames',
+  resultados_de_exame: 'Resultados de exames',
   vinculos_medicos: 'Vínculos com médicos',
 };
 

@@ -1,4 +1,5 @@
 const { performance } = require('perf_hooks');
+const { getMockRagAnswer } = require('./mockRagServer');
 
 class RagClientError extends Error {
   constructor(message, details = {}) {
@@ -39,24 +40,40 @@ class RagClient {
   constructor({
     baseUrl = process.env.RAG_BASE_URL || 'http://localhost:3000',
     token = process.env.RAG_TEST_JWT || process.env.JWT_TEST_TOKEN,
-    timeoutMs = Number(process.env.RAG_TIMEOUT_MS || 5000),
+    endpoint = null,
+    endpointType = 'chat', // 'chat' | 'search'
+    timeoutMs = Number(process.env.RAG_TIMEOUT_MS || 10000),
     maxAttempts = Number(process.env.RAG_MAX_ATTEMPTS || 2),
     retryDelayMs = Number(process.env.RAG_RETRY_DELAY_MS || 100),
+    mock = process.env.RAG_MOCK_MODE === '1' || false,
     fetchImpl = globalThis.fetch,
     sleepImpl = sleep,
   } = {}) {
-    if (typeof fetchImpl !== 'function') {
-      throw new RagClientError('A Fetch API não está disponível neste runtime.');
+    this.mock = Boolean(mock);
+
+    if (!this.mock) {
+      if (typeof fetchImpl !== 'function') {
+        throw new RagClientError('A Fetch API não está disponível neste runtime.');
+      }
+
+      if (!token) {
+        throw new RagClientError(
+          'JWT ausente. Defina RAG_TEST_JWT ou use o modo determinístico com --mock.'
+        );
+      }
     }
 
-    if (!token) {
-      throw new RagClientError(
-        'JWT ausente. Gere um token com apps/api/scripts/generate-jwt-test-token.js e defina RAG_TEST_JWT.'
-      );
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    if (endpoint) {
+      this.endpoint = endpoint;
+    } else if (endpointType === 'search') {
+      this.endpoint = `${cleanBaseUrl}/api/internal/rag/search`;
+    } else {
+      this.endpoint = `${cleanBaseUrl}/api/rag/chat`;
     }
 
-    this.endpoint = `${baseUrl.replace(/\/$/, '')}/api/internal/rag/search`;
-    this.token = token;
+    this.endpointType = endpointType;
+    this.token = token || 'mock-dev-token';
     this.timeoutMs = timeoutMs;
     this.maxAttempts = Math.max(1, maxAttempts);
     this.retryDelayMs = Math.max(0, retryDelayMs);
@@ -68,6 +85,31 @@ class RagClient {
     const timeoutMs = options.timeoutMs ?? this.timeoutMs;
     const maxAttempts = Math.max(1, options.maxAttempts ?? this.maxAttempts);
     const requestStartedAt = performance.now();
+
+    // 1. Execução determinística em modo mock (para CI / Marco M2)
+    if (this.mock) {
+      const simulatedLatency = Math.min(timeoutMs, Math.max(15, Math.floor(Math.random() * 25) + 10));
+      await this.sleepImpl(simulatedLatency);
+
+      try {
+        const mockData = getMockRagAnswer(query, options);
+        const latencyMs = Math.round(performance.now() - requestStartedAt);
+        return {
+          status: mockData.status || 200,
+          attempts: 1,
+          latencyMs,
+          data: mockData,
+        };
+      } catch (err) {
+        const latencyMs = Math.round(performance.now() - requestStartedAt);
+        if (err.name === 'RagTimeoutError') {
+          throw new RagTimeoutError(timeoutMs, { attempts: 1, latencyMs });
+        }
+        throw new RagHttpError(err.status || 500, { message: err.message }, { attempts: 1, latencyMs });
+      }
+    }
+
+    // 2. Execução real contra servidor HTTP (Marco M3)
     let lastError = null;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -75,17 +117,20 @@ class RagClient {
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
+        const requestPayload = {
+          query,
+          mensagem: query,
+          topK,
+          ...(options.filtros ? { filtros: options.filtros } : {}),
+        };
+
         const response = await this.fetchImpl(this.endpoint, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${this.token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            query,
-            topK,
-            ...(options.filtros ? { filtros: options.filtros } : {}),
-          }),
+          body: JSON.stringify(requestPayload),
           signal: controller.signal,
         });
 

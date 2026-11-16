@@ -17,7 +17,9 @@
     "generate:dataset:ocr": "node scripts/generate_dataset.js --with-ocr",
     "test:pdf-extractor": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/pdfExtractor.test.js --runInBand",
     "accuracy:pdf": "node scripts/accuracy_report.js",
-    "check:logs": "node scripts/check-no-console.js"
+    "check:logs": "node scripts/check-no-console.js",
+    "test:stress": "node scripts/stress_test/run_stress_test.js --mock --all",
+    "test:stress:live": "node scripts/stress_test/run_stress_test.js --live --mode official --requests 100 --concurrency 3"
   },
   "repository": {
     "type": "git",

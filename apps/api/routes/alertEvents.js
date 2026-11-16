@@ -13,6 +13,12 @@ router.get(
   requireRole('gestante', 'medico', 'admin'),
   controller.listAlertEvents
 );
+router.get(
+  '/:alertId/history',
+  authenticateToken,
+  requireRole('medico', 'admin'),
+  controller.history
+);
 router.post(
   '/:alertId/acknowledge',
   authenticateToken,

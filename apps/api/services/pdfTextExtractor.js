@@ -3,7 +3,11 @@ const path = require('path');
 
 const MIN_TEXT_LENGTH_FOR_OCR = Number(process.env.PDF_TEXT_MIN_LENGTH_FOR_OCR || 50);
 const OCR_LANGUAGES = process.env.OCR_LANGUAGES || 'por+eng';
-const OCR_SCALE = Number(process.env.PDF_OCR_SCALE || 2);
+// Render scanned PDFs at a higher resolution before OCR. This improves token
+// recognition on the CI runner and on low-quality documents without changing
+// the extraction contract. The value remains configurable for constrained
+// environments.
+const OCR_SCALE = Number(process.env.PDF_OCR_SCALE || 3);
 
 class PdfExtractionError extends Error {
   constructor(message, code = 'EXTRACTION_ERROR', details = {}) {

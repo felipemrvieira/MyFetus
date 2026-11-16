@@ -12,5 +12,10 @@ ou fornecida pelo chamador. Caso contrário, recebe `pending_review`; texto não
 reconhecido fica em `unrecognized_text`.
 
 Esta etapa não define limiares clínicos, não corrige OCR silenciosamente e não
-envia resultados ao motor de risco. A persistência em `lab_results`, a revisão
-clínica e a definição dos critérios de acurácia continuam nas etapas E2-04/E2-07.
+envia resultados ao motor de risco. O `status: accepted` do parser só quer dizer que a
+leitura está completa; quem decide o uso clínico é o médico. A persistência em `lab_results`
+e a revisão médica estão em [revisao-medica-analitos.md](revisao-medica-analitos.md) (E2-04);
+a ligação com o motor de risco fica na E2-07.
+
+Na glicemia, o tipo do exame só é preenchido quando está escrito na linha (jejum, TOTG 75 g
+com o tempo, ou casual). Sem o tipo, o médico informa na revisão.

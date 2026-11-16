@@ -19,5 +19,11 @@ INSERT INTO schema_migrations (version) VALUES
   ('12_consents.sql'),
   ('13_exam_requests.sql'),
   ('14_exam_request_documents.sql'),
-  ('15_doctor_approval.sql')
+  ('15_doctor_approval.sql'),
+  ('16_daily_entries.sql'),
+  ('17_alert_events.sql'),
+  ('18_lab_results.sql'),
+  ('19_device_push_tokens.sql'),
+  ('19_daily_metrics_history.sql'),
+  ('19_alert_event_history.sql')
 ON CONFLICT DO NOTHING;

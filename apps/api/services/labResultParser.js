@@ -68,10 +68,13 @@ function findGlucoseContext(line) {
   if (!normalized.includes('glicemia') && !normalized.includes('glicose') && !normalized.includes('glucose')) return null;
   if (/(totg|75\s*g|teste\s+oral)/i.test(line)) {
     const hour = line.match(/\b(0|1|2)\s*(?:h|hora|horas)\b/i)?.[1];
-    return { examType: 'ogtt75g', timepoint: hour === undefined ? null : `${hour}h` };
+    if (hour !== undefined) return { examType: 'ogtt75g', timepoint: `${hour}h` };
+    return { examType: 'ogtt75g', timepoint: /jejum|basal/i.test(line) ? '0h' : null };
   }
   if (/jejum|fasting/i.test(line)) return { examType: 'fasting', timepoint: 'fasting' };
-  return { examType: 'casual', timepoint: null };
+  // Sem o tipo escrito no laudo, não adivinha: o médico informa na revisão (#61, #100).
+  if (/casual|aleat[oó]ria|ao\s+acaso/i.test(line)) return { examType: 'casual', timepoint: null };
+  return { examType: null, timepoint: null };
 }
 
 function extractionConfidence({ valueNumeric, valueText, unit, observedAt }) {

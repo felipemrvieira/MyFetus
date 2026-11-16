@@ -6,9 +6,11 @@ const path = require('node:path');
 const apiDir = path.join(__dirname, '..');
 const dirs = ['controllers', 'routes'].map((dir) => path.join(apiDir, dir));
 
-// res.json({ ... qualquer_chave: algo.message ... }) expõe o erro ao cliente.
+// res.json({ ... chave: err.message ... }) expõe o erro ao cliente.
+// Respostas clínicas podem ter um campo legítimo chamado `message`; o teste
+// deve identificar somente variáveis de erro, não qualquer objeto.message.
 // Logger e audit não usam .json(, então não são afetados.
-const leakPattern = /\.json\(\s*\{[^}]*\b\w+\s*:\s*\w+\.message/;
+const leakPattern = /\.json\(\s*\{[^}]*\b\w+\s*:\s*(?:err|error|exception|caught)\.message/;
 
 // Mensagens de validação escritas pela própria aplicação (400), revisadas manualmente.
 const ALLOWED_VALIDATION_MESSAGES = new Set([

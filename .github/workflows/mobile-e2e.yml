@@ -36,6 +36,9 @@ jobs:
       DOCUMENT_EXTRACTION_BATCH_SIZE: 5
       ENABLE_DOCUMENT_OCR: 'false'
       MAESTRO_CLI_NO_ANALYTICS: 'true'
+      # Android emulators on GitHub-hosted runners can take longer than the
+      # Maestro default to expose its driver after boot and APK installation.
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
 
     steps:
       - name: Checkout
