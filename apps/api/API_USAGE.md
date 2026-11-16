@@ -310,6 +310,26 @@ Em bancos existentes, aplique:
 
 ```bash
 psql -U myuser -d mydatabase -f apps/api/db/migration_sprint6_history.sql
+```
+
+### Consultas clínicas (E6-01.1)
+
+Os registros de consulta são acessíveis somente por médico com vínculo ativo
+com a gestante ou por administrador em procedimento operacional auditado. A
+gestante não acessa esse registro nesta versão. O campo de prescrição é apenas
+texto registrado pelo médico; não é prescrição eletrônica assinada.
+
+- `POST /api/consultations/pregnancies/:pregnancyId` — cria rascunho com `consultation_at`, `evolution` e `conduct`; aceita `gestational_age_weeks`, `prescription_text` e `next_return_at`.
+- `GET /api/consultations/pregnancies/:pregnancyId` — lista as versões da gestação.
+- `GET /api/consultations/:id` — consulta uma versão.
+- `POST /api/consultations/:id/finalize` — finaliza explicitamente o rascunho.
+- `POST /api/consultations/:id/addenda` — cria nova versão sem apagar o registro original.
+
+Para acesso administrativo, envie `x-admin-access-reason` com o motivo
+operacional. O motivo é gravado na trilha de auditoria. Não há `PUT` ou
+`DELETE`: correções após o registro são feitas por adendo, preservando o
+histórico.
+
 ### Doctor Patient Links (vínculo médico-gestante)
 
 Exige `Authorization: Bearer <token>` de usuário `medico`. É esse vínculo que controla quais

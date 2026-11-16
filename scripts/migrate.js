@@ -81,6 +81,7 @@ function runMigrations() {
     { id: '17_alert_events.sql', path: 'apps/api/db/migration_alert_events.sql' },
     { id: '18_lab_results.sql', path: 'apps/api/db/migration_lab_results.sql' },
     { id: '20_daily_entries_temperature.sql', path: 'apps/api/db/migration_daily_entries_temperature.sql' },
+    { id: '21_consultations.sql', path: 'apps/api/db/migration_consultations.sql' },
   ];
 
   // 4. Consulta quais migracoes ja constam como aplicadas
