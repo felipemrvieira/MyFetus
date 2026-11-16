@@ -41,6 +41,7 @@ tags:
   - name: Auditoria
   - name: Crescimento
   - name: Historico
+  - name: Consultas
   - name: Exportacoes
 
 paths:
@@ -1768,6 +1769,140 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # --------------------------------------------------------------- Historico
+  # -------------------------------------------------------------- Consultas
+  /api/consultations/pregnancies/{pregnancyId}:
+    parameters:
+      - $ref: '#/components/parameters/PregnancyIdPath'
+      - $ref: '#/components/parameters/AdminAccessReason'
+    get:
+      tags: [Consultas]
+      summary: Lista registros de consulta da gestacao
+      operationId: listConsultations
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      responses:
+        '200':
+          description: Consultas visiveis ao medico vinculado ou ao admin com procedimento auditado.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Consultation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Consultas]
+      summary: Cria um registro de consulta em rascunho
+      operationId: createConsultation
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateConsultationRequest' }
+            example:
+              consultation_at: '2026-11-16T14:00:00-03:00'
+              gestational_age_weeks: 24
+              evolution: Evolução sintética da consulta.
+              conduct: Conduta sintética e orientações registradas.
+              prescription_text: Texto de prescrição registrado pelo médico, sem assinatura eletrônica.
+              next_return_at: '2026-11-30'
+      responses:
+        '201':
+          description: Consulta criada em rascunho.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consultation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/consultations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+      - $ref: '#/components/parameters/AdminAccessReason'
+    get:
+      tags: [Consultas]
+      summary: Consulta um registro de consulta
+      operationId: getConsultation
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      responses:
+        '200':
+          description: Registro de consulta com campos clínicos descriptografados para o perfil autorizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consultation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/consultations/{id}/addenda:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+      - $ref: '#/components/parameters/AdminAccessReason'
+    post:
+      tags: [Consultas]
+      summary: Cria adendo sem apagar a versao anterior
+      operationId: createConsultationAddendum
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateConsultationAddendumRequest' }
+            example:
+              conduct: Conduta corrigida em adendo sintético.
+      responses:
+        '201':
+          description: Adendo criado como nova versão em rascunho.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consultation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/consultations/{id}/finalize:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+      - $ref: '#/components/parameters/AdminAccessReason'
+    post:
+      tags: [Consultas]
+      summary: Finaliza uma consulta sem permitir edicao destrutiva
+      operationId: finalizeConsultation
+      security: [{ bearerAuth: [] }]
+      x-roles: [admin, medico]
+      responses:
+        '200':
+          description: Consulta finalizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consultation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /api/history/pregnancies/{pregnancyId}:
     parameters:
       - $ref: '#/components/parameters/PregnancyIdPath'
@@ -2580,6 +2715,12 @@ components:
       in: path
       required: true
       schema: { type: integer, minimum: 1 }
+    AdminAccessReason:
+      name: x-admin-access-reason
+      in: header
+      required: false
+      schema: { type: string, minLength: 3, maxLength: 500 }
+      description: Obrigatorio para admin; motivo operacional gravado na auditoria.
     HistoryFrom:
       name: from
       in: query
@@ -3690,6 +3831,48 @@ components:
         weight_kg: { type: number, exclusiveMinimum: 0, maximum: 500 }
         measured_at: { type: string, format: date, description: Padrao - data atual. }
         notes: { type: string, maxLength: 2000 }
+
+    Consultation:
+      type: object
+      required: [id, pregnancy_id, author_user_id, version, status, consultation_at, evolution, conduct]
+      properties:
+        id: { type: integer }
+        pregnancy_id: { type: integer }
+        author_user_id: { type: integer }
+        parent_consultation_id: { type: [integer, 'null'] }
+        version: { type: integer, minimum: 1 }
+        status: { type: string, enum: [draft, finalized] }
+        consultation_at: { type: string, format: date-time }
+        gestational_age_weeks: { type: [number, 'null'], minimum: 0, maximum: 45 }
+        evolution: { type: string }
+        conduct: { type: string }
+        prescription_text: { type: [string, 'null'], description: Texto informativo; não é prescrição assinada. }
+        next_return_at: { type: [string, 'null'], format: date }
+        finalized_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CreateConsultationRequest:
+      type: object
+      additionalProperties: false
+      required: [consultation_at, evolution, conduct]
+      properties:
+        consultation_at: { type: string, format: date-time }
+        gestational_age_weeks: { type: number, exclusiveMinimum: 0, maximum: 45 }
+        evolution: { type: string, minLength: 1, maxLength: 10000 }
+        conduct: { type: string, minLength: 1, maxLength: 10000 }
+        prescription_text: { type: [string, 'null'], maxLength: 5000 }
+        next_return_at: { type: [string, 'null'], format: date }
+    CreateConsultationAddendumRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        consultation_at: { type: string, format: date-time }
+        gestational_age_weeks: { type: [number, 'null'], exclusiveMinimum: 0, maximum: 45 }
+        evolution: { type: string, minLength: 1, maxLength: 10000 }
+        conduct: { type: string, minLength: 1, maxLength: 10000 }
+        prescription_text: { type: [string, 'null'], maxLength: 5000 }
+        next_return_at: { type: [string, 'null'], format: date }
 
     FhirBundle:
       type: object
