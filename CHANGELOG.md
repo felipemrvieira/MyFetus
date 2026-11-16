@@ -2,6 +2,19 @@
 
 Registro das principais alterações realizadas no projeto MyFetus.
 
+## [Unreleased]
+
+### Documentação técnica v3
+
+* Consolidado o guia de arquitetura, configuração local, API, segurança,
+  testes, operação, limitações e transição para a próxima equipe.
+* Adicionado o ER textual com entidades, relacionamentos, integridade e ordem
+  executável das migrations.
+* Registrado o ADR de uso de serviços externos com custo zero, créditos
+  patrocinados ou recursos locais no ciclo acadêmico.
+* Explicitado que o piloto usa dados sintéticos, que achados pós-freeze viram
+  backlog/documentação e que a homologação não é produção.
+
 ## [2026.2]
 
 ### Sprint 0 — Planejamento
