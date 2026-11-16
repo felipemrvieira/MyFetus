@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { askClinicalChat } from '../../utils/chatApi';
+import { ChatCitacao, askClinicalChat } from '../../utils/chatApi';
+import ChatSources from '../../components/ChatSources';
 import { AccessibleText as Text } from '../../components/AccessibleText';
 import { ACCESSIBLE_COLORS } from '../../theme/accessibility';
 
@@ -21,6 +22,7 @@ interface Message {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
+  citacoes?: ChatCitacao[];
 }
 
 const WEB_MAX_WIDTH = 430;
@@ -56,10 +58,11 @@ export default function ChatScreen() {
     setLoading(true);
 
     try {
-      const { resposta } = await askClinicalChat(userMessage.text);
+      const { resposta, citacoes } = await askClinicalChat(userMessage.text);
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: resposta,
+        citacoes,
         sender: 'bot',
         timestamp: new Date(),
       };
@@ -126,6 +129,9 @@ export default function ChatScreen() {
                 >
                   {message.text}
                 </Text>
+                {message.sender === 'bot' && !!message.citacoes?.length && (
+                  <ChatSources citations={message.citacoes} />
+                )}
                 <Text style={styles.messageTime}>
                   {message.timestamp.toLocaleTimeString('pt-BR', {
                     hour: '2-digit',

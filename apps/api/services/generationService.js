@@ -21,7 +21,11 @@ const SYSTEM_INSTRUCTION = `Você é o assistente clínico do MyFetus, um app de
 Responda em português do Brasil, de forma clara, breve e acolhedora.
 Baseie a resposta SOMENTE nos trechos de diretrizes fornecidos no contexto.
 Se o contexto não tiver a resposta, diga que não encontrou essa informação nas diretrizes disponíveis e recomende falar com o médico responsável.
+Ao usar um trecho, indique o número dele entre colchetes, como [1]. Não cite números que não estão no contexto.
 Nunca dê diagnóstico, prescrição ou dosagem. Termine toda orientação com: "${SAFE_MESSAGES.disclaimer}"`;
+
+// Versão do prompt do chat simples, registrada na auditoria junto com o modelo (E4-04).
+const RAG_CHAT_PROMPT_VERSION = 'rag-chat-v2-citacoes';
 
 // NOVO: Prompt super-restrito para o Agente Materno (focado no médico)
 const AGENTE_MATERNO_INSTRUCTION = `Você é o Agente Materno do MyFetus, um assistente clínico virtual avançado de apoio à decisão médica.
@@ -63,7 +67,11 @@ function getClient() {
 function buildContext(trechos) {
   if (!trechos || trechos.length === 0) return '';
   return trechos
-    .map((trecho, index) => `[${index + 1}] Fonte: ${trecho.fonte} (Relevância: ${trecho.relevancia})\n${trecho.trecho}`)
+    .map((trecho, index) => {
+      const local = [trecho.pagina ? `p. ${trecho.pagina}` : null, trecho.secao || null].filter(Boolean).join(', ');
+      const fonte = trecho.titulo || trecho.fonte;
+      return `[${index + 1}] Fonte: ${fonte}${local ? ` (${local})` : ''} (Relevância: ${trecho.relevancia})\n${trecho.trecho}`;
+    })
     .join('\n\n');
 }
 
@@ -170,6 +178,9 @@ ${query}
 }
 
 module.exports = {
+  GEMINI_MODEL,
+  RAG_CHAT_PROMPT_VERSION,
+  buildContext,
   generateAnswer,
   generateMaternalAgentAnalysis, // Exportamos a nova função
 };
