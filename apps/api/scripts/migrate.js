@@ -37,6 +37,7 @@ const migrations = [
   ['19_alert_event_history.sql', 'migration_alert_event_history.sql'],
   ['20_daily_entries_temperature.sql', 'migration_daily_entries_temperature.sql'],
   ['21_consultations.sql', 'migration_consultations.sql'],
+  ['22_document_reports.sql', 'migration_document_reports.sql'],
 ];
 
 function required(name) {

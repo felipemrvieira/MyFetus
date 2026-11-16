@@ -1211,6 +1211,82 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/document-reports/documents/{documentId}:
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Documentos]
+      summary: Lista devolutivas do documento conforme o papel
+      operationId: getDocumentReports
+      security: [{ bearerAuth: [] }]
+      x-roles: [gestante, medico]
+      description: Gestante recebe somente a versão publicada mais recente; médico vinculado recebe o histórico completo.
+      responses:
+        '200':
+          description: Devolutivas versionadas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DocumentReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Documentos]
+      summary: Cria uma devolutiva em revisão
+      operationId: createDocumentReport
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDocumentReportRequest' }
+      responses:
+        '201':
+          description: Nova versão em revisão.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/document-reports/{reportId}/publish:
+    parameters:
+      - name: reportId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      tags: [Documentos]
+      summary: Publica uma devolutiva em revisão
+      operationId: publishDocumentReport
+      security: [{ bearerAuth: [] }]
+      x-roles: [medico]
+      responses:
+        '200':
+          description: Devolutiva publicada; a anterior fica substituída.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   # ------------------------------------------------------------------ Exames
   /api/exam-requests/pregnant/{pregnantId}:
     parameters:
@@ -3645,6 +3721,29 @@ components:
         reviewed_by_user_id: { type: [integer, 'null'] }
         reviewed_at: { type: [string, 'null'], format: date-time }
         uploaded_at: { type: string, format: date-time }
+    DocumentReport:
+      type: object
+      required: [id, document_id, pregnant_id, author_user_id, version, status, severity, content, created_at, updated_at]
+      properties:
+        id: { type: integer }
+        document_id: { type: integer }
+        pregnant_id: { type: integer }
+        author_user_id: { type: integer }
+        version: { type: integer, minimum: 1 }
+        status: { type: string, enum: [in_review, published, replaced] }
+        severity: { type: string, enum: [normal, attention, see_consultation, seek_care_today] }
+        content: { type: string, maxLength: 5000 }
+        supersedes_report_id: { type: [integer, 'null'] }
+        published_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CreateDocumentReportRequest:
+      type: object
+      required: [severity, content]
+      additionalProperties: false
+      properties:
+        severity: { type: string, enum: [normal, attention, see_consultation, seek_care_today] }
+        content: { type: string, minLength: 1, maxLength: 5000 }
     UploadDocumentRequest:
       type: object
       required: [document_name]

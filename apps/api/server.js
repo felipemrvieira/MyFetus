@@ -94,6 +94,7 @@ const growthRoutes = require('./routes/growth');
 const clinicalHistoryRoutes = require('./routes/clinicalHistory');
 const examRequestRoutes = require('./routes/examRequests');
 const consultationRoutes = require('./routes/consultations');
+const documentReportRoutes = require('./routes/documentReports');
 const pregnancyReportRoutes = require('./routes/pregnancyReports');
 const { startDocumentTextExtractionWorker } = require('./workers/pdfWorker');
 const agentRoutes = require('./routes/agent');
@@ -118,6 +119,7 @@ app.use('/api/growth', growthRoutes);
 app.use('/api/history', clinicalHistoryRoutes);
 app.use('/api/exam-requests', examRequestRoutes);
 app.use('/api/consultations', consultationRoutes);
+app.use('/api/document-reports', documentReportRoutes);
 app.use('/api/reports', pregnancyReportRoutes);
 
 // Consentimento LGPD (E7-01.1)
