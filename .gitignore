@@ -52,3 +52,5 @@ apps/api/data/.rag-checkpoint.json
 
 # Relatórios operacionais da ingestão RAG
 apps/api/data/rag-reports/
+# Saídas do npm run rag:eval (E4-06.2); o resultado oficial vai para docs/rag/eval-<data>.md
+apps/api/rag-eval-results/
