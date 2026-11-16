@@ -330,6 +330,24 @@ operacional. O motivo é gravado na trilha de auditoria. Não há `PUT` ou
 `DELETE`: correções após o registro são feitas por adendo, preservando o
 histórico.
 
+### Snapshot autorizado do relatório (E5-04.1)
+
+A gestante autenticada pode gerar o snapshot somente da própria gestação:
+
+- `GET /api/reports/pregnancies/:pregnancyId/snapshot`
+
+O snapshot é interno e não é um documento oficial. Ele congela o instante de
+geração (`generated_at`) e informa o fuso usado (`timezone`). Inclui apenas:
+
+- exames revisados, com status `accepted` ou `corrected`;
+- diário dos últimos 30 dias civis, conforme a data local do fuso informado;
+- vacinas com campos preenchidos;
+- alertas com status `open` ou `acknowledged`, mantendo o estado explícito.
+
+Se uma seção não tiver dados, ela retorna `status: "not_informed"` e uma lista
+vazia. O endpoint não expõe conteúdo de outra gestante, não publica URL e usa
+`Cache-Control: no-store`.
+
 ### Doctor Patient Links (vínculo médico-gestante)
 
 Exige `Authorization: Bearer <token>` de usuário `medico`. É esse vínculo que controla quais
