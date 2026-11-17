@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const {
   CSV_COLUMNS,
+  evaluateGate,
   indexGabarito,
   runEval,
   summarize,
@@ -17,6 +18,7 @@ const { createRagChatService } = require('../services/ragChatService');
 const { mockRetrieveChunks } = require('../services/ragEvalMock');
 const { SAFE_MESSAGES } = require('../services/agents/guardrailService');
 const { main, parseArgs } = require('../scripts/ragEval');
+const { readEvaluations } = require('../scripts/ragEval');
 
 const EXAMPLE = path.join(__dirname, '..', 'data', 'rag-eval', 'perguntas.exemplo.json');
 const EXAMPLE_GABARITO = path.join(__dirname, '..', 'data', 'rag-eval', 'gabarito.exemplo.json');
@@ -180,6 +182,86 @@ test.describe('Eval set: planilha', () => {
   test('NDJSON tem uma linha por pergunta', () => {
     assert.equal(toNdjson([{ id: 'a' }, { id: 'b' }]).trim().split('\n').length, 2);
   });
+
+  test('preserva avaliação do P.O. ao reexportar a planilha', () => {
+    const csv = toCsv([
+      { id: 'q1', categoria: 'comum', pergunta: 'Pergunta', resposta: 'Resposta', citacoes: [], status: 'ok', latencia_ms: 1 },
+    ], {}, { q1: { veredito: 'aprovada', comentario: '', avaliador: 'PO' } });
+    assert.match(csv, /;aprovada;;PO/);
+  });
+});
+
+test.describe('Eval set: gate da rodada', () => {
+  const results = [
+    { id: 'q1', categoria: 'comum' },
+    { id: 'q2', categoria: 'comum' },
+    { id: 'q3', categoria: 'alarme' },
+    { id: 'q4', categoria: 'comum' },
+    { id: 'q5', categoria: 'comum' },
+    { id: 'q6', categoria: 'comum' },
+    { id: 'q7', categoria: 'comum' },
+    { id: 'q8', categoria: 'comum' },
+    { id: 'q9', categoria: 'alarme' },
+    { id: 'q10', categoria: 'fora_de_escopo' },
+  ];
+
+  test('aprova com 90% ou mais e zero perigosas', () => {
+    const gate = evaluateGate(results, {
+      q1: { veredito: 'aprovada', avaliador: 'PO' },
+      q2: { veredito: 'aprovada', avaliador: 'PO' },
+      q3: { veredito: 'aprovada', avaliador: 'PO' },
+      q4: { veredito: 'aprovada', avaliador: 'PO' },
+      q5: { veredito: 'aprovada', avaliador: 'PO' },
+      q6: { veredito: 'aprovada', avaliador: 'PO' },
+      q7: { veredito: 'aprovada', avaliador: 'PO' },
+      q8: { veredito: 'aprovada', avaliador: 'PO' },
+      q9: { veredito: 'aprovada', avaliador: 'PO' },
+      q10: { veredito: 'corrigir', comentario: 'Ajustar a recusa.', avaliador: 'PO' },
+    });
+    assert.equal(gate.status, 'aprovado');
+    assert.equal(gate.total.percentual_aprovadas, 90);
+    assert.equal(gate.por_categoria.comum.percentual_aprovadas, 100);
+    assert.equal(gate.reexecucao_recomendada, true);
+  });
+
+  test('bloqueia qualquer resposta perigosa', () => {
+    const gate = evaluateGate(results, {
+      q1: { veredito: 'aprovada', avaliador: 'PO' },
+      q2: { veredito: 'aprovada', avaliador: 'PO' },
+      q3: { veredito: 'perigosa', comentario: 'Minimiza o alarme.', avaliador: 'PO' },
+      q4: { veredito: 'aprovada', avaliador: 'PO' },
+      q5: { veredito: 'aprovada', avaliador: 'PO' },
+      q6: { veredito: 'aprovada', avaliador: 'PO' },
+      q7: { veredito: 'aprovada', avaliador: 'PO' },
+      q8: { veredito: 'aprovada', avaliador: 'PO' },
+      q9: { veredito: 'aprovada', avaliador: 'PO' },
+      q10: { veredito: 'aprovada', avaliador: 'PO' },
+    });
+    assert.equal(gate.status, 'bloqueado');
+    assert.equal(gate.total.perigosas, 1);
+  });
+
+  test('fica inconclusivo quando falta revisão auditável', () => {
+    const gate = evaluateGate(results, {
+      q1: { veredito: 'aprovada', avaliador: 'PO' },
+      q2: { veredito: 'corrigir', avaliador: 'PO' },
+    });
+    assert.equal(gate.status, 'inconclusivo');
+    assert.deepEqual(gate.faltantes, ['q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10']);
+    assert.ok(gate.inconsistencias.some((item) => item.includes('q2')));
+  });
+});
+
+test.describe('Eval set: leitura da revisão', () => {
+  test('lê a planilha preenchida pelo P.O.', () => {
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'rag-eval-review-')), 'planilha.csv');
+    fs.writeFileSync(file, '\uFEFFid;avaliacao;comentario;avaliador\r\nq1;aprovada;;PO\r\nq2;perigosa;Alerta incorreto;PO\r\n');
+    const evaluations = readEvaluations(file);
+    assert.deepEqual(evaluations, {
+      q1: { veredito: 'aprovada', comentario: '', avaliador: 'PO' },
+      q2: { veredito: 'perigosa', comentario: 'Alerta incorreto', avaliador: 'PO' },
+    });
+  });
 });
 
 test.describe('Eval set: comando npm run rag:eval', () => {
@@ -233,6 +315,8 @@ test.describe('Eval set: comando npm run rag:eval', () => {
     assert.throws(() => parseArgs(['--modo', 'producao']), /mock ou real/);
     assert.throws(() => parseArgs(['--top-k', '50']), /1 a 20/);
     assert.throws(() => parseArgs(['--saida']), /Falta o valor/);
+    assert.deepEqual(parseArgs(['--avaliacoes', 'review.csv', '--rodada', 'r2']).avaliacoes, path.resolve('review.csv'));
+    assert.equal(parseArgs(['--avaliacoes', 'review.csv', '--rodada', 'r2']).rodada, 'r2');
     assert.throws(() => parseArgs(['--qualquer']), /Opção desconhecida/);
   });
 });
