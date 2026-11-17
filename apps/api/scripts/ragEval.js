@@ -16,6 +16,8 @@
  *   --caminho chat|agents   caminho avaliado (padrão chat, o que o app usa)
  *   --top-k <n>             trechos por pergunta (padrão 5)
  *   --intervalo-ms <n>      pausa entre perguntas (padrão 0 no mock, 6500 no real)
+ *   --avaliacoes <arquivo>   planilha CSV/JSON preenchida pelo P.O. para calcular o gate
+ *   --rodada <id>            identificador opcional da rodada de avaliação
  *   --saida <pasta>         pasta de saída (padrão rag-eval-results/<data>-<modo>)
  */
 const crypto = require('crypto');
@@ -36,6 +38,8 @@ function parseArgs(argv) {
     caminho: 'chat',
     topK: 5,
     intervaloMs: null,
+    avaliacoes: null,
+    rodada: null,
     saida: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -53,6 +57,8 @@ function parseArgs(argv) {
     else if (arg === '--caminho') options.caminho = next();
     else if (arg === '--top-k') options.topK = Number(next());
     else if (arg === '--intervalo-ms') options.intervaloMs = Number(next());
+    else if (arg === '--avaliacoes') options.avaliacoes = path.resolve(next());
+    else if (arg === '--rodada') options.rodada = next();
     else if (arg === '--saida') options.saida = path.resolve(next());
     else throw new Error(`Opção desconhecida: ${arg}`);
   }
@@ -71,6 +77,92 @@ function readJson(file, label) {
   } catch (error) {
     throw new Error(`Não foi possível ler ${label} (${path.relative(process.cwd(), file)}): ${error.message}`);
   }
+}
+
+/** Lê CSV delimitado por ponto e vírgula, incluindo campos entre aspas e quebras de linha. */
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  const source = String(text || '').replace(/^\uFEFF/, '');
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (quoted) {
+      if (char === '"' && source[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        cell += char;
+      }
+    } else if (char === '"' && cell === '') {
+      quoted = true;
+    } else if (char === ';') {
+      row.push(cell);
+      cell = '';
+    } else if (char === '\n') {
+      row.push(cell.endsWith('\r') ? cell.slice(0, -1) : cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell.endsWith('\r') ? cell.slice(0, -1) : cell);
+    rows.push(row);
+  }
+  return rows.filter((item) => item.some((value) => String(value).trim() !== ''));
+}
+
+function normalizeEvaluation(row) {
+  return {
+    veredito: String(row?.veredito ?? row?.avaliacao ?? '').trim().toLowerCase(),
+    comentario: String(row?.comentario ?? '').trim(),
+    avaliador: String(row?.avaliador ?? '').trim(),
+  };
+}
+
+/**
+ * Lê a planilha gerada pelo executor ou um JSON com { avaliacoes: [...] }.
+ * A validação de conteúdo fica no evaluateGate para o relatório explicar todas
+ * as pendências de uma só vez.
+ */
+function readEvaluations(file) {
+  if (!file) return null;
+  const source = fs.readFileSync(file, 'utf8');
+  if (path.extname(file).toLowerCase() === '.json') {
+    const payload = JSON.parse(source);
+    const entries = Array.isArray(payload) ? payload : payload.avaliacoes;
+    if (!Array.isArray(entries)) throw new Error('O arquivo de avaliações JSON precisa ser uma lista ou conter "avaliacoes".');
+    return Object.fromEntries(entries.map((entry) => [String(entry.id || '').trim(), normalizeEvaluation(entry)]));
+  }
+
+  const rows = parseCsv(source);
+  if (rows.length === 0) throw new Error('A planilha de avaliações está vazia.');
+  const headers = rows[0].map((header) => String(header).trim().toLowerCase());
+  const index = (name) => headers.indexOf(name);
+  const idIndex = index('id');
+  if (idIndex < 0) throw new Error('A planilha de avaliações precisa da coluna id.');
+  const value = (row, name) => {
+    const position = index(name);
+    return position < 0 ? '' : row[position] || '';
+  };
+  const evaluations = {};
+  for (const row of rows.slice(1)) {
+    const id = String(row[idIndex] || '').trim();
+    if (!id) continue;
+    if (evaluations[id]) throw new Error(`A planilha contém avaliação duplicada para ${id}.`);
+    evaluations[id] = normalizeEvaluation({
+      avaliacao: value(row, 'avaliacao'),
+      comentario: value(row, 'comentario'),
+      avaliador: value(row, 'avaliador'),
+    });
+  }
+  return evaluations;
 }
 
 function currentCommit() {
@@ -151,6 +243,7 @@ async function main(argv = process.argv.slice(2), { now = () => new Date(), log 
   const options = parseArgs(argv);
   const dataset = readJson(options.perguntas, 'o eval set');
   const gabarito = options.gabarito ? readJson(options.gabarito, 'o gabarito') : null;
+  const evaluations = options.avaliacoes ? readEvaluations(options.avaliacoes) : null;
   const evalService = require('../services/ragEvalService');
 
   const { errors, warnings } = evalService.validateDataset(dataset);
@@ -181,14 +274,17 @@ async function main(argv = process.argv.slice(2), { now = () => new Date(), log 
   });
 
   const summary = evalService.summarize(results);
+  summary.gate = evalService.evaluateGate(results, evaluations);
   const outDir = options.saida || path.join(API_DIR, 'rag-eval-results', `${timestampSlug(started)}-${options.modo}`);
   fs.mkdirSync(outDir, { recursive: true });
   const datasetRaw = fs.readFileSync(options.perguntas);
+  const evaluationsRaw = options.avaliacoes ? fs.readFileSync(options.avaliacoes) : null;
   const meta = {
     executado_em: started.toISOString(),
     commit: currentCommit(),
     modo: options.modo,
     caminho: options.caminho,
+    rodada: options.rodada,
     top_k: options.topK,
     modelo: pipeline.model,
     prompt: pipeline.promptVersion,
@@ -200,12 +296,18 @@ async function main(argv = process.argv.slice(2), { now = () => new Date(), log 
       sha256: crypto.createHash('sha256').update(datasetRaw).digest('hex'),
       gabarito: options.gabarito ? path.basename(options.gabarito) : null,
     },
+    avaliacoes: options.avaliacoes ? {
+      arquivo: path.basename(options.avaliacoes),
+      sha256: crypto.createHash('sha256').update(evaluationsRaw).digest('hex'),
+    } : null,
+    gate: summary.gate,
   };
   fs.writeFileSync(path.join(outDir, 'resultados.ndjson'), evalService.toNdjson(results));
-  fs.writeFileSync(path.join(outDir, 'planilha.csv'), evalService.toCsv(results, evalService.indexGabarito(gabarito)));
+  fs.writeFileSync(path.join(outDir, 'planilha.csv'), evalService.toCsv(results, evalService.indexGabarito(gabarito), evaluations));
   fs.writeFileSync(path.join(outDir, 'resumo.json'), `${JSON.stringify({ ...meta, resumo: summary }, null, 2)}\n`);
 
   log(`\nStatus: ${Object.entries(summary.por_status).map(([status, count]) => `${status}=${count}`).join(', ')}`);
+  log(`Gate: ${summary.gate.status}`);
   log(`Falhas de recuperação em perguntas clínicas: ${summary.falhas_de_recuperacao_clinicas}`);
   log(`Arquivos em ${path.relative(process.cwd(), outDir) || outDir}`);
   return 0;
@@ -220,4 +322,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { buildPipeline, main, parseArgs };
+module.exports = { buildPipeline, main, normalizeEvaluation, parseArgs, parseCsv, readEvaluations };
