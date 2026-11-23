@@ -983,6 +983,7 @@ O guia consolidado de arquitetura, execução, segurança, testes, limitações,
 
 | Arquivo | Conteúdo e Finalidade |
 |---|---|
+| [**Projeto Completo e Documento de Negócio — MyFetus 3.0 (PDF)**](docs/MyFetus%203.0%20-%20Projeto%20Completo%20e%20Documento%20de%20Negocio.pdf) | Planejamento do ciclo 2026.2 e Documento de Negócio do MyFetus 3.0. |
 | [`docs/ci-cd.md`](docs/ci-cd.md) | Contrato de CI/CD, esteiras de deploy, smoke tests e procedimentos de rollback. |
 | [`docs/ci-cd-gcp-staging.md`](docs/ci-cd-gcp-staging.md) | Arquitetura e operação detalhada da homologação no Google Cloud Platform. |
 | [`docs/regras-de-risco.md`](docs/regras-de-risco.md) | Catálogo normativo das 12 categorias de risco obstétrico e decisões clínicas do PO. |
